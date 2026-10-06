@@ -7,7 +7,7 @@ extends Resource
 
 @export var tag := ""
 @export var display_name := ""
-@export_enum("generic", "snow", "mountain_road", "forest") var builder := "generic"
+@export_enum("generic", "snow", "mountain_road", "forest", "departementale") var builder := "generic"
 
 @export_group("Sky and light")
 @export var sky_top_color := Color(0.385, 0.454, 0.55)

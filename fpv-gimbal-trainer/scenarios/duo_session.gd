@@ -243,6 +243,8 @@ func obstacle_push(pos: Vector3, r: float) -> Vector3:
 				if scn.occ_kind[i] == 0:
 					if y < scn.occ_h[i]:
 						rad = size
+				elif scn.occ_kind[i] == 2:
+					rad = PropFactory.round_tree_radius_at(y / size) * size
 				else:
 					rad = PropFactory.tree_radius_at(y / size) * size
 				if rad <= 0.0:
@@ -254,4 +256,5 @@ func obstacle_push(pos: Vector3, r: float) -> Vector3:
 					var push := Vector3(dir.x, 0.0, dir.y) * (rad + r - dist)
 					if push.length() > best.length():
 						best = push
-	return best
+	var dyn := scn.dynamic_push(pos, r)
+	return dyn if dyn.length() > best.length() else best

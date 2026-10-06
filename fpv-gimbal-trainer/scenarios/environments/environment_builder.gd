@@ -92,6 +92,11 @@ func nominal_speed() -> float:
 	return (float(params.get("speed_min", 8.0)) + float(params.get("speed_max", 12.0))) * 0.5
 
 
+## Horizontal push getting a drone sphere out of the moving obstacles of the world (traffic...).
+func dynamic_push(_pos: Vector3, _radius: float) -> Vector3:
+	return Vector3.ZERO
+
+
 ## Extra line-of-sight blockers (tunnel hull...). from = camera, to = subject.
 func extra_occlusion(_from: Vector3, _to: Vector3) -> bool:
 	return false

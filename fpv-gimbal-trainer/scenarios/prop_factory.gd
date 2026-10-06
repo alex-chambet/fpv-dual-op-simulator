@@ -21,6 +21,61 @@ static func tree_radius_at(y: float) -> float:
 	return r
 
 
+## Deciduous tree (plane tree): trunk to 4 m, round crown of radius 3 centred at 6 m (scale 1). Radius at height y.
+const ROUND_CENTER := 6.0
+const ROUND_R := 3.0
+const ROUND_HEIGHT := 9.0
+
+
+static func round_tree_radius_at(y: float) -> float:
+	if y < 0.0 or y > ROUND_HEIGHT:
+		return 0.0
+	var r := 0.4 if y < 4.0 else 0.0
+	var dy := y - ROUND_CENTER
+	if absf(dy) < ROUND_R:
+		r = maxf(r, sqrt(ROUND_R * ROUND_R - dy * dy))
+	return r
+
+
+## Deciduous trees (MultiMesh): grounds = base positions, scales = size factors.
+static func build_round_trees(parent: Node3D, grounds: PackedVector3Array, scales: PackedFloat32Array,
+		foliage := Color(0.2, 0.42, 0.12), seed_value := 1) -> void:
+	var n := grounds.size()
+	if n == 0:
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value
+	var trunk := CylinderMesh.new()
+	trunk.top_radius = 0.28
+	trunk.bottom_radius = 0.4
+	trunk.height = 5.0
+	trunk.radial_segments = 6
+	var crown := SphereMesh.new()
+	crown.radius = ROUND_R
+	crown.height = ROUND_R * 1.7
+	crown.radial_segments = 9
+	crown.rings = 5
+	var mat := StandardMaterial3D.new()
+	mat.vertex_color_use_as_albedo = true
+	mat.roughness = 0.9
+	for layer in [{"mesh": trunk, "y": 2.5, "trunk": true}, {"mesh": crown, "y": ROUND_CENTER, "trunk": false}]:
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.use_colors = true
+		mm.mesh = layer.mesh
+		mm.instance_count = n
+		for i in n:
+			var s := scales[i]
+			var basis := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * s)
+			mm.set_instance_transform(i, Transform3D(basis, grounds[i] + Vector3(0, float(layer.y) * s, 0)))
+			var col := Color(0.32, 0.25, 0.18) if layer.trunk else foliage * rng.randf_range(0.8, 1.2)
+			mm.set_instance_color(i, Color(col.r, col.g, col.b, 1.0))
+		var mmi := MultiMeshInstance3D.new()
+		mmi.multimesh = mm
+		mmi.material_override = mat
+		parent.add_child(mmi)
+
+
 static func build_forest(parent: Node3D, grounds: PackedVector3Array, scales: PackedFloat32Array,
 		foliage := Color(0.08, 0.3, 0.14), seed_value := 1) -> void:
 	var n := grounds.size()

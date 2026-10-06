@@ -27,6 +27,7 @@ static func create(style: EnvironmentStyle, host: ScenarioBase, overrides: Dicti
 		"snow": b = EnvSnow.new()
 		"mountain_road": b = EnvMountainRoad.new()
 		"forest": b = EnvForest.new()
+		"departementale": b = EnvDepartementale.new()
 		_: b = EnvGeneric.new()
 	b.setup(host, style, overrides)
 	return b

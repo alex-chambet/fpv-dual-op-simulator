@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="SubjectDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/subjects/subject_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "departementale"
+display_name = "Départementale"
+category = "Mécanique"
+description = "Voiture sur une départementale française en plaine, à vitesse soutenue : camions et voitures en sens inverse, cyclistes sur le bas-côté. Course d'environ 1 min 15."
+archetype = "VEHICULE_ROUTE"
+overrides = {
+"cornering_accel": 0.0,
+"drone_distance_scale": 0.75,
+"duration": 75.0,
+"layout": "winding",
+"lateral_amplitude": 22.0,
+"lean_gain": 0.1,
+"lean_max_deg": 2.0,
+"path_length": 0.0,
+"speed_max": 27.0,
+"speed_min": 21.0,
+"speed_variability": 0.3,
+"turn_frequency": 0.3
+}
+subject_size = 4.2
+placeholder_shape = "box"
+placeholder_gear = "car"
+placeholder_color = Color(0.85, 0.08, 0.06, 1)
+placeholder_accent = Color(0.1, 0.1, 0.12, 1)
+environment = "departementale"
+env_overrides = {}
+recommended_movements = PackedStringArray("pursuit", "lateral", "frontal", "orbit", "reveal", "flyby")
+base_difficulty = 4

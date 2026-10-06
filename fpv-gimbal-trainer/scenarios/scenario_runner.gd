@@ -51,6 +51,10 @@ func _planner_extras() -> Dictionary:
 	}
 
 
+func dynamic_push(pos: Vector3, radius: float) -> Vector3:
+	return env.dynamic_push(pos, radius) if env != null else Vector3.ZERO
+
+
 func _extra_occlusion(from: Vector3, to: Vector3) -> bool:
 	return env.extra_occlusion(from, to) if env != null else false
 

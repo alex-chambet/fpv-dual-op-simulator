@@ -1,1 +1,8 @@
 res://ui/main_menu.gd
+res://scenarios/duo_session.gd
+res://scenarios/prop_factory.gd
+res://scenarios/scenario_base.gd
+res://scenarios/environments/environment_builder.gd
+res://scenarios/environments/environment_registry.gd
+res://scenarios/environments/environment_style.gd
+res://scenarios/environments/env_departementale.gd

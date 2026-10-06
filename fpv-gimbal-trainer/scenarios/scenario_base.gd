@@ -140,6 +140,11 @@ func _default_config() -> SessionConfig:
 	return null
 
 
+## Override: horizontal push getting a drone sphere out of moving obstacles (traffic...); zero = none.
+func dynamic_push(_pos: Vector3, _radius: float) -> Vector3:
+	return Vector3.ZERO
+
+
 ## Override: extra line-of-sight blockers (tunnels...). from = camera, to = subject.
 func _extra_occlusion(_from: Vector3, _to: Vector3) -> bool:
 	return false
@@ -401,6 +406,14 @@ func add_tree_occluder(ground: Vector3, tree_scale: float) -> void:
 	occ_kind.append(1)
 
 
+## Deciduous tree (PropFactory.round_tree_radius_at): kind 2.
+func add_round_tree_occluder(ground: Vector3, tree_scale: float) -> void:
+	occ_pos.append(ground)
+	occ_a.append(tree_scale)
+	occ_h.append(0.0)
+	occ_kind.append(2)
+
+
 func add_cylinder_occluder(ground: Vector3, radius: float, height: float) -> void:
 	occ_pos.append(ground)
 	occ_a.append(radius)
@@ -606,6 +619,9 @@ func is_occluded(from: Vector3, to: Vector3) -> bool:
 		var y := lerpf(from.y, to.y, t) - occ_pos[i].y  # height above the obstacle's ground
 		if occ_kind[i] == 0:
 			if d < size and y < occ_h[i]:
+				return true
+		elif occ_kind[i] == 2:
+			if d < PropFactory.round_tree_radius_at(y / size) * size:
 				return true
 		elif d < PropFactory.tree_radius_at(y / size) * size:
 			return true
