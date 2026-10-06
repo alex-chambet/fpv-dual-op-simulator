@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="EnvironmentStyle" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/environments/environment_style.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+tag = "prairie"
+display_name = "Meadow"
+builder = "generic"
+sky_top_color = Color(0.2, 0.42, 0.82, 1)
+sky_horizon_color = Color(0.7, 0.8, 0.92, 1)
+sky_curve = 0.14
+ground_horizon_color = Color(0.7, 0.78, 0.88, 1)
+sun_color = Color(1, 0.95, 0.86, 1)
+sun_energy = 1.6
+sun_elevation = 45.0
+sun_azimuth = 30.0
+ambient_energy = 0.9
+fog_color = Color(0.72, 0.8, 0.9, 1)
+fog_density = 0.0012
+terrain_kind = "rolling"
+bump = 2.0
+ground_color_dark = Color(0.2, 0.35, 0.12, 1)
+ground_color_light = Color(0.45, 0.56, 0.25, 1)
+ground_relief = 0.9
+margin = 80.0
+prop_kind = "trees"
+prop_count = 35
+prop_color = Color(0.1, 0.28, 0.1, 1)
+occluder_kind = "trees"

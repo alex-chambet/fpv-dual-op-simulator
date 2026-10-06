@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="SubjectDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/subjects/subject_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "hockey_sur_glace"
+in_menu = false
+display_name = "Hockey sur glace"
+category = "Neige / glace"
+description = "Joueur de hockey sur une patinoire : accélérations brusques, arrêts, changements de direction imprévisibles."
+archetype = "STOP_AND_GO_ZONE"
+overrides = {
+"burst_ratio": 0.85,
+"cadence": 1.8,
+"corner_radius": 2.0,
+"drone_distance_scale": 0.9,
+"pause_probability": 0.2,
+"speed_max": 11.0,
+"speed_min": 1.5,
+"turn_frequency": 7.0,
+"zone_length": 56.0,
+"zone_width": 26.0
+}
+subject_size = 1.8
+placeholder_shape = "person"
+placeholder_gear = "skates"
+placeholder_color = Color(0.1, 0.2, 0.7, 1)
+placeholder_accent = Color(0.95, 0.95, 0.95, 1)
+environment = "glace"
+env_overrides = {}
+recommended_movements = PackedStringArray("pursuit", "lateral", "orbit", "reveal", "flyby")
+base_difficulty = 5

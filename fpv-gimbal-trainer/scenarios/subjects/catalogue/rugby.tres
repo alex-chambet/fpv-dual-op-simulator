@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="SubjectDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/subjects/subject_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "rugby"
+in_menu = false
+display_name = "Rugby"
+category = "Collectifs / terrain"
+description = "Joueur de rugby : démarrages explosifs, esquives, trajectoire imprévisible."
+archetype = "STOP_AND_GO_ZONE"
+overrides = {
+"burst_ratio": 0.85,
+"cadence": 2.6,
+"corner_radius": 2.2,
+"drone_distance_scale": 1.5,
+"pause_probability": 0.15,
+"speed_max": 8.5,
+"speed_min": 0.8,
+"turn_frequency": 5.0,
+"zone_length": 100.0,
+"zone_width": 70.0
+}
+subject_size = 1.9
+placeholder_shape = "person"
+placeholder_gear = "none"
+placeholder_color = Color(0.1, 0.2, 0.6, 1)
+placeholder_accent = Color(0.85, 0.65, 0.5, 1)
+environment = "stade"
+env_overrides = {}
+recommended_movements = PackedStringArray("pursuit", "lateral", "frontal", "orbit", "reveal", "flyby")
+base_difficulty = 5

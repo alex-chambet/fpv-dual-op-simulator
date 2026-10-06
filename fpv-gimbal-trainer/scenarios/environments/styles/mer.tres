@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="EnvironmentStyle" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/environments/environment_style.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+tag = "mer"
+display_name = "Open sea"
+builder = "generic"
+sky_top_color = Color(0.15, 0.38, 0.8, 1)
+sky_horizon_color = Color(0.75, 0.82, 0.9, 1)
+ground_horizon_color = Color(0.7, 0.78, 0.88, 1)
+sun_color = Color(1, 0.93, 0.8, 1)
+sun_energy = 1.7
+sun_elevation = 28.0
+sun_azimuth = 80.0
+ambient_energy = 1.0
+fog_color = Color(0.76, 0.83, 0.92, 1)
+fog_density = 0.0015
+terrain_kind = "water"
+margin = 250.0
+has_water = true
+water_color = Color(0.04, 0.24, 0.4, 1)
+prop_kind = "buoys"
+prop_count = 12
+prop_color = Color(0.95, 0.8, 0.1, 1)
+occluder_kind = "rocks"

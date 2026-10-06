@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="SubjectDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/subjects/subject_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "alpinisme"
+in_menu = false
+display_name = "Alpinisme"
+category = "Montagne / outdoor"
+description = "Alpiniste progressant lentement sur une arête enneigée."
+archetype = "COURSE_SOL_CYCLIQUE"
+overrides = {
+"cadence": 0.8,
+"cadence_coupling": 0.3,
+"cornering_accel": 0.0,
+"drone_distance_scale": 0.6,
+"drone_min_height": 2.0,
+"lateral_amplitude": 1.5,
+"lean_max_deg": 8.0,
+"sample_step": 2.0,
+"speed_max": 0.9,
+"speed_min": 0.4,
+"speed_variability": 0.4,
+"turn_frequency": 0.8,
+"wiggle_ratio": 0.3
+}
+subject_size = 1.8
+placeholder_shape = "person"
+placeholder_gear = "none"
+placeholder_color = Color(0.9, 0.15, 0.1, 1)
+placeholder_accent = Color(0.2, 0.2, 0.2, 1)
+environment = "arete"
+env_overrides = {}
+recommended_movements = PackedStringArray("pursuit", "lateral", "frontal", "orbit", "reveal", "flyby")
+base_difficulty = 3

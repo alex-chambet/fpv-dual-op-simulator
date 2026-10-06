@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="SubjectDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/subjects/subject_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "ski_alpin"
+display_name = "Ski alpin"
+category = "Neige / glace"
+description = "Descente à ski avec virages en S entre des portes de slalom."
+archetype = "GLISSE_PENTE"
+overrides = {
+"gates": true,
+"lateral_amplitude": 9.0,
+"lean_gain": 0.8,
+"lean_max_deg": 30.0,
+"leaves_tracks": true,
+"path_length": 360.0,
+"speed_max": 16.0,
+"speed_min": 6.0,
+"speed_variability": 1.0,
+"spray": true,
+"turn_frequency": 2.85714285714286
+}
+subject_size = 1.8
+placeholder_shape = "person"
+placeholder_gear = "skis"
+placeholder_color = Color(0.95, 0.35, 0.1, 1)
+placeholder_accent = Color(0.1, 0.35, 0.9, 1)
+environment = "neige"
+env_overrides = {}
+recommended_movements = PackedStringArray("pursuit", "lateral", "frontal", "orbit", "reveal", "flyby")
+base_difficulty = 3

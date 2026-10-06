@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="SubjectDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/subjects/subject_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "luge"
+in_menu = false
+display_name = "Luge"
+category = "Neige / glace"
+description = "Luge allongé sur le dos, très rapide, virages courts dans une piste glacée."
+archetype = "GLISSE_PENTE"
+overrides = {
+"gates": false,
+"lateral_amplitude": 6.0,
+"lean_gain": 0.3,
+"lean_max_deg": 8.0,
+"leaves_tracks": false,
+"path_length": 1000.0,
+"speed_max": 30.0,
+"speed_min": 14.0,
+"speed_variability": 0.4,
+"spray": false,
+"turn_frequency": 1.6
+}
+subject_size = 1.8
+placeholder_shape = "person_lying"
+placeholder_gear = "sled"
+placeholder_color = Color(0.9, 0.2, 0.1, 1)
+placeholder_accent = Color(0.1, 0.1, 0.1, 1)
+environment = "neige"
+env_overrides = {
+"slope": 0.25
+}
+recommended_movements = PackedStringArray("pursuit", "lateral", "frontal", "orbit", "flyby")
+base_difficulty = 4

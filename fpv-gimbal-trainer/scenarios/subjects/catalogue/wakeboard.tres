@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="SubjectDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/subjects/subject_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "wakeboard"
+in_menu = false
+display_name = "Wakeboard"
+category = "Eau"
+description = "Wakeboard tracté sur un lac : vitesse stable, grandes courbes, petits sauts sur le sillage."
+archetype = "EAU_SURFACE"
+overrides = {
+"cadence": 0.0,
+"flips": 0,
+"jump_frequency": 0.2,
+"jump_height": 2.0,
+"jump_length": 14.0,
+"jump_visual": "none",
+"lateral_amplitude": 16.0,
+"lean_gain": 1.0,
+"lean_max_deg": 30.0,
+"speed_max": 14.0,
+"speed_min": 10.0,
+"speed_variability": 0.2,
+"spin_deg": 180.0,
+"turn_frequency": 1.0,
+"wave_heave": 0.08,
+"wave_roll_deg": 4.0
+}
+subject_size = 1.8
+placeholder_shape = "person"
+placeholder_gear = "wakeboard"
+placeholder_color = Color(0.9, 0.1, 0.2, 1)
+placeholder_accent = Color(0.1, 0.1, 0.1, 1)
+environment = "lac"
+env_overrides = {}
+recommended_movements = PackedStringArray("pursuit", "lateral", "frontal", "orbit", "reveal", "flyby")
+base_difficulty = 3

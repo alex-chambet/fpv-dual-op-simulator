@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="SubjectDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/subjects/subject_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "trottinette"
+in_menu = false
+display_name = "Trottinette"
+category = "Cycle / urbain"
+description = "Trottinette en ville : vitesse modérée, slalom entre les obstacles."
+archetype = "VEHICULE_ROUTE"
+overrides = {
+"cornering_accel": 3.5,
+"lateral_amplitude": 14.0,
+"layout": "winding",
+"lean_gain": 0.5,
+"lean_max_deg": 10.0,
+"path_length": 300.0,
+"sample_step": 4.0,
+"speed_max": 7.0,
+"speed_min": 4.0,
+"speed_variability": 0.2,
+"turn_frequency": 2.0
+}
+subject_size = 1.8
+placeholder_shape = "person"
+placeholder_gear = "scooter"
+placeholder_color = Color(0.2, 0.6, 0.9, 1)
+placeholder_accent = Color(0.9, 0.9, 0.1, 1)
+environment = "piste_urbaine"
+env_overrides = {}
+recommended_movements = PackedStringArray("pursuit", "lateral", "frontal", "orbit", "reveal", "flyby")
+base_difficulty = 2

@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="SubjectDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/subjects/subject_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "aviron"
+in_menu = false
+display_name = "Aviron"
+category = "Eau"
+description = "Skiff d'aviron sur un lac : trajectoire presque droite, vitesse pulsée à chaque coup de rame."
+archetype = "EAU_SURFACE"
+overrides = {
+"cadence": 0.55,
+"cadence_coupling": 0.0,
+"drone_distance_scale": 2.0,
+"lateral_amplitude": 6.0,
+"lean_gain": 0.2,
+"lean_max_deg": 3.0,
+"osc_amplitude": 0.3,
+"speed_max": 6.5,
+"speed_min": 4.0,
+"speed_variability": 0.2,
+"surge": 0.18,
+"turn_frequency": 0.4,
+"wave_heave": 0.04,
+"wave_roll_deg": 2.0
+}
+subject_size = 8.0
+placeholder_shape = "person"
+placeholder_gear = "scull"
+placeholder_color = Color(0.1, 0.2, 0.6, 1)
+placeholder_accent = Color(0.95, 0.95, 0.95, 1)
+environment = "lac"
+env_overrides = {}
+recommended_movements = PackedStringArray("pursuit", "lateral", "frontal", "orbit", "reveal", "flyby")
+base_difficulty = 2

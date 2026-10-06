@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="SubjectDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/subjects/subject_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "kart"
+in_menu = false
+display_name = "Kart"
+category = "Mécanique"
+description = "Kart sur une piste en asphalte : vitesse soutenue, virages très rapprochés."
+archetype = "VEHICULE_ROUTE"
+overrides = {
+"cornering_accel": 14.0,
+"lateral_amplitude": 18.0,
+"layout": "winding",
+"lean_gain": 0.1,
+"lean_max_deg": 4.0,
+"path_length": 600.0,
+"sample_step": 4.0,
+"speed_max": 20.0,
+"speed_min": 10.0,
+"speed_variability": 0.15,
+"turn_frequency": 2.5
+}
+subject_size = 2.0
+placeholder_shape = "person"
+placeholder_gear = "kart"
+placeholder_color = Color(0.95, 0.8, 0.05, 1)
+placeholder_accent = Color(0.1, 0.1, 0.1, 1)
+environment = "piste_urbaine"
+env_overrides = {}
+recommended_movements = PackedStringArray("pursuit", "lateral", "frontal", "orbit", "reveal", "flyby")
+base_difficulty = 3

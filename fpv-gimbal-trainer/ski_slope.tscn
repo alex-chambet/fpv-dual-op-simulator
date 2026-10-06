@@ -1,0 +1,85 @@
+[gd_scene format=3 uid="uid://rk5svvjmmjrs"]
+
+[ext_resource type="Script" path="res://scenarios/ski_slope/ski_slope.gd" id="1_65hfm"]
+[ext_resource type="PackedScene" path="res://flight/flight_path.tscn" id="2_fbkn1"]
+[ext_resource type="Script" uid="uid://bl20o0do6rxhw" path="res://ui/camera_look.gd" id="3_btwho"]
+[ext_resource type="Script" path="res://scenarios/ski_slope/frame_guide.gd" id="4_0ywvg"]
+
+[sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
+sky_top_color = Color(0.16, 0.36, 0.78, 1)
+sky_horizon_color = Color(0.66, 0.77, 0.9, 1)
+sky_curve = 0.12
+ground_bottom_color = Color(0.78, 0.84, 0.92, 1)
+ground_horizon_color = Color(0.7, 0.78, 0.89, 1)
+ground_curve = 0.05
+sun_angle_max = 25.0
+sun_curve = 0.1
+
+[sub_resource type="Sky" id="sky"]
+sky_material = SubResource("sky_mat")
+
+[sub_resource type="Environment" id="env"]
+background_mode = 2
+sky = SubResource("sky")
+ambient_light_source = 3
+ambient_light_energy = 0.9
+tonemap_mode = 2
+tonemap_white = 4.0
+ssao_enabled = true
+ssao_radius = 2.0
+ssao_intensity = 2.5
+glow_enabled = true
+glow_intensity = 0.5
+glow_bloom = 0.04
+glow_hdr_threshold = 1.1
+fog_enabled = true
+fog_light_color = Color(0.72, 0.8, 0.92, 1)
+fog_sun_scatter = 0.25
+fog_density = 0.0018
+fog_aerial_perspective = 0.5
+fog_sky_affect = 0.6
+adjustment_enabled = true
+adjustment_contrast = 1.05
+adjustment_saturation = 1.08
+
+[node name="SkiSlope" type="Node3D" unique_id=849268511]
+script = ExtResource("1_65hfm")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=538974619]
+environment = SubResource("env")
+
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=257054485]
+light_color = Color(1, 0.94, 0.84, 1)
+light_energy = 1.7
+light_angular_distance = 0.6
+shadow_enabled = true
+shadow_blur = 1.5
+directional_shadow_max_distance = 300.0
+
+[node name="Terrain" type="MeshInstance3D" parent="." unique_id=1893037996]
+
+[node name="FlightPath" parent="." unique_id=62462728 instance=ExtResource("2_fbkn1")]
+
+[node name="CameraLook" type="CanvasLayer" parent="." unique_id=1696089407]
+layer = 0
+script = ExtResource("3_btwho")
+
+[node name="HUD" type="CanvasLayer" parent="." unique_id=227378483]
+
+[node name="FrameGuide" type="Control" parent="HUD" unique_id=283280772]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("4_0ywvg")
+
+[node name="Label" type="Label" parent="HUD" unique_id=806600774]
+offset_left = 12.0
+offset_top = 12.0
+offset_right = 760.0
+offset_bottom = 200.0
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1

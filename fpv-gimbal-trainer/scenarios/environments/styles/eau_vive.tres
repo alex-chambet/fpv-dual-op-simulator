@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="EnvironmentStyle" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/environments/environment_style.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+tag = "eau_vive"
+display_name = "White-water river"
+builder = "generic"
+sky_top_color = Color(0.2, 0.42, 0.82, 1)
+sky_horizon_color = Color(0.7, 0.8, 0.92, 1)
+sky_curve = 0.14
+ground_horizon_color = Color(0.7, 0.78, 0.88, 1)
+sun_color = Color(1, 0.95, 0.86, 1)
+sun_energy = 1.6
+sun_elevation = 45.0
+sun_azimuth = 30.0
+ambient_energy = 0.9
+fog_color = Color(0.72, 0.8, 0.9, 1)
+fog_density = 0.0016
+terrain_kind = "river"
+bump = 1.5
+river_half_width = 14.0
+ground_color_dark = Color(0.28, 0.26, 0.2, 1)
+ground_color_light = Color(0.5, 0.46, 0.34, 1)
+ground_relief = 1.0
+margin = 80.0
+has_water = true
+water_color = Color(0.12, 0.42, 0.5, 1)
+prop_kind = "rocks"
+prop_count = 60
+prop_color = Color(0.45, 0.45, 0.45, 1)
+occluder_kind = "rocks"

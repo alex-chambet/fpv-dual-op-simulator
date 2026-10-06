@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="EnvironmentStyle" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/environments/environment_style.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+tag = "glace"
+display_name = "Ice rink"
+builder = "generic"
+sky_top_color = Color(0.07, 0.08, 0.1, 1)
+sky_horizon_color = Color(0.16, 0.17, 0.2, 1)
+sky_curve = 0.3
+ground_horizon_color = Color(0.14, 0.15, 0.18, 1)
+ground_bottom_color = Color(0.1, 0.1, 0.12, 1)
+sun_color = Color(1, 0.97, 0.92, 1)
+sun_energy = 0.9
+sun_elevation = 65.0
+sun_azimuth = 20.0
+ambient_energy = 1.5
+ssao_intensity = 1.5
+fog_enabled = false
+terrain_kind = "flat"
+ground_color_dark = Color(0.72, 0.82, 0.9, 1)
+ground_color_light = Color(0.93, 0.97, 1, 1)
+ground_relief = 0.1
+ground_roughness = 0.15
+margin = 12.0
+markings = "rink"
+marking_color = Color(0.75, 0.15, 0.15, 1)
+perimeter = "boards"
+prop_kind = "stands"
+prop_count = 1
+prop_color = Color(0.25, 0.27, 0.33, 1)
+occluder_kind = "players"

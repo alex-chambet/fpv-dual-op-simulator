@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="EnvironmentStyle" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/environments/environment_style.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+tag = "terrain_vague"
+display_name = "Wasteland"
+builder = "generic"
+sky_top_color = Color(0.25, 0.45, 0.78, 1)
+sky_horizon_color = Color(0.8, 0.76, 0.68, 1)
+ground_horizon_color = Color(0.7, 0.66, 0.58, 1)
+sun_color = Color(1, 0.92, 0.8, 1)
+sun_energy = 1.6
+sun_elevation = 40.0
+sun_azimuth = 50.0
+ambient_energy = 0.9
+fog_color = Color(0.78, 0.74, 0.66, 1)
+fog_density = 0.002
+terrain_kind = "rolling"
+bump = 1.8
+ground_color_dark = Color(0.26, 0.19, 0.12, 1)
+ground_color_light = Color(0.52, 0.42, 0.29, 1)
+ground_relief = 0.8
+margin = 70.0
+prop_kind = "boxes"
+prop_count = 40
+prop_color = Color(0.5, 0.45, 0.4, 1)
+occluder_kind = "walls"

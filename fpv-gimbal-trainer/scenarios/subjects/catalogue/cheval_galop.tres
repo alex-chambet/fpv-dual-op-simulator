@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="SubjectDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/subjects/subject_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "cheval_galop"
+in_menu = false
+display_name = "Cheval au galop"
+category = "Équestre"
+description = "Cavalier au galop dans une prairie : grandes courbes, cadence marquée."
+archetype = "COURSE_SOL_CYCLIQUE"
+overrides = {
+"bob": 0.03,
+"cadence": 2.1,
+"cadence_coupling": 0.6,
+"cornering_accel": 7.0,
+"lateral_amplitude": 25.0,
+"lean_gain": 0.6,
+"lean_max_deg": 12.0,
+"limb_swing": 0.8,
+"speed_max": 14.0,
+"speed_min": 8.0,
+"speed_variability": 0.3,
+"turn_frequency": 1.0,
+"wiggle_ratio": 0.2
+}
+subject_size = 2.6
+placeholder_shape = "person"
+placeholder_gear = "horse"
+placeholder_color = Color(0.8, 0.1, 0.1, 1)
+placeholder_accent = Color(0.1, 0.1, 0.1, 1)
+environment = "prairie"
+env_overrides = {}
+recommended_movements = PackedStringArray("pursuit", "lateral", "frontal", "orbit", "reveal", "flyby")
+base_difficulty = 3

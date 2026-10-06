@@ -1,0 +1,59 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scenarios/scenario_runner.gd" id="1"]
+[ext_resource type="PackedScene" path="res://flight/flight_path.tscn" id="2"]
+[ext_resource type="Script" path="res://ui/frame_guide.gd" id="3"]
+[ext_resource type="Script" path="res://ui/camera_look.gd" id="4"]
+
+[sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
+
+[sub_resource type="Sky" id="sky"]
+sky_material = SubResource("sky_mat")
+
+[sub_resource type="Environment" id="env"]
+background_mode = 2
+sky = SubResource("sky")
+ambient_light_source = 3
+tonemap_mode = 2
+tonemap_white = 4.0
+ssao_enabled = true
+glow_enabled = true
+fog_enabled = true
+adjustment_enabled = true
+
+[node name="Scenario" type="Node3D"]
+script = ExtResource("1")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("env")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+shadow_enabled = true
+shadow_blur = 1.5
+directional_shadow_mode = 2
+
+[node name="FlightPath" parent="." instance=ExtResource("2")]
+
+[node name="CameraLook" type="CanvasLayer" parent="."]
+layer = 0
+script = ExtResource("4")
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="FrameGuide" type="Control" parent="HUD"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("3")
+
+[node name="Label" type="Label" parent="HUD"]
+offset_left = 12.0
+offset_top = 12.0
+offset_right = 860.0
+offset_bottom = 200.0
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 1)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1

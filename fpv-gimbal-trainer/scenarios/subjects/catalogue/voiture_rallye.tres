@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="SubjectDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/subjects/subject_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "voiture_rallye"
+in_menu = false
+display_name = "Voiture de rallye"
+category = "Mécanique"
+description = "Voiture de rallye sur une spéciale en forêt : vitesse élevée, trajectoire irrégulière, sauts."
+archetype = "TOUT_TERRAIN_ERRATIQUE"
+overrides = {
+"bump": 0.04,
+"cornering_accel": 9.0,
+"duration": 60.0,
+"irregularity": 0.4,
+"jump_frequency": 0.15,
+"jump_height": 1.2,
+"jump_length": 16.0,
+"lateral_amplitude": 12.0,
+"lean_gain": 0.2,
+"lean_max_deg": 6.0,
+"speed_max": 26.0,
+"speed_min": 12.0,
+"speed_variability": 0.5,
+"turn_frequency": 3.0
+}
+subject_size = 4.2
+placeholder_shape = "box"
+placeholder_gear = "car"
+placeholder_color = Color(0.1, 0.3, 0.9, 1)
+placeholder_accent = Color(0.95, 0.95, 0.2, 1)
+environment = "foret"
+env_overrides = {}
+recommended_movements = PackedStringArray("pursuit", "lateral", "frontal", "orbit", "reveal", "flyby")
+base_difficulty = 4

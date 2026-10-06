@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="SubjectDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/subjects/subject_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "paddle"
+in_menu = false
+display_name = "Stand-up paddle"
+category = "Eau"
+description = "Stand-up paddle sur un lac calme : lent, équilibre instable."
+archetype = "EAU_SURFACE"
+overrides = {
+"cadence": 0.45,
+"cadence_coupling": 0.0,
+"drone_distance_scale": 0.7,
+"lateral_amplitude": 5.0,
+"lean_gain": 0.4,
+"lean_max_deg": 6.0,
+"speed_max": 2.4,
+"speed_min": 1.2,
+"speed_variability": 0.3,
+"surge": 0.1,
+"turn_frequency": 1.0,
+"wave_heave": 0.05,
+"wave_roll_deg": 5.0
+}
+subject_size = 3.0
+placeholder_shape = "person"
+placeholder_gear = "sup"
+placeholder_color = Color(0.2, 0.7, 0.9, 1)
+placeholder_accent = Color(0.95, 0.8, 0.2, 1)
+environment = "lac"
+env_overrides = {}
+recommended_movements = PackedStringArray("pursuit", "lateral", "frontal", "orbit", "reveal", "flyby")
+base_difficulty = 1

@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="SubjectDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/subjects/subject_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "parachute"
+in_menu = false
+display_name = "Parachute"
+category = "Air"
+description = "Parachutiste sous voile : descente rapide en spirale."
+archetype = "AIR_LIBRE"
+overrides = {
+"altitude": 480.0,
+"altitude_period": 300.0,
+"altitude_variation": 20.0,
+"descent_per_100m": 80.0,
+"drone_distance_scale": 3.5,
+"drone_min_height": 15.0,
+"lateral_amplitude": 45.0,
+"lean_gain": 0.8,
+"lean_max_deg": 25.0,
+"speed_max": 9.0,
+"speed_min": 5.0,
+"speed_variability": 0.3,
+"turn_frequency": 0.7
+}
+subject_size = 10.0
+placeholder_shape = "person"
+placeholder_gear = "canopy"
+placeholder_color = Color(0.2, 0.4, 0.9, 1)
+placeholder_accent = Color(0.95, 0.2, 0.2, 1)
+environment = "ciel"
+env_overrides = {}
+recommended_movements = PackedStringArray("pursuit", "lateral", "frontal", "orbit", "reveal", "flyby")
+base_difficulty = 3

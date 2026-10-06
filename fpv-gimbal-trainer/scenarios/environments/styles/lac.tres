@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="EnvironmentStyle" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/environments/environment_style.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+tag = "lac"
+display_name = "Lake"
+builder = "generic"
+sky_top_color = Color(0.25, 0.48, 0.82, 1)
+sky_horizon_color = Color(0.78, 0.84, 0.92, 1)
+ground_horizon_color = Color(0.7, 0.78, 0.88, 1)
+sun_color = Color(1, 0.96, 0.88, 1)
+sun_energy = 1.5
+sun_elevation = 40.0
+sun_azimuth = 60.0
+ambient_energy = 1.0
+fog_color = Color(0.78, 0.84, 0.92, 1)
+fog_density = 0.002
+terrain_kind = "water"
+margin = 150.0
+has_water = true
+water_color = Color(0.1, 0.3, 0.42, 1)
+prop_kind = "buoys"
+prop_count = 24
+prop_color = Color(0.95, 0.25, 0.15, 1)
+occluder_kind = "rocks"

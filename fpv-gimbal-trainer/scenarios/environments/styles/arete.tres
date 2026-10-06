@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="EnvironmentStyle" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/environments/environment_style.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+tag = "arete"
+display_name = "Mountain ridge"
+builder = "generic"
+sky_top_color = Color(0.1, 0.28, 0.7, 1)
+sky_horizon_color = Color(0.68, 0.78, 0.92, 1)
+sky_curve = 0.12
+ground_horizon_color = Color(0.7, 0.78, 0.9, 1)
+sun_color = Color(1, 0.96, 0.9, 1)
+sun_energy = 1.8
+sun_elevation = 38.0
+sun_azimuth = -40.0
+ambient_energy = 1.0
+fog_color = Color(0.74, 0.82, 0.94, 1)
+fog_density = 0.0015
+fog_aerial_perspective = 0.4
+terrain_kind = "ridge"
+bump = 1.0
+ground_color_dark = Color(0.66, 0.68, 0.74, 1)
+ground_color_light = Color(0.95, 0.96, 1, 1)
+ground_relief = 0.7
+ground_texture_frequency = 0.05
+margin = 80.0
+prop_kind = "rocks"
+prop_count = 30
+prop_color = Color(0.5, 0.5, 0.52, 1)
+occluder_kind = "rocks"

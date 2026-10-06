@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="SubjectDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/subjects/subject_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "wingsuit"
+in_menu = false
+display_name = "Wingsuit"
+category = "Air"
+description = "Wingsuit : vol plané très rapide, descente régulière au-dessus des montagnes."
+archetype = "AIR_LIBRE"
+overrides = {
+"altitude": 900.0,
+"altitude_period": 900.0,
+"altitude_variation": 60.0,
+"descent_per_100m": 28.0,
+"drone_distance_scale": 3.0,
+"drone_min_height": 25.0,
+"duration": 45.0,
+"lateral_amplitude": 250.0,
+"lean_gain": 1.0,
+"lean_max_deg": 35.0,
+"speed_max": 50.0,
+"speed_min": 35.0,
+"speed_variability": 0.15,
+"turn_frequency": 0.12
+}
+subject_size = 3.0
+placeholder_shape = "person_lying"
+placeholder_gear = "wings"
+placeholder_color = Color(0.1, 0.1, 0.1, 1)
+placeholder_accent = Color(0.95, 0.3, 0.1, 1)
+environment = "ciel"
+env_overrides = {}
+recommended_movements = PackedStringArray("pursuit", "lateral", "frontal", "orbit", "flyby")
+base_difficulty = 4

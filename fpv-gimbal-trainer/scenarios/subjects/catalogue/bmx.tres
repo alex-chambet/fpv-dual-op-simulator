@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="SubjectDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/subjects/subject_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "bmx"
+in_menu = false
+display_name = "BMX"
+category = "Cycle / urbain"
+description = "BMX sur un terrain de bosses : enchaînement de sauts avec rotation."
+archetype = "SAUT_ACROBATIQUE"
+overrides = {
+"approach_length": 40.0,
+"drone_distance_scale": 0.7,
+"flips": 0,
+"jump_count": 8,
+"jump_height": 2.2,
+"jump_length": 12.0,
+"lateral_amplitude": 3.0,
+"lean_max_deg": 25.0,
+"rollout_length": 40.0,
+"speed_max": 10.0,
+"speed_min": 6.0,
+"spin_deg": 180.0,
+"turn_frequency": 1.0
+}
+subject_size = 1.2
+placeholder_shape = "person"
+placeholder_gear = "bike"
+placeholder_color = Color(0.9, 0.2, 0.6, 1)
+placeholder_accent = Color(0.1, 0.1, 0.1, 1)
+environment = "terrain_vague"
+env_overrides = {}
+recommended_movements = PackedStringArray("pursuit", "lateral", "frontal", "orbit", "reveal", "flyby")
+base_difficulty = 4

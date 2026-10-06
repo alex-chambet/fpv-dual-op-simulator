@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="SubjectDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/subjects/subject_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "motocross"
+in_menu = false
+display_name = "Motocross"
+category = "Mécanique"
+description = "Moto de cross sur un terrain vague bosselé : grands sauts, vitesse très irrégulière."
+archetype = "TOUT_TERRAIN_ERRATIQUE"
+overrides = {
+"bump": 0.1,
+"cornering_accel": 7.0,
+"duration": 60.0,
+"irregularity": 0.7,
+"jump_frequency": 0.5,
+"jump_height": 2.2,
+"jump_length": 14.0,
+"lateral_amplitude": 12.0,
+"lean_gain": 1.0,
+"lean_max_deg": 35.0,
+"speed_max": 20.0,
+"speed_min": 8.0,
+"speed_variability": 0.8,
+"turn_frequency": 3.5
+}
+subject_size = 2.1
+placeholder_shape = "person"
+placeholder_gear = "moto"
+placeholder_color = Color(0.95, 0.4, 0, 1)
+placeholder_accent = Color(0.1, 0.1, 0.1, 1)
+environment = "terrain_vague"
+env_overrides = {}
+recommended_movements = PackedStringArray("pursuit", "lateral", "frontal", "orbit", "reveal", "flyby")
+base_difficulty = 4

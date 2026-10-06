@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="EnvironmentStyle" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/environments/environment_style.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+tag = "route_montagne"
+display_name = "Mountain road"
+builder = "mountain_road"
+sky_top_color = Color(0.2, 0.42, 0.82, 1)
+sky_horizon_color = Color(0.7, 0.8, 0.92, 1)
+sky_curve = 0.14
+ground_horizon_color = Color(0.7, 0.78, 0.88, 1)
+ground_bottom_color = Color(0.2, 0.169, 0.133, 1)
+ground_curve = 0.02
+sun_angle_max = 25.0
+sun_curve = 0.15
+sun_color = Color(1, 0.95, 0.86, 1)
+sun_energy = 1.6
+sun_angular_distance = 0.5
+sun_elevation = 42.0
+sun_azimuth = -30.0
+shadow_max_distance = 250.0
+ambient_energy = 0.9
+ssao_radius = 2.0
+ssao_intensity = 2.5
+glow_intensity = 0.4
+glow_bloom = 0.0
+glow_hdr_threshold = 1.1
+adjustment_contrast = 1.05
+adjustment_saturation = 1.08
+fog_color = Color(0.72, 0.8, 0.9, 1)
+fog_density = 0.0016
+fog_sun_scatter = 0.2
+fog_sky_affect = 0.6
+fog_aerial_perspective = 0.5
+occluder_kind = "trees"

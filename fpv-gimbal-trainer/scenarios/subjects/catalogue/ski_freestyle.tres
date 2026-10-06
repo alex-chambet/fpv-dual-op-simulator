@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="SubjectDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/subjects/subject_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "ski_freestyle"
+in_menu = false
+display_name = "Ski freestyle"
+category = "Neige / glace"
+description = "Enchaînement de sauts sur kickers : approche, saut avec rotation, réception."
+archetype = "SAUT_ACROBATIQUE"
+overrides = {
+"approach_length": 110.0,
+"flips": 1,
+"jump_count": 4,
+"jump_height": 4.0,
+"jump_length": 24.0,
+"lateral_amplitude": 5.0,
+"lean_max_deg": 25.0,
+"rollout_length": 70.0,
+"speed_max": 15.0,
+"speed_min": 9.0,
+"spin_deg": 180.0,
+"turn_frequency": 0.8
+}
+subject_size = 1.8
+placeholder_shape = "person"
+placeholder_gear = "skis"
+placeholder_color = Color(0.9, 0.15, 0.5, 1)
+placeholder_accent = Color(0.15, 0.15, 0.2, 1)
+environment = "neige"
+env_overrides = {
+"slope": 0.35
+}
+recommended_movements = PackedStringArray("pursuit", "lateral", "orbit", "reveal", "flyby")
+base_difficulty = 4

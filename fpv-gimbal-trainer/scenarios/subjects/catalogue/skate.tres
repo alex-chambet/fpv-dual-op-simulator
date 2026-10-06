@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="SubjectDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/subjects/subject_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "skate"
+in_menu = false
+display_name = "Skate"
+category = "Cycle / urbain"
+description = "Skateur en ville : petits sauts (ollies) enchaînés sur une rue."
+archetype = "SAUT_ACROBATIQUE"
+overrides = {
+"approach_length": 25.0,
+"drone_distance_scale": 0.6,
+"flips": 0,
+"jump_count": 8,
+"jump_height": 1.1,
+"jump_length": 7.0,
+"lateral_amplitude": 3.0,
+"lean_max_deg": 20.0,
+"rollout_length": 22.0,
+"speed_max": 6.0,
+"speed_min": 3.0,
+"spin_deg": 180.0,
+"turn_frequency": 1.0
+}
+subject_size = 1.8
+placeholder_shape = "person"
+placeholder_gear = "skateboard"
+placeholder_color = Color(0.2, 0.8, 0.5, 1)
+placeholder_accent = Color(0.9, 0.9, 0.2, 1)
+environment = "piste_urbaine"
+env_overrides = {}
+recommended_movements = PackedStringArray("pursuit", "lateral", "frontal", "orbit", "reveal", "flyby")
+base_difficulty = 3

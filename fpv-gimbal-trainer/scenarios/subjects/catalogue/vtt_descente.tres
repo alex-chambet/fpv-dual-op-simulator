@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="SubjectDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/subjects/subject_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "vtt_descente"
+display_name = "VTT descente"
+category = "Montagne / outdoor"
+description = "VTT de descente en forêt : vitesse irrégulière, sauts, virages serrés."
+archetype = "TOUT_TERRAIN_ERRATIQUE"
+overrides = {
+"bump": 0.08,
+"cornering_accel": 6.0,
+"irregularity": 0.7,
+"jump_frequency": 0.4,
+"jump_height": 1.6,
+"jump_length": 11.0,
+"lateral_amplitude": 9.0,
+"lean_gain": 0.9,
+"lean_max_deg": 30.0,
+"speed_max": 15.0,
+"speed_min": 6.0,
+"speed_variability": 0.7,
+"turn_frequency": 3.5
+}
+subject_size = 1.8
+placeholder_shape = "person"
+placeholder_gear = "bike"
+placeholder_color = Color(0.1, 0.5, 0.15, 1)
+placeholder_accent = Color(0.1, 0.1, 0.1, 1)
+environment = "foret"
+env_overrides = {}
+recommended_movements = PackedStringArray("pursuit", "lateral", "frontal", "orbit", "reveal", "flyby")
+base_difficulty = 4

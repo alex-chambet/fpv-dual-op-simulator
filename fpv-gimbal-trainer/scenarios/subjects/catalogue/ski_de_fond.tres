@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="SubjectDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/subjects/subject_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "ski_de_fond"
+in_menu = false
+display_name = "Ski de fond"
+category = "Neige / glace"
+description = "Ski de fond en pas alternatif sur une piste sinueuse presque plate."
+archetype = "COURSE_SOL_CYCLIQUE"
+overrides = {
+"bob": 0.02,
+"cadence": 1.0,
+"cadence_coupling": 0.6,
+"cornering_accel": 2.5,
+"lateral_amplitude": 16.0,
+"lean_gain": 0.6,
+"lean_max_deg": 12.0,
+"limb_swing": 0.9,
+"path_length": 300.0,
+"speed_max": 6.5,
+"speed_min": 3.5,
+"speed_variability": 0.4,
+"turn_frequency": 1.2,
+"wiggle_ratio": 0.3
+}
+subject_size = 1.8
+placeholder_shape = "person"
+placeholder_gear = "skis"
+placeholder_color = Color(0.15, 0.35, 0.85, 1)
+placeholder_accent = Color(0.95, 0.85, 0.2, 1)
+environment = "neige"
+env_overrides = {
+"slope": 0.05
+}
+recommended_movements = PackedStringArray("pursuit", "lateral", "frontal", "orbit", "reveal")
+base_difficulty = 2

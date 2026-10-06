@@ -1,0 +1,38 @@
+[gd_resource type="Resource" script_class="SubjectDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/subjects/subject_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "kayak_eaux_vives"
+in_menu = false
+display_name = "Kayak eaux vives"
+category = "Eau"
+description = "Kayak dans une rivière à rapides : oscillations, coups de pagaie, trajectoire sinueuse."
+archetype = "EAU_SURFACE"
+overrides = {
+"cadence": 0.9,
+"cadence_coupling": 0.0,
+"lateral_amplitude": 6.0,
+"lean_gain": 0.8,
+"lean_max_deg": 15.0,
+"osc_amplitude": 1.0,
+"osc_period": 14.0,
+"speed_max": 6.0,
+"speed_min": 2.5,
+"speed_variability": 0.6,
+"surge": 0.1,
+"turn_frequency": 2.5,
+"wave_heave": 0.1,
+"wave_period": 2.4,
+"wave_roll_deg": 9.0
+}
+subject_size = 3.5
+placeholder_shape = "person"
+placeholder_gear = "kayak"
+placeholder_color = Color(0.95, 0.8, 0.1, 1)
+placeholder_accent = Color(0.9, 0.1, 0.1, 1)
+environment = "eau_vive"
+env_overrides = {}
+recommended_movements = PackedStringArray("pursuit", "lateral", "frontal", "orbit", "reveal", "flyby")
+base_difficulty = 4

@@ -1,0 +1,38 @@
+[gd_resource type="Resource" script_class="SubjectDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/subjects/subject_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "saut_a_ski"
+in_menu = false
+display_name = "Saut à ski"
+category = "Neige / glace"
+description = "Saut à ski : élan sur une rampe raide, un seul grand saut, longue réception."
+archetype = "SAUT_ACROBATIQUE"
+overrides = {
+"approach_length": 160.0,
+"flips": 0,
+"jump_count": 1,
+"jump_height": 7.0,
+"jump_length": 85.0,
+"lateral_amplitude": 1.0,
+"lean_max_deg": 10.0,
+"rollout_length": 240.0,
+"speed_max": 26.0,
+"speed_min": 18.0,
+"speed_variability": 0.15,
+"spin_deg": 0.0,
+"turn_frequency": 0.3
+}
+subject_size = 1.8
+placeholder_shape = "person"
+placeholder_gear = "skis"
+placeholder_color = Color(0.9, 0.9, 0.1, 1)
+placeholder_accent = Color(0.2, 0.2, 0.2, 1)
+environment = "neige"
+env_overrides = {
+"slope": 0.55
+}
+recommended_movements = PackedStringArray("pursuit", "lateral", "frontal", "orbit", "flyby")
+base_difficulty = 3

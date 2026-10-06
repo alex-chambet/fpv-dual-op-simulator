@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="EnvironmentStyle" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/environments/environment_style.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+tag = "generic"
+display_name = "Generic ground"
+builder = "generic"
+terrain_kind = "flat"
+ground_color_dark = Color(0.34, 0.36, 0.3, 1)
+ground_color_light = Color(0.52, 0.52, 0.45, 1)
+fog_density = 0.0012
+prop_kind = "boxes"
+prop_count = 24
+prop_color = Color(0.5, 0.45, 0.4, 1)
+occluder_kind = "rocks"

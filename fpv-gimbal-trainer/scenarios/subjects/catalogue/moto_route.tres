@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="SubjectDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/subjects/subject_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "moto_route"
+in_menu = false
+display_name = "Moto sur route"
+category = "Mécanique"
+description = "Moto sur la route de montagne en lacets : forte inclinaison dans les virages."
+archetype = "VEHICULE_ROUTE"
+overrides = {
+"cornering_accel": 8.5,
+"lateral_amplitude": 35.0,
+"layout": "switchback",
+"lean_gain": 1.3,
+"lean_max_deg": 40.0,
+"path_length": 600.0,
+"speed_max": 24.0,
+"speed_min": 8.0,
+"speed_variability": 0.25,
+"turn_frequency": 1.0,
+"turn_radius": 12.5
+}
+subject_size = 2.1
+placeholder_shape = "person"
+placeholder_gear = "moto"
+placeholder_color = Color(0.9, 0.5, 0, 1)
+placeholder_accent = Color(0.1, 0.1, 0.1, 1)
+environment = "route_montagne"
+env_overrides = {}
+recommended_movements = PackedStringArray("pursuit", "lateral", "frontal", "orbit", "reveal", "flyby")
+base_difficulty = 4

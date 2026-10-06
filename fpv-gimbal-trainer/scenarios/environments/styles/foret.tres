@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="EnvironmentStyle" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/environments/environment_style.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+tag = "foret"
+display_name = "Forest"
+builder = "forest"
+sky_top_color = Color(0.24, 0.45, 0.78, 1)
+sky_horizon_color = Color(0.7, 0.8, 0.82, 1)
+sky_curve = 0.15
+ground_horizon_color = Color(0.5, 0.58, 0.5, 1)
+ground_bottom_color = Color(0.2, 0.25, 0.18, 1)
+ground_curve = 0.02
+sun_angle_max = 25.0
+sun_curve = 0.15
+sun_color = Color(1, 0.93, 0.8, 1)
+sun_energy = 1.5
+sun_angular_distance = 0.5
+sun_elevation = 38.0
+sun_azimuth = 20.0
+shadow_max_distance = 120.0
+ambient_energy = 0.7
+ssao_radius = 2.5
+ssao_intensity = 3.0
+glow_intensity = 0.4
+glow_bloom = 0.0
+glow_hdr_threshold = 1.1
+adjustment_contrast = 1.06
+adjustment_saturation = 1.1
+fog_color = Color(0.5, 0.62, 0.55, 1)
+fog_density = 0.012
+fog_sun_scatter = 0.35
+fog_sky_affect = 0.4
+fog_aerial_perspective = 0.0
+occluder_kind = "trees"

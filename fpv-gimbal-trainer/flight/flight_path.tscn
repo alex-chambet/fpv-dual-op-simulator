@@ -1,0 +1,14 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://flight/flight_path.gd" id="1"]
+[ext_resource type="PackedScene" path="res://gimbal/gimbal_rig.tscn" id="2"]
+
+[node name="FlightPath" type="Path3D"]
+script = ExtResource("1")
+
+[node name="Follower" type="PathFollow3D" parent="."]
+rotation_mode = 4
+
+[node name="DroneBody" type="Node3D" parent="Follower"]
+
+[node name="GimbalRig" parent="Follower/DroneBody" instance=ExtResource("2")]

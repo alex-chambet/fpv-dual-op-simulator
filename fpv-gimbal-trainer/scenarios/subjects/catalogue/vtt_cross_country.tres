@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="SubjectDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/subjects/subject_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "vtt_cross_country"
+in_menu = false
+display_name = "VTT cross-country"
+category = "Montagne / outdoor"
+description = "VTT cross-country sur un sentier vallonné : allure soutenue, peu de sauts."
+archetype = "TOUT_TERRAIN_ERRATIQUE"
+overrides = {
+"bump": 0.05,
+"cornering_accel": 5.0,
+"irregularity": 0.5,
+"jump_frequency": 0.1,
+"jump_height": 0.8,
+"jump_length": 8.0,
+"lateral_amplitude": 8.0,
+"lean_gain": 0.8,
+"lean_max_deg": 25.0,
+"speed_max": 8.0,
+"speed_min": 4.0,
+"speed_variability": 0.5,
+"turn_frequency": 3.0
+}
+subject_size = 1.8
+placeholder_shape = "person"
+placeholder_gear = "bike"
+placeholder_color = Color(0.9, 0.6, 0.1, 1)
+placeholder_accent = Color(0.1, 0.1, 0.1, 1)
+environment = "foret"
+env_overrides = {}
+recommended_movements = PackedStringArray("pursuit", "lateral", "frontal", "orbit", "reveal", "flyby")
+base_difficulty = 3

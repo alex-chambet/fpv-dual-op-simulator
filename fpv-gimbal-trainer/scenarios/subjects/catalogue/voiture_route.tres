@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="SubjectDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/subjects/subject_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "voiture_route"
+display_name = "Voiture sur route"
+category = "Mécanique"
+description = "Voiture sur une route de montagne en lacets, avec un tunnel."
+archetype = "VEHICULE_ROUTE"
+overrides = {
+"cornering_accel": 5.5,
+"lateral_amplitude": 35.0,
+"layout": "switchback",
+"path_length": 600.0,
+"speed_max": 16.0,
+"speed_min": 6.5,
+"speed_variability": 0.25,
+"turn_frequency": 1.0,
+"turn_radius": 12.5
+}
+subject_size = 4.2
+placeholder_shape = "box"
+placeholder_gear = "car"
+placeholder_color = Color(0.85, 0.08, 0.06, 1)
+placeholder_accent = Color(0.1, 0.1, 0.12, 1)
+environment = "route_montagne"
+env_overrides = {}
+recommended_movements = PackedStringArray("pursuit", "lateral", "frontal", "orbit", "reveal", "flyby")
+base_difficulty = 3

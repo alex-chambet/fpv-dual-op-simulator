@@ -1,0 +1,38 @@
+[gd_resource type="Resource" script_class="SubjectDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/subjects/subject_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "saut_obstacles"
+in_menu = false
+display_name = "Saut d'obstacles"
+category = "Équestre"
+description = "Parcours de saut d'obstacles : galop, sauts de barres à intervalles réguliers."
+archetype = "SAUT_ACROBATIQUE"
+overrides = {
+"approach_length": 40.0,
+"cadence": 2.0,
+"cadence_coupling": 0.6,
+"flips": 0,
+"jump_count": 9,
+"jump_height": 1.5,
+"jump_length": 5.0,
+"jump_visual": "obstacle",
+"lateral_amplitude": 6.0,
+"lean_max_deg": 10.0,
+"rollout_length": 35.0,
+"speed_max": 9.0,
+"speed_min": 6.5,
+"spin_deg": 0.0,
+"turn_frequency": 1.0
+}
+subject_size = 2.6
+placeholder_shape = "person"
+placeholder_gear = "horse"
+placeholder_color = Color(0.1, 0.2, 0.7, 1)
+placeholder_accent = Color(0.95, 0.95, 0.95, 1)
+environment = "prairie"
+env_overrides = {}
+recommended_movements = PackedStringArray("pursuit", "lateral", "frontal", "orbit", "reveal", "flyby")
+base_difficulty = 3
