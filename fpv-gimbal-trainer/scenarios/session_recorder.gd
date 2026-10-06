@@ -9,6 +9,7 @@ var _dt: Array = []
 var _pan: Array = []
 var _tilt: Array = []
 var _roll: Array = []
+var _pilot: Array = []  # 2-player: [throttle, yaw, pitch, roll] per frame
 var _profiles: Array = []  # [frame, pan_profile, tilt_profile, roll_profile] at each change
 var _initial := {}
 var _last_profile := [-1, -1, -1]
@@ -23,7 +24,7 @@ func start(rig: GimbalRig, flight: FlightPath) -> void:
 	}
 
 
-func add_frame(delta: float, inputs: Array, rig: GimbalRig) -> void:
+func add_frame(delta: float, inputs: Array, rig: GimbalRig, pilot: Array = []) -> void:
 	var prof := [rig.pan_profile, rig.tilt_profile, rig.roll_profile]
 	if prof != _last_profile:
 		_profiles.append([_dt.size(), prof[0], prof[1], prof[2]])
@@ -32,6 +33,12 @@ func add_frame(delta: float, inputs: Array, rig: GimbalRig) -> void:
 	_pan.append(snappedf(inputs[0], 0.00001))
 	_tilt.append(snappedf(inputs[1], 0.00001))
 	_roll.append(snappedf(inputs[2], 0.00001))
+	if not pilot.is_empty():
+		_pilot.append([snappedf(pilot[0], 0.00001), snappedf(pilot[1], 0.00001), snappedf(pilot[2], 0.00001), snappedf(pilot[3], 0.00001)])
+
+
+func set_initial(key: String, value) -> void:
+	_initial[key] = value
 
 
 func frame_count() -> int:
@@ -58,5 +65,5 @@ func build_record(scn: ScenarioBase, results: Dictionary) -> Dictionary:
 		"scores": results,
 		"initial": _initial,
 		"profiles": _profiles,
-		"frames": {"dt": _dt, "pan": _pan, "tilt": _tilt, "roll": _roll},
+		"frames": {"dt": _dt, "pan": _pan, "tilt": _tilt, "roll": _roll, "pilot": _pilot},
 	}

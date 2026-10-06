@@ -32,6 +32,9 @@ var _sport_info: Label
 var _guided_box: Control
 var _guided_button: Button
 var _guided_info: Label
+var _mode_opt: OptionButton
+var _mode_info: Label
+var _screens_opt: OptionButton
 var _movement_opt: OptionButton
 var _level_opt: OptionButton
 var _movement_info: Label
@@ -48,10 +51,48 @@ func _ready() -> void:
 	SubjectCatalogue.reload()
 	_sports = SubjectCatalogue.menu_sports()
 	_build_ui()
+	var prefs := _load_prefs()
 	if not _sports.is_empty():
-		_select(0)
+		var idx := 0
+		for i in _sports.size():
+			if _sports[i].id == str(prefs.get("sport", "")):
+				idx = i
+		_select(idx)
+	_apply_prefs(prefs)
+	for o in [_mode_opt, _movement_opt, _level_opt, _lens_opt, _screens_opt]:
+		o.item_selected.connect(func(_i): _save_prefs())
 	if not _cards.is_empty():
 		_cards[0].grab_focus()
+
+
+# --- Saved choices ---------------------------------------------------------------------------------
+
+const PREFS_PATH := "user://menu_prefs.json"
+
+
+func _load_prefs() -> Dictionary:
+	if not FileAccess.file_exists(PREFS_PATH):
+		return {}
+	var parsed = JSON.parse_string(FileAccess.get_file_as_string(PREFS_PATH))
+	return parsed if typeof(parsed) == TYPE_DICTIONARY else {}
+
+
+func _apply_prefs(prefs: Dictionary) -> void:
+	for pair in [[_mode_opt, "mode"], [_movement_opt, "movement"], [_level_opt, "level"], [_lens_opt, "lens"], [_screens_opt, "screens"]]:
+		var o: OptionButton = pair[0]
+		var i := int(prefs.get(pair[1], 0))
+		if i >= 0 and i < o.item_count:
+			o.select(i)
+	_update_info()
+
+
+func _save_prefs() -> void:
+	if _sport == null:
+		return
+	var f := FileAccess.open(PREFS_PATH, FileAccess.WRITE)
+	if f:
+		f.store_string(JSON.stringify({"sport": _sport.id, "mode": _mode_opt.selected, "movement": _movement_opt.selected,
+				"level": _level_opt.selected, "lens": _lens_opt.selected, "screens": _screens_opt.selected}, "\t"))
 
 
 # --- UI -------------------------------------------------------------------------------------------
@@ -177,6 +218,18 @@ func _build_training_panel() -> Control:
 	d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	d.modulate = Color(1, 1, 1, 0.65)
 	v.add_child(d)
+	_mode_opt = _option_row(v, "Mode de jeu")
+	_mode_opt.add_item("1 joueur  -  le drone vole tout seul")
+	_mode_opt.add_item("2 joueurs  -  un pilote FPV + un cadreur")
+	_mode_opt.item_selected.connect(func(_i): _update_info())
+	_mode_info = Label.new()
+	_mode_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_mode_info.modulate = Color(1, 1, 1, 0.65)
+	v.add_child(_mode_info)
+	_screens_opt = _option_row(v, "Écrans (2 joueurs)")
+	_screens_opt.add_item("Un écran  -  vue pilote en incrustation")
+	var n_screens := DisplayServer.get_screen_count()
+	_screens_opt.add_item("Deux écrans  -  vue pilote sur le 2e écran" + ("" if n_screens > 1 else "  (aucun 2e écran détecté)"))
 	_movement_opt = _option_row(v, "Mouvement du drone")
 	_movement_opt.add_item("Au hasard (selon le niveau)")
 	for m in ScenarioMatrix.MOVEMENTS:
@@ -251,6 +304,8 @@ func _select(i: int) -> void:
 	_sport = _sports[i]
 	_cards[i].button_pressed = true
 	_update_info()
+	if is_node_ready() and _lens_opt != null and _mode_opt != null:
+		_save_prefs()
 
 
 func _update_info() -> void:
@@ -264,6 +319,12 @@ func _update_info() -> void:
 	else:
 		var best: int = SessionScorer.get_best(str(e.id))
 		_guided_info.text = "%s\n%s\nMeilleur score : %s" % [e.name, e.desc, str(best) if best > 0 else "-"]
+	var duo := _two_players()
+	_mode_info.text = "Manette 1 = gimbal (cadreur), manette 2 = drone en mode acro (pilote). Le sujet reste scripté. Réglage : Configuration manette." if duo else "Un seul joueur : le drone suit le sujet, tu gères la gimbal."
+	_screens_opt.disabled = not duo
+	_movement_opt.disabled = duo
+	_level_opt.disabled = duo
+	_train_button.text = "Lancer la session à 2 joueurs (Entrée)" if duo else "Lancer la session d'entraînement (Entrée)"
 	var m := _selected_movement()
 	_movement_info.text = str(MOVEMENT_LABELS[m][1]) if m != "" else "Un mouvement tiré au hasard, d'autant plus difficile que le niveau est élevé."
 	var lv := _level_opt.selected  # 0 auto, 1 random, 2..6 = level 1..5
@@ -273,6 +334,10 @@ func _update_info() -> void:
 		_level_info.text = "Un niveau tiré au hasard à chaque session.\n" + DIFFICULTY_HELP
 	else:
 		_level_info.text = DroneDifficulty.describe(lv - 1)
+
+
+func _two_players() -> bool:
+	return _mode_opt != null and _mode_opt.selected == 1
 
 
 func _selected_movement() -> String:
@@ -290,9 +355,10 @@ func _start_guided() -> void:
 func _start_training() -> void:
 	if _sport == null:
 		return
+	DuoSession.dual_screen = _screens_opt.selected == 1
 	var lv := _level_opt.selected  # 0 auto, 1 random, 2..6 = level 1..5
 	var level := -1 if lv == 0 else (0 if lv == 1 else lv - 1)
-	ScenarioMatrix.launch(get_tree(), ScenarioMatrix.generate(_sport.id, _selected_movement(), level, null, {}, SessionConfig.LENSES[_lens_opt.selected]))
+	ScenarioMatrix.launch(get_tree(), ScenarioMatrix.generate(_sport.id, _selected_movement(), level, null, {}, SessionConfig.LENSES[_lens_opt.selected], _two_players()))
 
 
 func _start_random() -> void:

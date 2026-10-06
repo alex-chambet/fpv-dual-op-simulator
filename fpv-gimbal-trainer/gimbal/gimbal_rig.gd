@@ -71,6 +71,12 @@ var input_override: Array = []
 
 @onready var camera: Camera3D = $Camera3D
 
+## 2-player mode: the pan follows the heading of the drone (like a gimbal in "follow" mode) instead of staying
+## fixed in the world. Pitch and roll stay stabilised.
+var yaw_follow := false
+## Callable() -> heading (rad) of the drone; when valid it replaces the heading of the parent node.
+var heading_provider := Callable()
+
 var _heading0 := 0.0
 var _aligned := false
 
@@ -99,7 +105,7 @@ func aim_at(world_point: Vector3) -> void:
 	var dir := world_point - camera.global_position
 	if dir.length() < 0.001:
 		return
-	var base := _heading0 if stabilized else _parent_heading()
+	var base := _base_heading()
 	angles[PAN] = -rad_to_deg(angle_difference(base, atan2(-dir.x, -dir.z)))
 	angles[TILT] = rad_to_deg(asin(clampf(dir.normalized().y, -1.0, 1.0)))
 	angles[ROLL] = 0.0
@@ -198,7 +204,13 @@ func _step_axis(i: int, delta: float) -> void:
 	angles[i] = angle
 
 
+func _base_heading() -> float:
+	return _parent_heading() if (yaw_follow or not stabilized) else _heading0
+
+
 func _parent_heading() -> float:
+	if heading_provider.is_valid():
+		return float(heading_provider.call())
 	var p := get_parent_node_3d()
 	if p == null:
 		return 0.0
@@ -210,7 +222,7 @@ func _apply() -> void:
 	var yaw := deg_to_rad(-angles[PAN])
 	if stabilized:
 		# Orientation is independent of the parent (drone): only the position follows it.
-		global_basis = Basis(Vector3.UP, _heading0 + yaw)
+		global_basis = Basis(Vector3.UP, (_parent_heading() if yaw_follow else _heading0) + yaw)
 	else:
 		rotation.y = yaw
 	camera.rotation = Vector3(deg_to_rad(angles[TILT]), 0.0, deg_to_rad(-angles[ROLL]))

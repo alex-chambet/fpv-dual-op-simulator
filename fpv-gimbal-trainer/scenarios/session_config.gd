@@ -12,6 +12,8 @@ var params := {}
 var seed := 0
 ## Focal length (mm, full-frame equivalent) of the lens: 24 is the original wide view of the simulator.
 var lens := 24
+## 2-player session: a pilot flies the drone (FPV, acro) with a second controller, the gimbal operator films.
+var two_player := false
 ## +1 / -1: which side of the subject the drone favours.
 var side := 1.0
 ## Which choices the player fixed (the others are re-rolled for the next session).
@@ -41,12 +43,16 @@ func movement_name() -> String:
 func title() -> String:
 	if fixed:
 		return fixed_title
+	if two_player:
+		return "2 PLAYERS - %s%s" % [subject.display_name, "" if lens == 24 else " / %d mm" % lens]
 	return "TRAINING - %s / %s / level %d%s" % [subject.display_name, movement_name(), level, "" if lens == 24 else " / %d mm" % lens]
 
 
 func scenario_id() -> String:
 	if fixed:
 		return fixed_id
+	if two_player:
+		return "duo_%s%s" % [subject.id, "" if lens == 24 else "_%dmm" % lens]
 	return "matrix_%s_%s_L%d%s" % [subject.id, movement, level, "" if lens == 24 else "_%dmm" % lens]
 
 
@@ -55,5 +61,5 @@ func scenario_id() -> String:
 func to_dict() -> Dictionary:
 	return {
 		"definition": subject.to_dict(), "subject": subject.id, "movement": movement, "level": level,
-		"seed": seed, "side": side, "lens": lens, "fixed": fixed, "fixed_id": fixed_id, "fixed_title": fixed_title,
+		"seed": seed, "side": side, "lens": lens, "two_player": two_player, "fixed": fixed, "fixed_id": fixed_id, "fixed_title": fixed_title,
 	}

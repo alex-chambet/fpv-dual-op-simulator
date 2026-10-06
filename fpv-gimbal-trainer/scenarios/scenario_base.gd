@@ -53,6 +53,8 @@ var occ_h := PackedFloat32Array()
 var occ_kind := PackedByteArray()
 
 var _barriers: Array[Dictionary] = []
+## 2-player mode (a pilot flies the drone): the helper that owns the drone, null in the other modes.
+var duo: DuoSession
 var _recorder: SessionRecorder
 
 # Replay mode: a recorded session (SessionStore.start_replay) is played back.
@@ -198,6 +200,9 @@ func _ready() -> void:
 	_subj_cum = cumulative(subject_pts)
 	_drone_cum = cumulative(drone_pts)
 	_build_ratio_map()
+	if matrix_active and matrix.two_player:
+		duo = DuoSession.new()
+		duo.setup(self)
 
 	# Start with the subject framed (the rig aligns itself on the first frames). The scene may be left
 	# (Esc, Enter) before these frames have passed.
@@ -453,24 +458,39 @@ func _process(delta: float) -> void:
 		_replay_process(delta)
 		return
 	var just_finished := false
+	var pilot_inputs: Array = []
+	if duo and state != State.FINISHED:
+		pilot_inputs = duo.current_inputs()
 	if state == State.COUNTDOWN:
 		_time += delta
 		if _time >= countdown_time:
 			# The run starts in this very frame (so the recording covers every simulated frame).
 			state = State.RUNNING
 			SessionScorer.start_run(flight.rig, subject.torso_position, scenario_id)
+			if duo:
+				duo.start_run()
 			_recorder = SessionRecorder.new()
 			_recorder.start(flight.rig, flight)
+			if duo:
+				_recorder.set_initial("drone", duo.state())
 	if state == State.RUNNING:
 		_run_time += delta
 		if _recorder:
-			_recorder.add_frame(delta, flight.rig.read_inputs(), flight.rig)
+			_recorder.add_frame(delta, flight.rig.read_inputs(), flight.rig, pilot_inputs)
 		subject.advance(delta)
-		flight.external_ratio = _drone_ratio(delta)
+		if duo:
+			duo.step(delta, pilot_inputs, true, _occluded_now)
+		else:
+			flight.external_ratio = _drone_ratio(delta)
 		just_finished = subject.finished
 	elif state == State.FINISHED:
-		flight.external_ratio = 1.0
+		if not duo:
+			flight.external_ratio = 1.0
+	if duo and state == State.COUNTDOWN:
+		duo.step(delta, pilot_inputs, false, false)
 	_update_framing_state()
+	if duo:
+		duo.update_osd()
 	if state == State.RUNNING:
 		if _occluded_now:
 			_occluded_time += delta
@@ -479,8 +499,14 @@ func _process(delta: float) -> void:
 			var extras := {"Hidden behind obstacles": "%.1f s" % _occluded_time}
 			if matrix_active:
 				extras["Session"] = matrix.title().trim_prefix("TRAINING - ")
-			SessionScorer.end_run(extras)
-			if matrix_active:
+			var partner := -1.0
+			if duo:
+				var pr := duo.results()
+				partner = float(pr.overall)
+				extras["Pilot"] = "%d / 100  (distance %.0f, fluidity %.0f, line of sight %.0f, %d crashes)" % [pr.overall, pr.distance, pr.fluidity, pr.los, pr.crashes]
+				extras["Mean distance to subject"] = "%.0f m" % pr.mean_distance
+			SessionScorer.end_run(extras, partner)
+			if matrix_active and not duo:
 				ScenarioMatrix.record_result(matrix, int(SessionScorer.results.overall))
 			if _recorder:
 				SessionStore.save(_recorder.build_record(self, SessionScorer.results))
@@ -597,7 +623,7 @@ func _update_hud() -> void:
 		State.FINISHED:
 			head = "FINISHED   (Enter: restart - Esc: menu)"
 	hud.text = "%s - %s\nSubject %.1f m/s   drone %.1f m/s   [%s]\nFraming: %s   %s   score %.0f%%\nGimbal pan %+.0f°  tilt %+.0f°  roll %+.0f°\n%s\nArrows/WASD: pan+tilt   Q/E: roll   1/2/3: gimbal profile   G: thirds grid   Enter: restart   Esc: menu   F1: hide" % [
-		scenario_title, head, subject.speed_now, flight.speed_now, PROFILE_NAMES[rig.pan_profile],
+		scenario_title, head, subject.speed_now, (duo.drone.velocity.length() if duo else flight.speed_now), PROFILE_NAMES[rig.pan_profile],
 		("IN FRAME" if _in_frame_now else ("TOO CLOSE TO THE EDGE" if _edge_now else "OUT OF FRAME")),
 		"(HIDDEN)" if _occluded_now else "",
 		SessionScorer.live_framing_score(), rig.angles[0], rig.angles[1], rig.angles[2],
@@ -615,6 +641,8 @@ func _begin_replay() -> void:
 	rig.restore_state(init.angles, init.velocities, init.filtered)
 	flight._t = float(init.flight_t)
 	flight.set_process(false)
+	if duo and init.has("drone"):
+		duo.restore(init.drone)
 	rig.set_process(false)
 	state = State.RUNNING
 	_replay_ready = true
@@ -668,8 +696,12 @@ func _replay_step(i: int) -> void:
 	rig.input_override = [float(frames.pan[i]), float(frames.tilt[i]), float(frames.roll[i])]
 	_run_time += dt
 	subject.advance(dt)
-	flight.external_ratio = _drone_ratio(dt)
-	flight._process(dt)
+	if duo:
+		var pil: Array = frames.pilot[i]
+		duo.step(dt, [float(pil[0]), float(pil[1]), float(pil[2]), float(pil[3])], false, false)
+	else:
+		flight.external_ratio = _drone_ratio(dt)
+		flight._process(dt)
 	rig._process(dt)
 	if _occluded_now:
 		_occluded_time += dt

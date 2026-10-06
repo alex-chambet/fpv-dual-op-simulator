@@ -50,13 +50,17 @@ static func level_params(level: int) -> Dictionary:
 ## recommends); level 0 = random, -1 = the base difficulty of the sport, 1..5 = that level.
 ## filter: {"category": "", "difficulty": 0, "movement": ""} restricts the sports drawn at random.
 static func generate(subject_id := "", movement := "", level := 0, rng: RandomNumberGenerator = null,
-		filter := {}, lens := 24) -> SessionConfig:
+		filter := {}, lens := 24, two_player := false) -> SessionConfig:
 	if rng == null:
 		rng = RandomNumberGenerator.new()
 		rng.randomize()
 	var cfg := SessionConfig.new()
 	cfg.filter = filter
 	cfg.lens = lens
+	cfg.two_player = two_player
+	if two_player:  # the drone is flown by a player: the movement / level only serve to plan the scenery
+		movement = "lateral"
+		level = 3
 	var pool := SubjectCatalogue.filter(str(filter.get("category", "")), int(filter.get("difficulty", 0)),
 			str(filter.get("movement", "")))
 	if pool.is_empty():
@@ -101,7 +105,7 @@ static func generate(subject_id := "", movement := "", level := 0, rng: RandomNu
 static func next_session(cfg: SessionConfig) -> SessionConfig:
 	return generate(cfg.subject.id if cfg.lock_subject else "",
 			cfg.movement if cfg.lock_movement else "",
-			cfg.level if cfg.lock_level else (-1 if cfg.level_auto else 0), null, cfg.filter, cfg.lens)
+			cfg.level if cfg.lock_level else (-1 if cfg.level_auto else 0), null, cfg.filter, cfg.lens, cfg.two_player)
 
 
 ## The session of a fixed scenario of the menu (ScenarioRegistry entry).
@@ -138,6 +142,7 @@ static func config_from_dict(d: Dictionary) -> SessionConfig:
 	cfg.seed = int(d.get("seed", 0))
 	cfg.side = float(d.get("side", 1.0))
 	cfg.lens = int(d.get("lens", 24))
+	cfg.two_player = bool(d.get("two_player", false))
 	return cfg
 
 

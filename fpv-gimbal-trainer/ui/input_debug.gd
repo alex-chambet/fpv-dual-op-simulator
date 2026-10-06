@@ -3,7 +3,9 @@ extends Control
 ## Move a stick on the TBS Tango: the axis that moves most is highlighted
 ## ("<< moving") so you can identify it, then assign it to pan/tilt/roll.
 
-const CH: Array[String] = ["pan", "tilt", "roll"]
+## Which controller is being set up: "gimbal" (pan / tilt / roll) or "pilot" (throttle / yaw / pitch / roll).
+var _role := "gimbal"
+var _ui_root: Control
 
 var _device_option: OptionButton
 var _status: Label
@@ -20,8 +22,24 @@ func _ready() -> void:
 	_on_devices_changed(ControllerInput.get_devices())
 
 
+func _ch() -> Array[String]:
+	return ControllerInput.channels_of(_role)
+
+
+func _set_role(index: int) -> void:
+	_role = "gimbal" if index == 0 else "pilot"
+	_rows.clear()
+	_channel_labels.clear()
+	_last_vals.clear()
+	_peak.clear()
+	_ui_root.queue_free()
+	_build_ui()
+	_on_devices_changed(ControllerInput.get_devices())
+
+
 func _build_ui() -> void:
 	var margin := MarginContainer.new()
+	_ui_root = margin
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
 	for side in ["left", "right", "top", "bottom"]:
 		margin.add_theme_constant_override("margin_" + side, 12)
@@ -32,6 +50,12 @@ func _build_ui() -> void:
 
 	var top := HBoxContainer.new()
 	root.add_child(top)
+	var role_opt := OptionButton.new()
+	role_opt.add_item("Gimbal (cadreur)")
+	role_opt.add_item("Drone (pilote FPV)")
+	role_opt.select(0 if _role == "gimbal" else 1)
+	role_opt.item_selected.connect(_set_role)
+	top.add_child(role_opt)
 	top.add_child(_label("Device:"))
 	_device_option = OptionButton.new()
 	_device_option.custom_minimum_size.x = 360
@@ -50,7 +74,7 @@ func _build_ui() -> void:
 
 	var ch_row := HBoxContainer.new()
 	root.add_child(ch_row)
-	for c in CH:
+	for c in _ch():
 		var l := _label("%s: 0.00" % c)
 		l.custom_minimum_size.x = 160
 		_channel_labels[c] = l
@@ -85,12 +109,12 @@ func _build_ui() -> void:
 		var ex := _slider(0.0, 1.0, 0.01, a, "expo")
 		grid.add_child(ex)
 		var inv := CheckBox.new()
-		inv.toggled.connect(func(on): ControllerInput.set_invert(a, on))
+		inv.toggled.connect(func(on): ControllerInput.set_invert(a, on, _role))
 		grid.add_child(inv)
 		var opt := OptionButton.new()
 		opt.add_item("-", 0)
-		for i in CH.size():
-			opt.add_item(CH[i], i + 1)
+		for i in _ch().size():
+			opt.add_item(_ch()[i], i + 1)
 		opt.item_selected.connect(_on_channel_selected.bind(a, opt))
 		grid.add_child(opt)
 		var mark := _label("")
@@ -114,9 +138,9 @@ func _slider(lo: float, hi: float, step: float, axis: int, key: String) -> HSlid
 	s.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	s.value_changed.connect(func(v):
 		if key == "deadzone":
-			ControllerInput.set_deadzone(axis, v)
+			ControllerInput.set_deadzone(axis, v, _role)
 		else:
-			ControllerInput.set_expo(axis, v))
+			ControllerInput.set_expo(axis, v, _role))
 	return s
 
 
@@ -124,48 +148,55 @@ func _sync_from_config() -> void:
 	if _rows.is_empty():
 		return
 	for a in _rows.size():
-		var s: Dictionary = ControllerInput.axis_settings[a]
+		var s: Dictionary = ControllerInput.settings_of(_role)[a]
 		var r := _rows[a]
 		r.dz.set_value_no_signal(s.deadzone)
 		r.ex.set_value_no_signal(s.expo)
 		r.inv.set_pressed_no_signal(s.invert)
 		var idx := 0
-		for i in CH.size():
-			if ControllerInput.mapping[CH[i]] == a:
+		for i in _ch().size():
+			if ControllerInput.mapping_of(_role)[_ch()[i]] == a:
 				idx = i + 1
 		r.opt.select(r.opt.get_item_index(idx))
 
 
 func _on_channel_selected(index: int, axis: int, opt: OptionButton) -> void:
 	var id := opt.get_item_id(index)
-	for c in CH:  # free this axis and the chosen channel
-		if ControllerInput.mapping[c] == axis:
-			ControllerInput.map_channel(c, -1)
+	for c in _ch():  # free this axis and the chosen channel
+		if ControllerInput.mapping_of(_role)[c] == axis:
+			ControllerInput.map_channel(c, -1, _role)
 	if id > 0:
-		ControllerInput.map_channel(CH[id - 1], axis)
+		ControllerInput.map_channel(_ch()[id - 1], axis, _role)
 	_sync_from_config()
 
 
 func _on_devices_changed(devices: Array) -> void:
 	_device_option.clear()
 	for d in devices:
-		_device_option.add_item("#%d  %s" % [d.id, d.name], d.id)
+		var tag := ""
+		if d.id == ControllerInput.active_device:
+			tag += "  [GIMBAL]"
+		if d.id == ControllerInput.pilot_device:
+			tag += "  [PILOTE]"
+		_device_option.add_item("#%d  %s%s" % [d.id, d.name, tag], d.id)
 	if devices.is_empty():
 		_device_option.add_item("(no joystick detected)", -1)
 	else:
-		_device_option.select(_device_option.get_item_index(ControllerInput.active_device))
+		var cur := ControllerInput.device_of(_role)
+		_device_option.select(maxi(_device_option.get_item_index(cur), 0))
 
 
 func _on_device_selected(index: int) -> void:
-	ControllerInput.set_active_device(_device_option.get_item_id(index))
+	ControllerInput.set_device_of(_role, _device_option.get_item_id(index))
+	_on_devices_changed(ControllerInput.get_devices())
 
 
 func _process(_delta: float) -> void:
-	var dev := ControllerInput.active_device
+	var dev := ControllerInput.device_of(_role)
 	var best := -1
 	var best_delta := 0.03
 	for a in _rows.size():
-		var raw := ControllerInput.get_raw(a)
+		var raw := ControllerInput.get_raw(a, dev)
 		var d := absf(raw - _last_vals.get(a, raw))
 		_last_vals[a] = raw
 		_peak[a] = maxf(_peak.get(a, 0.0) * 0.9, d)
@@ -175,12 +206,19 @@ func _process(_delta: float) -> void:
 		var r := _rows[a]
 		r.raw.text = "%+.3f" % raw
 		r.bar.value = raw
-		r.proc.text = "%+.3f" % ControllerInput.process_axis(a, raw)
+		r.proc.text = "%+.3f" % ControllerInput.process_axis(a, raw, _role)
 	for a in _rows.size():
 		_rows[a].mark.text = "<< moving" if a == best and dev >= 0 else ""
-	_channel_labels.pan.text = "pan: %+.2f" % ControllerInput.pan_input
-	_channel_labels.tilt.text = "tilt: %+.2f" % ControllerInput.tilt_input
-	_channel_labels.roll.text = "roll: %+.2f" % ControllerInput.roll_input
+	if _role == "gimbal":
+		_channel_labels.pan.text = "pan: %+.2f" % ControllerInput.pan_input
+		_channel_labels.tilt.text = "tilt: %+.2f" % ControllerInput.tilt_input
+		_channel_labels.roll.text = "roll: %+.2f" % ControllerInput.roll_input
+	else:
+		var pi: Array = ControllerInput.pilot_inputs
+		_channel_labels.throttle.text = "throttle: %3.0f%%" % (100.0 * float(pi[0]))
+		_channel_labels.yaw.text = "yaw: %+.2f" % float(pi[1])
+		_channel_labels.pitch.text = "pitch: %+.2f" % float(pi[2])
+		_channel_labels.roll.text = "roll: %+.2f" % float(pi[3])
 
 
 func _unhandled_input(event: InputEvent) -> void:

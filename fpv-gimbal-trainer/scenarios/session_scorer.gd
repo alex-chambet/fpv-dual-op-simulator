@@ -193,7 +193,8 @@ func _track_fluidity(delta: float) -> void:
 	_prev_v = v
 	_has_prev_v = true
 
-func end_run(extras: Dictionary = {}) -> Dictionary:
+## partner_overall >= 0: 2-player session, the score of the pilot (the team score is the mean of both).
+func end_run(extras: Dictionary = {}, partner_overall := -1.0) -> Dictionary:
 	if not active:
 		return results
 	active = false
@@ -223,6 +224,7 @@ func end_run(extras: Dictionary = {}) -> Dictionary:
 		"loss_events": _loss_events,
 		"lost_time": _total_lost,
 		"extras": extras,
+		"team": -1.0 if partner_overall < 0.0 else roundf(0.5 * (overall + partner_overall)),
 	}
 	print("[SessionScorer] overall %d (%s)  framing %.0f  fluidity %.0f  tracking %.0f  | lost events %d, peaks %d" % [
 		overall, results.grade, framing, fluidity, tracking, _loss_events, accel_peaks.size()])
@@ -295,6 +297,11 @@ func _show_results() -> void:
 			l.text = "%s: %s" % [k, extras[k]]
 			box.add_child(l)
 
+	if float(results.get("team", -1.0)) >= 0.0:
+		var team_l := Label.new()
+		team_l.text = "TEAM SCORE: %d / 100" % results.team
+		team_l.add_theme_font_size_override("font_size", 22)
+		box.add_child(team_l)
 	if scenario_id != "":
 		var best_l := Label.new()
 		best_l.text = "Best score: %d / 100" % results.best
