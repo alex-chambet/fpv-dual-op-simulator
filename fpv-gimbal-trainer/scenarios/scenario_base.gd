@@ -55,6 +55,7 @@ var occ_kind := PackedByteArray()
 var _barriers: Array[Dictionary] = []
 ## 2-player mode (a pilot flies the drone): the helper that owns the drone, null in the other modes.
 var duo: DuoSession
+var _pause: PauseMenu
 var _recorder: SessionRecorder
 
 # Replay mode: a recorded session (SessionStore.start_replay) is played back.
@@ -155,6 +156,7 @@ func _hud_extra() -> String:
 
 
 func _ready() -> void:
+	get_tree().paused = false
 	SessionScorer.reset()
 	if not SessionScorer.restart_requested.is_connected(_restart):
 		SessionScorer.restart_requested.connect(_restart)
@@ -164,6 +166,7 @@ func _ready() -> void:
 		SessionScorer.next_requested.connect(_next_session)
 	guide.fraction = frame_fraction
 	SessionScorer.frame_fraction = frame_fraction
+	flight.rig.camera.add_child(MotionBlur.new())
 	# The drone flies smoothly: only a hint of turbulence (the camera is stabilised, so it is its position that counts).
 	flight.turbulence_pos = 0.05
 	flight.turbulence_tilt_deg = 0.5
@@ -434,7 +437,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.physical_keycode:
 			KEY_ENTER, KEY_KP_ENTER: _restart()
-			KEY_ESCAPE: _goto_menu()
+			KEY_ESCAPE:
+				if state == State.FINISHED:
+					_goto_menu()
+				else:
+					_open_pause()
+					get_viewport().set_input_as_handled()
 			KEY_1: _set_profile(GimbalRig.SpeedProfile.SLOW)
 			KEY_2: _set_profile(GimbalRig.SpeedProfile.MEDIUM)
 			KEY_3: _set_profile(GimbalRig.SpeedProfile.FAST)
@@ -442,7 +450,25 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_N: _next_session()
 
 
+## Pause menu (Esc): the game tree is paused, the menu keeps running.
+func _open_pause() -> void:
+	if _pause == null:
+		_pause = PauseMenu.new()
+		_pause.resume_requested.connect(_close_pause)
+		_pause.restart_requested.connect(_restart)
+		_pause.quit_requested.connect(_goto_menu)
+		add_child(_pause)
+	get_tree().paused = true
+	_pause.open()
+
+
+func _close_pause() -> void:
+	_pause.close()
+	get_tree().paused = false
+
+
 func _restart() -> void:
+	get_tree().paused = false
 	SessionScorer.reset()
 	get_tree().reload_current_scene()
 
@@ -454,6 +480,7 @@ func _next_session() -> void:
 
 
 func _goto_menu() -> void:
+	get_tree().paused = false
 	SessionScorer.reset()
 	get_tree().change_scene_to_file(MENU_SCENE)
 
@@ -638,7 +665,7 @@ func _update_hud() -> void:
 			head = "RUN  %.1fs   %.0f%%" % [_run_time, subject.progress_ratio * 100.0]
 		State.FINISHED:
 			head = "FINISHED   (Enter: restart - Esc: menu)"
-	hud.text = "%s - %s\nSubject %.1f m/s   drone %.1f m/s   [%s]\nFraming: %s   %s   score %.0f%%\nGimbal pan %+.0f°  tilt %+.0f°  roll %+.0f°\n%s\nArrows/WASD: pan+tilt   Q/E: roll   1/2/3: gimbal profile   G: thirds grid   Enter: restart   Esc: menu   F1: hide" % [
+	hud.text = "%s - %s\nSubject %.1f m/s   drone %.1f m/s   [%s]\nFraming: %s   %s   score %.0f%%\nGimbal pan %+.0f°  tilt %+.0f°  roll %+.0f°\n%s\nArrows/WASD: pan+tilt   Q/E: roll   1/2/3: gimbal profile   G: thirds grid   Enter: restart   Esc: pause   F1: hide" % [
 		scenario_title, head, subject.speed_now, (duo.drone.velocity.length() if duo else flight.speed_now), PROFILE_NAMES[rig.pan_profile],
 		("IN FRAME" if _in_frame_now else ("TOO CLOSE TO THE EDGE" if _edge_now else "OUT OF FRAME")),
 		"(HIDDEN)" if _occluded_now else "",

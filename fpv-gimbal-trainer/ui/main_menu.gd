@@ -1,7 +1,6 @@
 extends Control
 ## Main menu, in three steps: 1. choose a sport (only the sports flagged `in_menu`), 2. choose how to
-## play it (guided course when the sport has one, or training session with a drone movement and a
-## level), 3. launch. Tools at the bottom.
+## play it (training session: 1 or 2 players, drone movement, level, lens), 3. launch. Tools at the bottom.
 
 const TOOLS := [
 	{"name": "Historique et replays", "scene": "res://scenes/history.tscn"},
@@ -29,9 +28,6 @@ var _sport: SubjectDefinition
 var _group := ButtonGroup.new()
 var _cards: Array[Button] = []
 var _sport_info: Label
-var _guided_box: Control
-var _guided_button: Button
-var _guided_info: Label
 var _mode_opt: OptionButton
 var _mode_info: Label
 var _screens_opt: OptionButton
@@ -78,9 +74,10 @@ func _load_prefs() -> Dictionary:
 
 
 func _apply_prefs(prefs: Dictionary) -> void:
+	MotionBlur.level = clampi(int(prefs.get("blur", MotionBlur.level)), 0, MotionBlur.LABELS.size() - 1)
 	for pair in [[_mode_opt, "mode"], [_movement_opt, "movement"], [_level_opt, "level"], [_lens_opt, "lens"], [_screens_opt, "screens"]]:
 		var o: OptionButton = pair[0]
-		var i := int(prefs.get(pair[1], 0))
+		var i := int(prefs.get(pair[1], 1 if pair[1] == "blur" else 0))
 		if i >= 0 and i < o.item_count:
 			o.select(i)
 	_update_info()
@@ -92,7 +89,7 @@ func _save_prefs() -> void:
 	var f := FileAccess.open(PREFS_PATH, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify({"sport": _sport.id, "mode": _mode_opt.selected, "movement": _movement_opt.selected,
-				"level": _level_opt.selected, "lens": _lens_opt.selected, "screens": _screens_opt.selected}, "\t"))
+				"level": _level_opt.selected, "lens": _lens_opt.selected, "screens": _screens_opt.selected, "blur": MotionBlur.level}, "\t"))
 
 
 # --- UI -------------------------------------------------------------------------------------------
@@ -155,7 +152,6 @@ func _build_ui() -> void:
 	var cols := HBoxContainer.new()
 	cols.add_theme_constant_override("separation", 20)
 	box.add_child(cols)
-	cols.add_child(_build_guided_panel())
 	cols.add_child(_build_training_panel())
 	box.add_child(HSeparator.new())
 
@@ -195,26 +191,6 @@ func _panel(heading: String, width: float) -> VBoxContainer:
 	h.add_theme_font_size_override("font_size", 20)
 	v.add_child(h)
 	return v
-
-
-func _build_guided_panel() -> Control:
-	var v := _panel("Parcours guidé", 440)
-	_guided_box = v.get_parent().get_parent()
-	var d := Label.new()
-	d.text = "Un parcours fixe, identique à chaque fois : idéal pour progresser et battre ton meilleur score."
-	d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	d.modulate = Color(1, 1, 1, 0.65)
-	v.add_child(d)
-	_guided_info = Label.new()
-	_guided_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_guided_info.custom_minimum_size.y = 80
-	v.add_child(_guided_info)
-	_guided_button = Button.new()
-	_guided_button.text = "Lancer le parcours guidé (G)"
-	_guided_button.custom_minimum_size.y = 46
-	_guided_button.pressed.connect(_start_guided)
-	v.add_child(_guided_button)
-	return _guided_box
 
 
 func _build_training_panel() -> Control:
@@ -296,16 +272,6 @@ static func _dots(n: int) -> String:
 
 # --- State ---------------------------------------------------------------------------------------
 
-## The fixed scenario of the selected sport ({} if it has none).
-func _guided_entry() -> Dictionary:
-	if _sport == null:
-		return {}
-	for e in ScenarioRegistry.list():
-		if str(e.subject) == _sport.id:
-			return e
-	return {}
-
-
 func _select(i: int) -> void:
 	_sport = _sports[i]
 	_cards[i].button_pressed = true
@@ -318,13 +284,6 @@ func _update_info() -> void:
 	if _sport == null:
 		return
 	_sport_info.text = "%s  -  %s" % [_sport.display_name, _sport.description]
-	var e := _guided_entry()
-	_guided_button.disabled = e.is_empty()
-	if e.is_empty():
-		_guided_info.text = "Pas de parcours guidé pour ce sport : lance une session d'entraînement."
-	else:
-		var best: int = SessionScorer.get_best(str(e.id))
-		_guided_info.text = "%s\n%s\nMeilleur score : %s" % [e.name, e.desc, str(best) if best > 0 else "-"]
 	var duo := _two_players()
 	_mode_info.text = "Manette 1 = gimbal (cadreur), manette 2 = drone en mode acro (pilote). Le sujet reste scripté. Réglage : Configuration manette." if duo else "Un seul joueur : le drone suit le sujet, tu gères la gimbal."
 	_screens_opt.disabled = not duo
@@ -352,12 +311,6 @@ func _selected_movement() -> String:
 
 # --- Launch --------------------------------------------------------------------------------------
 
-func _start_guided() -> void:
-	var e := _guided_entry()
-	if not e.is_empty():
-		ScenarioMatrix.launch_fixed(get_tree(), e)
-
-
 func _start_training() -> void:
 	if _sport == null:
 		return
@@ -379,7 +332,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		_select(n)
 		return
 	match event.physical_keycode:
-		KEY_G: _start_guided()
 		KEY_ENTER, KEY_KP_ENTER: _start_training()
 		KEY_R: _start_random()
 		KEY_ESCAPE: get_tree().quit()

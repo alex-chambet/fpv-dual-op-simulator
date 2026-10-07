@@ -214,6 +214,7 @@ func attach_fpv_camera(viewport: SubViewport) -> void:
 	_fpv_cam.fov = 105.0
 	_fpv_cam.near = 0.05
 	viewport.add_child(_fpv_cam)
+	_fpv_cam.add_child(MotionBlur.new())
 	_fpv_cam.current = true
 	_sync()
 
