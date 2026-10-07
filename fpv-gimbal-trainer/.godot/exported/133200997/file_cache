@@ -5,15 +5,15 @@ res://scenarios/environments/styles/ciel.tres::7a78f7fbb98fb22d5337bd3799b9aa2d:
 res://scenarios/environments/styles/court.tres::a3d13eb5f2cd71f46ca5b1f77afe3dd6::1791206531::res://.godot/exported/133200997/export-0dd8d4995f5b263b75d1fe672fd1809c-court.res
 res://scenarios/environments/styles/eau_vive.tres::23c994080bb67706033a4488c5be31ee::1791206531::res://.godot/exported/133200997/export-e32277963036a3fa0a7aa62910231a6f-eau_vive.res
 res://scenarios/environments/styles/falaise.tres::44ee9e5a4b1af98310eb6746dd533147::1791210699::res://.godot/exported/133200997/export-0302a55b1fb70ce17433f0231d696f29-falaise.res
-res://scenarios/environments/styles/foret.tres::a375272ddb3aa0747ec4508c6f74a98d::1791206551::res://.godot/exported/133200997/export-dfdccd2d3702e3e2ac0790b77f6fee42-foret.res
+res://scenarios/environments/styles/foret.tres::e2e95471ec357436bad7d46bf934abdc::1791382877::res://.godot/exported/133200997/export-dfdccd2d3702e3e2ac0790b77f6fee42-foret.res
 res://scenarios/environments/styles/generic.tres::119db75109a7d22f2226ca6d21cb68b7::1791205438::res://.godot/exported/133200997/export-183edc7981c85821926afa878b385763-generic.res
 res://scenarios/environments/styles/glace.tres::04e77ff45404126c3cd3b8eb75134cab::1791206531::res://.godot/exported/133200997/export-a7b2dda5e5f48866842f6cf6a85fa631-glace.res
 res://scenarios/environments/styles/lac.tres::9d683ac305418afe28411a18f2570d14::1791206328::res://.godot/exported/133200997/export-de4769f37b5651a06cf34a1b0e5841b4-lac.res
 res://scenarios/environments/styles/mer.tres::b9c2e98cbc706ffab29f9f8cccc96175::1791206328::res://.godot/exported/133200997/export-ce5d1a64ca603df54d064ab293c1a5f1-mer.res
-res://scenarios/environments/styles/neige.tres::51fe614c06fbcf4f756525597633785f::1791206551::res://.godot/exported/133200997/export-9c8b192f121b1d88dca53733ae42ca82-neige.res
+res://scenarios/environments/styles/neige.tres::c911b4c83d5c65de2749d329c761debc::1791384777::res://.godot/exported/133200997/export-9c8b192f121b1d88dca53733ae42ca82-neige.res
 res://scenarios/environments/styles/piste_urbaine.tres::1caf9f76d7ac7c1bb603cc8c64b8b54f::1791206531::res://.godot/exported/133200997/export-e3b4bedc15fba306de13af1f69488968-piste_urbaine.res
 res://scenarios/environments/styles/prairie.tres::7e3b4563ed5dd18f1bffc562a5a1be2e::1791206531::res://.godot/exported/133200997/export-58a10f7489a7af2cca5eea3617f53ba2-prairie.res
-res://scenarios/environments/styles/route_montagne.tres::47d3198268efa74514f3ec26aa4a43da::1791206551::res://.godot/exported/133200997/export-dc1c8b817b2212a71abcfe69463a4522-route_montagne.res
+res://scenarios/environments/styles/route_montagne.tres::c95c04c227ab3205b9ab97aff6d32113::1791384777::res://.godot/exported/133200997/export-dc1c8b817b2212a71abcfe69463a4522-route_montagne.res
 res://scenarios/environments/styles/salle.tres::19ced5238f3ac09fe218502ba53c1c72::1791206531::res://.godot/exported/133200997/export-df7fbdbb97c584f3754b50e7daa4ad10-salle.res
 res://scenarios/environments/styles/stade.tres::078f872b621740ca2abf2a603601394f::1791206531::res://.godot/exported/133200997/export-ba671ea448d4fd6a905b082bdcd1b797-stade.res
 res://scenarios/environments/styles/terrain_vague.tres::23b4e0939dff7f7d7e4272e451204251::1791209928::res://.godot/exported/133200997/export-a21f9522b33681a3ad0a0d9b98e1c63c-terrain_vague.res
@@ -63,6 +63,5 @@ res://scenes/history.tscn::e8acb3fb1b4891827f9ad011c91a5055::1791201496::res://.
 res://scenes/input_debug.tscn::0173d3782b59a6c95919518290df5c08::1791191728::res://.godot/exported/133200997/export-9fda22b53489d1b61a0e15e3db9f3c25-input_debug.scn
 res://scenes/main_menu.tscn::3ddc19722fd94c2cdb4b3c6bf6977feb::1791220452::res://.godot/exported/133200997/export-ea5c6ad4629af728dc514cefde332394-main_menu.scn
 res://ski_slope.tscn::f2fc6aa954aa1a9f2cce4f0009cbb40f::1791212617::res://.godot/exported/133200997/export-53b9782f635e62801f321436e72b9279-ski_slope.scn
-res://scenarios/environments/styles/departementale.tres::e18c35d46284d6eea71dc9a115edcaf7::1791314760::res://.godot/exported/133200997/export-198cbe2967c3147e988e2b3417c6fb7c-departementale.res
+res://scenarios/environments/styles/departementale.tres::0e5fc12e0867f90b22fea08e5c467089::1791384777::res://.godot/exported/133200997/export-198cbe2967c3147e988e2b3417c6fb7c-departementale.res
 res://scenarios/subjects/catalogue/departementale.tres::ed2600559013ed9ec1a9ffc79b603ab5::1791314911::res://.godot/exported/133200997/export-1dc05ef3fd1cc67d4c8726dff4373077-departementale.res
-res://_mbt.tscn::9342d32bce72a2a6bf6949c3b203881a::1791381104::res://.godot/exported/133200997/export-16116f6106307a8ce21f639cd5d85b7e-_mbt.scn
