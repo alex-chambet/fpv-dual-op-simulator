@@ -60,6 +60,24 @@ func add_band(pts: PackedVector3Array, half_width: float, color: Color) -> void:
 	_world.add_child(mi)
 
 
+## A disc of radius r around the xz point c, painted with `color` over what was drawn before.
+func add_disc(c: Vector2, r: float, color: Color) -> void:
+	_layer += 1
+	var mi := MeshInstance3D.new()
+	var cyl := CylinderMesh.new()
+	cyl.top_radius = r
+	cyl.bottom_radius = r
+	cyl.height = 0.1
+	cyl.radial_segments = 48
+	mi.mesh = cyl
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.albedo_color = color
+	mi.material_override = m
+	mi.position = Vector3(c.x, _layer * 0.5, c.y)
+	_world.add_child(mi)
+
+
 ## (x min, z min, 1 / width, 1 / depth): uv = (xz - min) * inverse size.
 func uv_frame() -> Vector4:
 	return Vector4(rect.position.x, rect.position.y, 1.0 / rect.size.x, 1.0 / rect.size.y)

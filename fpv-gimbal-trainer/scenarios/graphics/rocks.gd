@@ -16,7 +16,7 @@ uniform vec3 rock_a : source_color = vec3(0.5, 0.49, 0.47);
 uniform vec3 rock_b : source_color = vec3(0.27, 0.26, 0.25);
 uniform vec3 moss : source_color = vec3(0.22, 0.3, 0.1);
 uniform float moss_amount = 0.0;
-instance uniform float snow = 0.0;
+uniform float snow = 0.0;
 varying vec3 wpos;
 varying vec3 wnrm;
 
@@ -65,6 +65,7 @@ static func material() -> ShaderMaterial:
 		for t in ["detail", "cell", "normal"]:
 			_mat.set_shader_parameter(t + "_tex", GroundMaterials.noise(t))
 	_mat.set_shader_parameter("moss_amount", moss_amount)
+	_mat.set_shader_parameter("snow", Vegetation.snow_cover)
 	return _mat
 
 
@@ -133,18 +134,19 @@ static func _build(variant: int) -> ArrayMesh:
 
 ## One rock as a MeshInstance3D: ground point, size (scale of the unit rock), seed for the shape and yaw.
 static func add(parent: Node3D, ground: Vector3, size: Vector3, seed_value: int) -> MeshInstance3D:
+	material()  # moss / snow of the current scene
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh(seed_value)
 	mi.position = ground + Vector3(0, size.y * 0.4, 0)
 	mi.scale = size
 	mi.rotation.y = float(seed_value % 360) * 0.0175
-	mi.set_instance_shader_parameter("snow", Vegetation.snow_cover)
 	parent.add_child(mi)
 	return mi
 
 
 ## Many small rocks (MultiMesh per variant): ground points and sizes (uniform), half buried.
 static func scatter(parent: Node3D, grounds: PackedVector3Array, sizes: PackedFloat32Array, seed_value: int) -> void:
+	material()
 	if grounds.is_empty():
 		return
 	var rng := RandomNumberGenerator.new()
@@ -169,6 +171,5 @@ static func scatter(parent: Node3D, grounds: PackedVector3Array, sizes: PackedFl
 			mm.set_instance_transform(j, items[j])
 		var mmi := MultiMeshInstance3D.new()
 		mmi.multimesh = mm
-		mmi.set_instance_shader_parameter("snow", Vegetation.snow_cover)
 		mmi.visibility_range_end = 160.0
 		parent.add_child(mmi)

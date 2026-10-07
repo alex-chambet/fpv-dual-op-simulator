@@ -151,14 +151,13 @@ static func farmhouse(rng: RandomNumberGenerator, w: float, l: float, height := 
 	roof.material_override = _shader_mat(true)
 	root.add_child(roof)
 
-	# chimney
-	_box(root, Vector3(0.7, 1.6, 0.7), Vector3(0.6, ridge + 0.3, hl * rng.randf_range(0.3, 0.7) * (1 if rng.randf() < 0.5 else -1)),
-			_mat(wall_c * 0.9))
-
-	# windows with shutters on both long sides, a door on one
-	var glass := _mat(Color(0.12, 0.14, 0.17), 0.08)
-	var frame := _mat(Color(0.92, 0.92, 0.9), 0.6)
-	var shutter := _mat(shutter_c, 0.7)
+	# chimney, door, windows with frames and shutters: one mesh (vertex colours) so a house is only a few draw calls
+	var st2 := SurfaceTool.new()
+	st2.begin(Mesh.PRIMITIVE_TRIANGLES)
+	_add_box(st2, Vector3(0.7, 1.6, 0.7), Vector3(0.6, ridge + 0.3, hl * rng.randf_range(0.3, 0.7) * (1 if rng.randf() < 0.5 else -1)),
+			wall_c * 0.9)
+	var glass := Color(0.12, 0.14, 0.17)
+	var frame := Color(0.92, 0.92, 0.9)
 	var n := maxi(2, floori(l / 3.4))
 	var door_k := n / 2
 	for s in [-1.0, 1.0]:
@@ -166,18 +165,47 @@ static func farmhouse(rng: RandomNumberGenerator, w: float, l: float, height := 
 			var z := -hl + l * (k + 0.5) / n
 			var x: float = (hw + 0.02) * s
 			if s > 0.0 and k == door_k:
-				_box(root, Vector3(0.1, 2.1, 1.1), Vector3(x, 1.05, z), _mat(shutter_c * 0.8, 0.6))
+				_add_box(st2, Vector3(0.1, 2.1, 1.1), Vector3(x, 1.05, z), shutter_c * 0.8)
 				continue
 			for floor_y in ([1.7, 3.8] if height > 4.5 else [1.7]):
 				var wh := 1.3 if floor_y < 2.0 else 1.0
-				_box(root, Vector3(0.08, wh + 0.16, 1.06), Vector3(x, floor_y, z), frame)
-				_box(root, Vector3(0.1, wh, 0.9), Vector3(x + 0.01 * s, floor_y, z), glass)
+				_add_box(st2, Vector3(0.08, wh + 0.16, 1.06), Vector3(x, floor_y, z), frame)
+				_add_box(st2, Vector3(0.1, wh, 0.9), Vector3(x + 0.01 * s, floor_y, z), glass)
 				for side in [-1.0, 1.0]:
 					var open := rng.randf() < 0.6
 					var sz: float = z + side * (0.95 if open else 0.24)
-					_box(root, Vector3(0.06, wh, 0.47), Vector3(x + 0.05 * s, floor_y, sz), shutter)
+					_add_box(st2, Vector3(0.06, wh, 0.47), Vector3(x + 0.05 * s, floor_y, sz), shutter_c)
+	var details := MeshInstance3D.new()
+	details.mesh = st2.commit()
+	details.material_override = _details_mat()
+	details.visibility_range_end = 400.0
+	root.add_child(details)
 	return root
 
+
+static var _detail_mat: StandardMaterial3D
+
+static func _details_mat() -> StandardMaterial3D:
+	if _detail_mat == null:
+		_detail_mat = StandardMaterial3D.new()
+		_detail_mat.vertex_color_use_as_albedo = true
+		_detail_mat.vertex_color_is_srgb = true
+		_detail_mat.roughness = 0.6
+	return _detail_mat
+
+
+## Appends a box (size, centre) with a vertex colour to a SurfaceTool.
+static func _add_box(st: SurfaceTool, size: Vector3, c: Vector3, col: Color) -> void:
+	var b := BoxMesh.new()
+	b.size = size
+	var arrays := b.get_mesh_arrays()
+	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var norms: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+	var idx: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+	for i in idx:
+		st.set_color(col)
+		st.set_normal(norms[i])
+		st.add_vertex(verts[i] + c)
 
 ## A barn: wooden walls, corrugated-looking roof, a wide open door. Returns its root (origin on the ground).
 static func barn(rng: RandomNumberGenerator, w: float, l: float) -> Node3D:

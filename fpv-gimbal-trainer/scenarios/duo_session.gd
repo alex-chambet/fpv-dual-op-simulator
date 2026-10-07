@@ -4,9 +4,6 @@ extends Node
 ## while the gimbal operator films. Owns the drone, the pilot's FPV picture-in-picture + OSD and the pilot score.
 ## The subject stays scripted (it follows its path at its own speed).
 
-## Share of the screen width taken by the pilot picture (4:3).
-const PIP_WIDTH := 0.30
-const PIP_MARGIN := 14.0
 const ARM_THROTTLE := 0.08
 
 var scn: ScenarioBase
@@ -18,10 +15,8 @@ var input_override: Array = []
 ## true: the pilot picture goes full screen on a second monitor (set by the menu); ignored with a single monitor.
 static var dual_screen := false
 
-var _win: Window
+var _view: PilotView
 var _osd: Label
-var _pip: SubViewportContainer
-var _vp: SubViewport
 var _grid: Dictionary = {}
 var _grid_built := false
 
@@ -54,79 +49,11 @@ func setup(s: ScenarioBase) -> void:
 
 
 func _build_pip() -> void:
-	if dual_screen and DisplayServer.get_screen_count() > 1:
-		_build_pilot_window()
-		return
-	var hud: Node = scn.get_node("HUD")
-	_pip = SubViewportContainer.new()
-	_pip.stretch = true
-	hud.add_child(_pip)
-	_vp = SubViewport.new()
-	_vp.size = Vector2i(384, 288)
-	_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	_pip.add_child(_vp)
-	drone.attach_fpv_camera(_vp)
-	_osd = Label.new()
-	_osd.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_osd.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 1))
-	_osd.add_theme_constant_override("shadow_offset_x", 1)
-	_osd.add_theme_constant_override("shadow_offset_y", 1)
-	hud.add_child(_osd)
-	get_viewport().size_changed.connect(_layout_pip)
-	_layout_pip()
+	_view = PilotView.new()
+	add_child(_view)
+	_view.build(scn.get_node("HUD"), drone, dual_screen)
+	_osd = _view.osd
 
-
-## The pilot picture on its own full-screen window on another monitor (the gimbal operator keeps the main window).
-func _build_pilot_window() -> void:
-	var main_win := get_window()
-	main_win.gui_embed_subwindows = false  # real OS windows, not panels inside the main one
-	var screen := 0
-	for i in DisplayServer.get_screen_count():
-		if i != main_win.current_screen:
-			screen = i
-			break
-	var pos := DisplayServer.screen_get_position(screen)
-	var size := DisplayServer.screen_get_size(screen)
-	_vp = SubViewport.new()
-	_vp.size = Vector2i(size.x * 2 / 3, size.y * 2 / 3)
-	_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	add_child(_vp)
-	drone.attach_fpv_camera(_vp)
-	_win = Window.new()
-	_win.title = "FPV pilot"
-	_win.borderless = true
-	_win.unfocusable = true  # the keyboard stays with the gimbal operator window
-	_win.position = pos
-	_win.size = size
-	add_child(_win)
-	_win.position = pos
-	_win.size = size
-	var tex := TextureRect.new()
-	tex.texture = _vp.get_texture()
-	tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	tex.stretch_mode = TextureRect.STRETCH_SCALE
-	tex.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_win.add_child(tex)
-	_osd = Label.new()
-	_osd.position = Vector2(24, size.y - 140)
-	_osd.size = Vector2(size.x - 48, 120)
-	_osd.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_osd.add_theme_font_size_override("font_size", 26)
-	_osd.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 1))
-	_osd.add_theme_constant_override("shadow_offset_x", 2)
-	_osd.add_theme_constant_override("shadow_offset_y", 2)
-	_win.add_child(_osd)
-
-
-## Pilot picture in the bottom-right corner, PIP_WIDTH of the screen width, with its OSD above it.
-func _layout_pip() -> void:
-	var screen := get_viewport().get_visible_rect().size
-	var w := screen.x * PIP_WIDTH
-	var h := w * 0.75
-	_pip.position = Vector2(screen.x - w - PIP_MARGIN, screen.y - h - PIP_MARGIN)
-	_pip.size = Vector2(w, h)  # the container (stretch) gives its size to the pilot's viewport
-	_osd.position = Vector2(_pip.position.x, _pip.position.y - 84.0)
-	_osd.size = Vector2(w, 80.0)
 
 ## [throttle, yaw, pitch, roll] of the pilot right now.
 func current_inputs() -> Array:

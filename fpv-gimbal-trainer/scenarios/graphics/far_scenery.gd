@@ -47,15 +47,20 @@ static var _shader: Shader
 
 ## Builds the far scenery of `env` around the detailed terrain rectangle `inner` (x, z, width, depth).
 static func build(env: EnvironmentBuilder, inner: Rect2, near_material: Material, cfg: Dictionary) -> void:
+	build_into(env.host, Callable(env, "far_height"), env.host.world_seed, inner, near_material, cfg)
+
+
+## Same, for any world: `height` = Callable(x, z) -> ground height outside the detailed terrain.
+static func build_into(host: Node3D, height: Callable, world_seed: int, inner: Rect2, near_material: Material,
+		cfg: Dictionary) -> void:
 	if cfg.is_empty():
 		return
-	var host := env.host
 	var center := inner.get_center()
 	var ring_r := float(cfg.get("ring_radius", 1500.0))
 	var cell := float(cfg.get("ring_cell", 30.0))
 	var ring := MeshInstance3D.new()
 	ring.name = "FarTerrain"
-	ring.mesh = _ring_mesh(env, inner, center, ring_r, cell)
+	ring.mesh = _ring_mesh(height, inner, center, ring_r, cell)
 	ring.material_override = near_material
 	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	host.add_child(ring)
@@ -63,14 +68,14 @@ static func build(env: EnvironmentBuilder, inner: Rect2, near_material: Material
 		var hills: Dictionary = cfg.hills
 		var mi := MeshInstance3D.new()
 		mi.name = "FarHills"
-		mi.mesh = _hills_mesh(env, center, hills, ring_r)
+		mi.mesh = _hills_mesh(height, world_seed, center, hills, ring_r)
 		mi.material_override = _mountain_material(hills)
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		host.add_child(mi)
 	if cfg.has("trees"):
 		var t: Dictionary = cfg.trees
 		var rng := RandomNumberGenerator.new()
-		rng.seed = 970 + host.world_seed
+		rng.seed = 970 + world_seed
 		var grounds := PackedVector3Array()
 		var scales := PackedFloat32Array()
 		var grown := inner.grow(4.0)
@@ -86,9 +91,9 @@ static func build(env: EnvironmentBuilder, inner: Rect2, near_material: Material
 			# trees in groves: keep those where a low-frequency pattern is high
 			if sin(x * 0.011 + 1.3) * sin(z * 0.009 - 0.7) + 0.3 * sin(x * 0.037 + z * 0.029) < float(t.get("grove", -1.0)):
 				continue
-			grounds.append(Vector3(x, env.far_height(x, z) - 0.3, z))
+			grounds.append(Vector3(x, float(height.call(x, z)) - 0.3, z))
 			scales.append(rng.randf_range(1.0, 1.8))
-		Vegetation.plant(host, str(t.kind), grounds, scales, t.colour, 971 + host.world_seed)
+		Vegetation.plant(host, str(t.kind), grounds, scales, t.colour, 971 + world_seed)
 
 
 static func _mountain_material(hills: Dictionary) -> ShaderMaterial:
@@ -107,7 +112,7 @@ static func _mountain_material(hills: Dictionary) -> ShaderMaterial:
 
 ## Square grid of `cell` metres out to `radius` around the centre, without the cells inside the detailed terrain
 ## (one cell of overlap, lowered so the detailed terrain covers it).
-static func _ring_mesh(env: EnvironmentBuilder, inner: Rect2, center: Vector2, radius: float, cell: float) -> ArrayMesh:
+static func _ring_mesh(height: Callable, inner: Rect2, center: Vector2, radius: float, cell: float) -> ArrayMesh:
 	var n := ceili(radius * 2.0 / cell)
 	var x0 := center.x - n * cell * 0.5
 	var z0 := center.y - n * cell * 0.5
@@ -119,7 +124,7 @@ static func _ring_mesh(env: EnvironmentBuilder, inner: Rect2, center: Vector2, r
 		for ix in n + 1:
 			var x := x0 + ix * cell
 			var z := z0 + iz * cell
-			var h := env.far_height(x, z)
+			var h := float(height.call(x, z))
 			if covered.has_point(Vector2(x, z)):
 				# under the detailed terrain: follow it, just below
 				var inner_h := TerrainBuilder.last_height(x, z)
@@ -142,13 +147,13 @@ static func _ring_mesh(env: EnvironmentBuilder, inner: Rect2, center: Vector2, r
 
 
 ## Polar ring of hills / mountains from r0 to r1 (beyond the outer terrain), rising from the far terrain.
-static func _hills_mesh(env: EnvironmentBuilder, center: Vector2, hills: Dictionary, ring_r: float) -> ArrayMesh:
+static func _hills_mesh(height: Callable, world_seed: int, center: Vector2, hills: Dictionary, ring_r: float) -> ArrayMesh:
 	var noise := FastNoiseLite.new()
 	noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
 	noise.fractal_type = FastNoiseLite.FRACTAL_RIDGED
 	noise.frequency = float(hills.get("frequency", 0.0008))
 	noise.fractal_octaves = 5
-	noise.seed = 31 + env.host.world_seed
+	noise.seed = 31 + world_seed
 	# the hills start under the edge of the outer terrain (no gap), then rise towards r0 and beyond
 	var r0 := ring_r * 0.9
 	var rise_r := maxf(float(hills.get("r0", 2000.0)), ring_r)
@@ -165,7 +170,7 @@ static func _hills_mesh(env: EnvironmentBuilder, center: Vector2, hills: Diction
 			var a := TAU * s / segs
 			var x := center.x + cos(a) * r
 			var z := center.y + sin(a) * r
-			var base := env.far_height(x, z) if k == 0 else env.far_height(center.x + cos(a) * r0, center.y + sin(a) * r0)
+			var base := float(height.call(x, z)) if k == 0 else float(height.call(center.x + cos(a) * r0, center.y + sin(a) * r0))
 			var rise := smoothstep(ring_r, rise_r + (r1 - rise_r) * 0.25, r)
 			var nn := 0.5 + 0.5 * noise.get_noise_2d(x, z)
 			row.append(Vector3(x, base - 4.0 + amp * rise * pow(nn, 1.6) * (0.6 + 0.4 * t), z))

@@ -23,7 +23,7 @@ uniform sampler2D leaf_tex : source_color, filter_linear_mipmap, repeat_disable;
 uniform vec3 tip_tint : source_color = vec3(1.1, 1.15, 0.75);
 uniform float alpha_cut = 0.35;
 uniform float wind_strength = 1.0;
-instance uniform float snow = 0.0;
+uniform float snow = 0.0;
 
 varying vec3 tint;
 varying vec3 vcol;
@@ -123,6 +123,8 @@ static func plant(parent: Node3D, kind: String, grounds: PackedVector3Array, sca
 ## customs = per-instance tint (rgb) and random value (a). end_distance > 0 hides them beyond it.
 static func place(parent: Node3D, kind: String, xforms: Array[Transform3D], customs: PackedColorArray,
 		rng: RandomNumberGenerator, end_distance := 0.0) -> void:
+	for needles in [true, false]:  # snow of the current scene on the shared leaf materials
+		leaf_material(needles).set_shader_parameter("snow", snow_cover)
 	var variants := Decor.variants(kind) if Decor.handles(kind) else VARIANTS
 	var two_lods := not Decor.handles(kind) or Decor.has_lod(kind)
 	var buckets := {}
@@ -146,7 +148,6 @@ static func place(parent: Node3D, kind: String, xforms: Array[Transform3D], cust
 				mm.set_instance_custom_data(j, customs[items[j]])
 			var mmi := MultiMeshInstance3D.new()
 			mmi.multimesh = mm
-			mmi.set_instance_shader_parameter("snow", snow_cover)
 			if two_lods:
 				mmi.set_meta("lod", lod)
 				mmi.set_meta("end", end_distance)

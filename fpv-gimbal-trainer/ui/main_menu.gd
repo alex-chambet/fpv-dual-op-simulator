@@ -1,11 +1,12 @@
 extends Control
 ## Main menu, in three steps: 1. choose a sport (only the sports flagged `in_menu`), 2. choose how to
-## play it (training session: 1 or 2 players, drone movement, level, lens), 3. launch. Tools at the bottom.
+## play it (training session: 1 or 2 players, drone movement, level, lens), 3. launch. Next to it the sandbox
+## (free flight in the countryside, no time limit). Tools at the bottom.
 
 const TOOLS := [
 	{"name": "Historique et replays", "scene": "res://scenes/history.tscn"},
 	{"name": "Configuration manette", "scene": "res://scenes/input_debug.tscn"},
-	{"name": "Bac à sable gimbal", "scene": "res://scenes/gimbal_test.tscn"},
+	{"name": "Test gimbal (scène vide)", "scene": "res://scenes/gimbal_test.tscn"},
 	{"name": "Éditeur de trajectoire", "scene": "res://scenes/flight_editor.tscn"},
 ]
 
@@ -155,6 +156,7 @@ func _build_ui() -> void:
 	cols.add_theme_constant_override("separation", 20)
 	box.add_child(cols)
 	cols.add_child(_build_training_panel())
+	cols.add_child(_build_sandbox_panel())
 	box.add_child(HSeparator.new())
 
 	var tools := HBoxContainer.new()
@@ -244,6 +246,22 @@ func _build_training_panel() -> Control:
 	return v.get_parent().get_parent()
 
 
+func _build_sandbox_panel() -> Control:
+	var v := _panel("Bac à sable", 400)
+	var d := Label.new()
+	d.text = "La campagne de la Départementale en libre, sans limite de temps ni score : routes, village, fermes, voitures, camions, cyclistes et piétons. Vole où tu veux et filme ce qui te plaît.\n\nDrone : manette pilote en acro (comme à 2 joueurs) ou, sans elle, au clavier en vol assisté (I/K J/L, U/O, Y/H, Maj). La touche M change de mode.\nL'optique et l'écran du pilote sont ceux de la session d'entraînement."
+	d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	d.modulate = Color(1, 1, 1, 0.65)
+	d.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	v.add_child(d)
+	var b := Button.new()
+	b.text = "Lancer le bac à sable (B)"
+	b.custom_minimum_size.y = 46
+	b.pressed.connect(_start_sandbox)
+	v.add_child(b)
+	return v.get_parent().get_parent()
+
+
 func _option_row(parent: Control, label: String) -> OptionButton:
 	var row := HBoxContainer.new()
 	parent.add_child(row)
@@ -288,7 +306,6 @@ func _update_info() -> void:
 	_sport_info.text = "%s  -  %s" % [_sport.display_name, _sport.description]
 	var duo := _two_players()
 	_mode_info.text = "Manette 1 = gimbal (cadreur), manette 2 = drone en mode acro (pilote). Le sujet reste scripté. Réglage : Configuration manette." if duo else "Un seul joueur : le drone suit le sujet, tu gères la gimbal."
-	_screens_opt.disabled = not duo
 	_movement_opt.disabled = duo
 	_level_opt.disabled = duo
 	_train_button.text = "Lancer la session à 2 joueurs (Entrée)" if duo else "Lancer la session d'entraînement (Entrée)"
@@ -322,6 +339,12 @@ func _start_training() -> void:
 	ScenarioMatrix.launch(get_tree(), ScenarioMatrix.generate(_sport.id, _selected_movement(), level, null, {}, SessionConfig.LENSES[_lens_opt.selected], _two_players()))
 
 
+func _start_sandbox() -> void:
+	DuoSession.dual_screen = _screens_opt.selected == 1
+	Sandbox.lens_mm = SessionConfig.LENSES[_lens_opt.selected]
+	get_tree().change_scene_to_file("res://scenarios/sandbox/sandbox.tscn")
+
+
 func _start_random() -> void:
 	ScenarioMatrix.launch(get_tree(), ScenarioMatrix.generate())
 
@@ -336,4 +359,5 @@ func _unhandled_input(event: InputEvent) -> void:
 	match event.physical_keycode:
 		KEY_ENTER, KEY_KP_ENTER: _start_training()
 		KEY_R: _start_random()
+		KEY_B: _start_sandbox()
 		KEY_ESCAPE: get_tree().quit()
