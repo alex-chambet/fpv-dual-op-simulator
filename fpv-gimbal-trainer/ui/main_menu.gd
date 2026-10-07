@@ -5,9 +5,7 @@ extends Control
 
 const TOOLS := [
 	{"name": "Historique et replays", "scene": "res://scenes/history.tscn"},
-	{"name": "Configuration manette", "scene": "res://scenes/input_debug.tscn"},
-	{"name": "Test gimbal (scène vide)", "scene": "res://scenes/gimbal_test.tscn"},
-	{"name": "Éditeur de trajectoire", "scene": "res://scenes/flight_editor.tscn"},
+	{"name": "Paramètres", "scene": "res://scenes/settings.tscn"},
 ]
 
 const MOVEMENT_LABELS := {
@@ -305,7 +303,7 @@ func _update_info() -> void:
 		return
 	_sport_info.text = "%s  -  %s" % [_sport.display_name, _sport.description]
 	var duo := _two_players()
-	_mode_info.text = "Manette 1 = gimbal (cadreur), manette 2 = drone en mode acro (pilote). Le sujet reste scripté. Réglage : Configuration manette." if duo else "Un seul joueur : le drone suit le sujet, tu gères la gimbal."
+	_mode_info.text = "Manette 1 = gimbal (cadreur), manette 2 = drone en mode acro (pilote). Le sujet reste scripté. Réglage : Paramètres > Configuration manette." if duo else "Un seul joueur : le drone suit le sujet, tu gères la gimbal."
 	_movement_opt.disabled = duo
 	_level_opt.disabled = duo
 	_train_button.text = "Lancer la session à 2 joueurs (Entrée)" if duo else "Lancer la session d'entraînement (Entrée)"

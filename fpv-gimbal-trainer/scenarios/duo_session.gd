@@ -85,7 +85,7 @@ func update_osd() -> void:
 		gy = float(drone.ground_fn.call(drone.position.x, drone.position.z))
 	var d := drone.position.distance_to(scn.subject.torso_position())
 	var inp := current_inputs()
-	var dev := "NO PILOT CONTROLLER (menu > Configuration manette > Drone)"
+	var dev := "NO PILOT CONTROLLER (menu > Paramètres > Configuration manette > Drone)"
 	if not input_override.is_empty():
 		dev = "(scripted pilot)"
 	elif ControllerInput.has_pilot_device():
