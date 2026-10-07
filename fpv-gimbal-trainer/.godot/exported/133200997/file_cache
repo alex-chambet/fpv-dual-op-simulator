@@ -63,3 +63,6 @@ res://scenes/history.tscn::e8acb3fb1b4891827f9ad011c91a5055::1791201496::res://.
 res://scenes/input_debug.tscn::0173d3782b59a6c95919518290df5c08::1791191728::res://.godot/exported/133200997/export-9fda22b53489d1b61a0e15e3db9f3c25-input_debug.scn
 res://scenes/main_menu.tscn::3ddc19722fd94c2cdb4b3c6bf6977feb::1791220452::res://.godot/exported/133200997/export-ea5c6ad4629af728dc514cefde332394-main_menu.scn
 res://ski_slope.tscn::f2fc6aa954aa1a9f2cce4f0009cbb40f::1791212617::res://.godot/exported/133200997/export-53b9782f635e62801f321436e72b9279-ski_slope.scn
+res://scenarios/environments/styles/departementale.tres::e18c35d46284d6eea71dc9a115edcaf7::1791314760::res://.godot/exported/133200997/export-198cbe2967c3147e988e2b3417c6fb7c-departementale.res
+res://scenarios/subjects/catalogue/departementale.tres::ed2600559013ed9ec1a9ffc79b603ab5::1791314911::res://.godot/exported/133200997/export-1dc05ef3fd1cc67d4c8726dff4373077-departementale.res
+res://_mbt.tscn::9342d32bce72a2a6bf6949c3b203881a::1791381104::res://.godot/exported/133200997/export-16116f6106307a8ce21f639cd5d85b7e-_mbt.scn

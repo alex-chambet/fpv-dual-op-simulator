@@ -124,8 +124,7 @@ func _layout_pip() -> void:
 	var w := screen.x * PIP_WIDTH
 	var h := w * 0.75
 	_pip.position = Vector2(screen.x - w - PIP_MARGIN, screen.y - h - PIP_MARGIN)
-	_pip.size = Vector2(w, h)
-	_vp.size = Vector2i(int(w), int(h))
+	_pip.size = Vector2(w, h)  # the container (stretch) gives its size to the pilot's viewport
 	_osd.position = Vector2(_pip.position.x, _pip.position.y - 84.0)
 	_osd.size = Vector2(w, 80.0)
 
