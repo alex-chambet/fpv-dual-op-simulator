@@ -50,12 +50,7 @@ static func _wheel(parent: Node3D, pos: Vector3, radius: float, width: float) ->
 static func car(rng: RandomNumberGenerator) -> Dictionary:
 	var root := Node3D.new()
 	var col: Color = CAR_COLORS[rng.randi() % CAR_COLORS.size()]
-	_box(root, Vector3(1.75, 0.6, 4.2), Vector3(0, 0.65, 0), col, 0.35)
-	_box(root, Vector3(1.5, 0.5, 2.0), Vector3(0, 1.17, 0.25), Color(0.08, 0.1, 0.14), 0.15)
-	_box(root, Vector3(1.6, 0.06, 1.1), Vector3(0, 1.44, 0.25), col, 0.35)
-	for wx in [-0.9, 0.9]:
-		for wz in [-1.3, 1.3]:
-			_wheel(root, Vector3(wx, 0.32, wz), 0.32, 0.22)
+	CarModel.build(root, col, rng.randi() % 2)
 	return {"node": root, "half_len": 2.1, "half_width": 0.9, "height": 1.5}
 
 

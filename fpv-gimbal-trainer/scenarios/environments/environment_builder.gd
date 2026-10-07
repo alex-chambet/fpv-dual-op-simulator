@@ -20,12 +20,19 @@ var subject_size := 1.8
 ## Set by the runner before populate(): the archetype and the (level-scaled) parameters of the subject.
 var arch: SubjectArchetype
 var params := {}
+## Map of the roads / trails / verges seen from above (GroundMask), set by build_terrain when there is one.
+var ground_mask: GroundMask
+## The detailed terrain (xz rectangle and material), set by build_terrain; the far scenery surrounds it.
+var terrain_rect := Rect2()
+var terrain_material: Material
 
 
 func setup(h: ScenarioBase, s: EnvironmentStyle, o: Dictionary) -> void:
 	host = h
 	style = s
 	overrides = o
+	Vegetation.snow_cover = 0.0
+	Rocks.moss_amount = 0.25
 	configure()
 
 
@@ -106,6 +113,30 @@ func hud_extra() -> String:
 	return ""
 
 
+## True within r metres (horizontally) of the drone's start: the 2-player drone takes off from there, its camera
+## at ground level, so no stone or bush may stand on that spot.
+func near_drone_start(x: float, z: float, r := 5.0) -> bool:
+	if host == null or host.drone_pts.is_empty():
+		return false
+	var s: Vector3 = host.drone_pts[0]
+	return Vector2(x - s.x, z - s.z).length() < r
+
+
+## Ground height far from the playing area (outer terrain ring, foot of the distant hills): no road there.
+func far_height(x: float, z: float) -> float:
+	return base_height(x, z)
+
+
+## The landscape beyond the terrain (FarScenery configuration); empty = none.
+func far_scenery() -> Dictionary:
+	return {}
+
+
+## 3D grass of the world (GrassField parameters); empty = none.
+func grass_params() -> Dictionary:
+	return {}
+
+
 ## What hides the subject on a line of sight: trees / rocks / walls / players / clouds / none.
 func occluder_kind() -> String:
 	return style.occluder_kind
@@ -114,15 +145,8 @@ func occluder_kind() -> String:
 ## Applies sky, fog, light and post-processing to the scene nodes.
 func apply_to_scene(world_env: WorldEnvironment, sun: DirectionalLight3D) -> void:
 	var e := world_env.environment
-	var sky_mat := e.sky.sky_material as ProceduralSkyMaterial
-	sky_mat.sky_top_color = style.sky_top_color
-	sky_mat.sky_horizon_color = style.sky_horizon_color
-	sky_mat.sky_curve = style.sky_curve
-	sky_mat.ground_horizon_color = style.ground_horizon_color
-	sky_mat.ground_bottom_color = style.ground_bottom_color
-	sky_mat.ground_curve = style.ground_curve
-	sky_mat.sun_angle_max = style.sun_angle_max
-	sky_mat.sun_curve = style.sun_curve
+	e.sky.sky_material = GameSky.make(style)
+	e.tonemap_mode = Environment.TONE_MAPPER_AGX
 	e.ambient_light_energy = style.ambient_energy
 	e.ssao_radius = style.ssao_radius
 	e.ssao_intensity = style.ssao_intensity

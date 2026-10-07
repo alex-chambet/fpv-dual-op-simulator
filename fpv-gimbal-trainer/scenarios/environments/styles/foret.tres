@@ -21,6 +21,7 @@ sun_angular_distance = 0.5
 sun_elevation = 38.0
 sun_azimuth = 20.0
 shadow_max_distance = 120.0
+cloud_coverage = 0.3
 ambient_energy = 0.7
 ssao_radius = 2.5
 ssao_intensity = 3.0

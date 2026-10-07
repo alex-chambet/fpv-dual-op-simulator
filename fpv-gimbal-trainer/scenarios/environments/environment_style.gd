@@ -25,6 +25,9 @@ extends Resource
 @export_range(-180.0, 180.0, 1.0, "suffix:°") var sun_azimuth := 30.0
 @export var shadow_max_distance := 250.0
 @export var ambient_energy := 0.9
+## Part of the sky covered by clouds (0 = clear sky) and size of the clouds (larger = smaller clouds).
+@export_range(0.0, 1.0, 0.01) var cloud_coverage := 0.35
+@export var cloud_scale := 1.0
 
 @export_group("Post-processing")
 @export var ssao_radius := 2.0

@@ -18,6 +18,16 @@ var arch: SubjectArchetype
 ## Archetype parameters after the level scaling.
 var params := {}
 var plan := {}
+var grass: GrassField
+
+
+## Applies the graphics quality (GraphicsSettings) to the scene; called again when it changes in the pause menu.
+func apply_graphics() -> void:
+	GraphicsSettings.apply(world_env.environment, sun, get_viewport())
+	if is_inside_tree():
+		Vegetation.update_ranges(get_tree())
+	if grass != null:
+		grass.apply_quality()
 
 
 func _default_config() -> SessionConfig:
@@ -74,6 +84,7 @@ func _build_scenario() -> void:
 	env = EnvironmentRegistry.create(style, self, def.env_overrides)
 	env.subject_size = def.effective_size()
 	env.apply_to_scene(world_env, sun)
+	apply_graphics()
 
 	arch = ArchetypeRegistry.get_archetype(def.archetype)
 	params = arch.scale_for_level(def.resolved_params(), cfg.params)
@@ -104,6 +115,15 @@ func _build_scenario() -> void:
 
 	env.populate(subject_pts, drone_pts, plan, cfg.fixed)
 	_add_jump_markers()
+	if env.terrain_rect.has_area() and env.terrain_material != null:
+		FarScenery.build(env, env.terrain_rect, env.terrain_material, env.far_scenery())
+	flight.rig.camera.far = 9000.0  # the distant mountains
+	var gp := env.grass_params()
+	if not gp.is_empty() and not TerrainBuilder.last_info.is_empty():
+		grass = GrassField.new()
+		grass.name = "Grass"
+		add_child(grass)
+		grass.setup(gp, TerrainBuilder.last_info, env.ground_mask, flight.rig.camera)
 
 	var s := ArchetypeSubject.new(def, arch, params, plan, world_seed)
 	if arch.uses_ground():

@@ -75,6 +75,7 @@ func _load_prefs() -> Dictionary:
 
 func _apply_prefs(prefs: Dictionary) -> void:
 	MotionBlur.level = clampi(int(prefs.get("blur", MotionBlur.level)), 0, MotionBlur.LABELS.size() - 1)
+	GraphicsSettings.quality = clampi(int(prefs.get("quality", GraphicsSettings.quality)), 0, GraphicsSettings.LABELS.size() - 1)
 	for pair in [[_mode_opt, "mode"], [_movement_opt, "movement"], [_level_opt, "level"], [_lens_opt, "lens"], [_screens_opt, "screens"]]:
 		var o: OptionButton = pair[0]
 		var i := int(prefs.get(pair[1], 1 if pair[1] == "blur" else 0))
@@ -89,7 +90,8 @@ func _save_prefs() -> void:
 	var f := FileAccess.open(PREFS_PATH, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify({"sport": _sport.id, "mode": _mode_opt.selected, "movement": _movement_opt.selected,
-				"level": _level_opt.selected, "lens": _lens_opt.selected, "screens": _screens_opt.selected, "blur": MotionBlur.level}, "\t"))
+				"level": _level_opt.selected, "lens": _lens_opt.selected, "screens": _screens_opt.selected, "blur": MotionBlur.level,
+				"quality": GraphicsSettings.quality}, "\t"))
 
 
 # --- UI -------------------------------------------------------------------------------------------

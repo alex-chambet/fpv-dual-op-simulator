@@ -172,26 +172,13 @@ static func _lying(parent: Node3D, col: Color, acc: Color, gear: String, parts: 
 # --- Vehicles and mounts ----------------------------------------------------------------------
 
 static func _box_vehicle(parent: Node3D, col: Color, acc: Color, gear: String, parts: Dictionary) -> void:
-	var paint := _mat(col, 0.35)
-	var glass := _mat(Color(0.08, 0.1, 0.14), 0.15)
-	var tyre := _mat(Color(0.05, 0.05, 0.05), 0.9)
 	if gear == "car":
-		var tail := StandardMaterial3D.new()
-		tail.albedo_color = Color(1.0, 0.05, 0.02)
-		tail.emission_enabled = true
-		tail.emission = Color(1.0, 0.05, 0.02)
-		tail.emission_energy_multiplier = 2.0
-		_mesh(parent, _box(1.8, 0.55, 4.2), paint, Vector3(0, 0.65, 0))
-		_mesh(parent, _box(1.5, 0.5, 2.0), glass, Vector3(0, 1.17, 0.25))
-		_mesh(parent, _box(1.6, 0.06, 1.1), paint, Vector3(0, 1.44, 0.25))  # roof
-		for side in [-0.6, 0.6]:
-			_mesh(parent, _box(0.35, 0.14, 0.05), tail, Vector3(side, 0.8, 2.1))
-		for wx in [-0.95, 0.95]:
-			for wz in [-1.3, 1.3]:
-				_wheel(parent, Vector3(wx, 0.35, wz), 0.35, 0.25, tyre, parts)
+		for w in CarModel.build(parent, col, 0):
+			parts["wheels"].append(w)
+		parts["wheel_radius"] = 0.33
 		parts["aim_y"] = 0.9
 	else:
-		_mesh(parent, _box(1.0, 0.8, 2.0), paint, Vector3(0, 0.5, 0))
+		_mesh(parent, _box(1.0, 0.8, 2.0), _mat(col, 0.35), Vector3(0, 0.5, 0))
 		_mesh(parent, _box(0.8, 0.3, 0.9), _mat(acc), Vector3(0, 1.05, 0.2))
 		parts["aim_y"] = 0.7
 

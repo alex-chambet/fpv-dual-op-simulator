@@ -77,11 +77,12 @@ func animate(s: ArchetypeSubject, delta: float) -> void:
 
 
 func _build_trail(s: ArchetypeSubject) -> void:
+	# a groove in the snow: thin, overlapping (continuous), a little darker and bluer than the snow around
 	var box := BoxMesh.new()
-	box.size = Vector3(0.1, 0.02, TRAIL_STEP * 1.25)
+	box.size = Vector3(0.07, 0.008, TRAIL_STEP * 1.7)
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.6, 0.66, 0.8)
-	mat.roughness = 1.0
+	mat.albedo_color = Color(0.7, 0.76, 0.9)
+	mat.roughness = 0.9
 	box.material = mat
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D

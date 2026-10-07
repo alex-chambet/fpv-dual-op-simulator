@@ -60,6 +60,21 @@ func _build() -> void:
 	gtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	gtitle.add_theme_font_size_override("font_size", 32)
 	_graphics_page.add_child(gtitle)
+	var qrow := HBoxContainer.new()
+	_graphics_page.add_child(qrow)
+	var ql := Label.new()
+	ql.text = "Qualité graphique"
+	ql.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	qrow.add_child(ql)
+	var qopt := OptionButton.new()
+	for t in GraphicsSettings.LABELS:
+		qopt.add_item(t)
+	qopt.select(GraphicsSettings.quality)
+	qopt.item_selected.connect(func(i):
+		GraphicsSettings.quality = i
+		GraphicsSettings.save()
+		GraphicsSettings.apply_live(get_tree()))
+	qrow.add_child(qopt)
 	var row := HBoxContainer.new()
 	_graphics_page.add_child(row)
 	var l := Label.new()

@@ -30,6 +30,7 @@ var _tunnel_right := Vector3.BACK
 var _s_in := 0.0
 var _s_out := 0.0
 var _drift_event := -1.0
+var _ground_params := {}
 
 
 func configure() -> void:
@@ -48,6 +49,33 @@ func ground(x: float, z: float) -> float:
 	return _road.blend_height(x, z, base_height(x, z), 7.5, 15.0)
 
 
+func grass_params() -> Dictionary:
+	var p := _ground_params.duplicate()
+	p.merge({"height": 0.26, "density": 0.9, "flowers": 0.12, "max_slope": 0.22})
+	return p
+
+
+## Valley walls rising to high snowy mountains.
+func far_scenery() -> Dictionary:
+	return {"ring_radius": 1600.0, "ring_cell": 30.0,
+		"hills": {"height": 1900.0, "r0": 1800.0, "r1": 6500.0, "frequency": 0.0009, "snow_line": 1500.0,
+			"tree_line": 1000.0, "forest": Color(0.08, 0.17, 0.08), "grass": Color(0.34, 0.38, 0.18)},
+		"trees": {"kind": "conifer", "count": 1300, "r0": 160.0, "r1": 1000.0, "colour": Color(0.1, 0.28, 0.14),
+			"grove": 0.0}}
+
+
+## Outside the playing area the valley walls stop steepening: a U-shaped glacial valley whose sides ease to about
+## 30 degrees (grass and forest), up to the high mountains of the far scenery. Same height as the terrain up to
+## its edge (|x| = 140).
+func far_height(x: float, z: float) -> float:
+	var d := maxf(0.0, absf(x) - 62.0)
+	if d <= 78.0:
+		return base_height(x, z)
+	var e := d - 78.0
+	var wall := 0.012 * 78.0 * 78.0 + 0.6 * e + 1.27 * 50.0 * (1.0 - exp(-e / 50.0))
+	return 0.16 * z + 2.0 * sin(x * 0.05 + 1.0) * sin(z * 0.045) + 1.0 * sin(x * 0.12) * cos(z * 0.1) + wall
+
+
 func occluder_kind() -> String:
 	return "trees"
 
@@ -59,19 +87,35 @@ func build_terrain(path: PackedVector3Array, _plan: Dictionary) -> void:
 	_road = RoadBuilder.new(dense)
 	var b := PathUtil.bounds_xz(path)
 
+	var z0 := b.position.y - 60.0
+	var z1 := b.end.y + 85.0
 	var mi := MeshInstance3D.new()
 	mi.name = "Terrain"
-	mi.mesh = TerrainBuilder.build(Callable(self, "ground"), 140.0, b.position.y - 60.0, b.end.y + 85.0, 3.0)
-	mi.material_override = TerrainBuilder.make_material(Color(0.3, 0.33, 0.22), Color(0.55, 0.52, 0.42))
+	mi.mesh = TerrainBuilder.build(Callable(self, "ground"), 140.0, z0, z1, 3.0)
+	# alpine pasture, rock on the steep valley walls
+	_ground_params = {"grass_a": Color(0.2, 0.3, 0.1), "grass_b": Color(0.38, 0.44, 0.17),
+			"dry": Color(0.55, 0.5, 0.3), "dry_amount": 0.5, "dirt_amount": 0.2, "rock_start": 0.2, "rock_end": 0.34,
+			"rock_a": Color(0.5, 0.48, 0.45), "rock_b": Color(0.27, 0.26, 0.25), "fringe_color": Color(0.45, 0.42, 0.36)}
+	var mat := GroundMaterials.terrain(_ground_params)
+	mi.material_override = mat
 	host.add_child(mi)
+	terrain_rect = Rect2(-140.0, z0, 280.0, z1 - z0)
+	terrain_material = mat
+	ground_mask = GroundMask.new()
+	ground_mask.setup(terrain_rect)
+	ground_mask.add_band(dense, ROAD_HALF_WIDTH + 2.2, Color(0, 0, 1))
+	ground_mask.add_band(dense, ROAD_HALF_WIDTH + 0.5, Color(1, 0, 1))
+	host.add_child(ground_mask)
+	ground_mask.bind(mat)
 
 	var asphalt := MeshInstance3D.new()
 	asphalt.mesh = RoadBuilder.build_ribbon(dense, ROAD_HALF_WIDTH, 0.12)
-	asphalt.material_override = PathSubject.make_mat(Color(0.16, 0.16, 0.18), 0.85)
+	asphalt.material_override = GroundMaterials.asphalt({"half_width": ROAD_HALF_WIDTH, "base": Color(0.17, 0.17, 0.18)})
+	asphalt.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	host.add_child(asphalt)
 	var line := MeshInstance3D.new()
 	line.mesh = RoadBuilder.build_dashes(dense, 0.09, 0.14, 3, 3)
-	line.material_override = PathSubject.make_mat(Color(0.9, 0.9, 0.85), 0.8)
+	line.material_override = GroundMaterials.paint()
 	line.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	host.add_child(line)
 
@@ -134,6 +178,29 @@ func populate(_path: PackedVector3Array, _drone: PackedVector3Array, _plan: Dict
 			fr.append((k + 1.0) / (count + 1.0))
 		host.add_los_occluders(fr)
 
+	# Stones and boulders on the slopes (the big ones far from the road and off the lines of sight, so they never
+	# hide the car)
+	var los := PackedVector2Array()
+	for i in range(0, mini(_path.size(), _drone.size()), 2):
+		los.append(Vector2(_path[i].x, _path[i].z))
+		los.append(Vector2(_drone[i].x, _drone[i].z))
+	var srng := RandomNumberGenerator.new()
+	srng.seed = 960 + host.world_seed
+	var stones := PackedVector3Array()
+	var sizes := PackedFloat32Array()
+	for i in roundi(340 * GraphicsSettings.detail_amount()):
+		var x := srng.randf_range(-135.0, 135.0)
+		var z := srng.randf_range(b.position.y - 55.0, b.end.y + 80.0)
+		var d := _road.nearest(x, z).x
+		var big := srng.randf() < 0.15
+		if d < ROAD_HALF_WIDTH + (14.0 if big else 2.5) or near_drone_start(x, z):
+			continue
+		if big and _near_segments(los, x, z, 4.0):
+			continue
+		stones.append(Vector3(x, ground(x, z), z))
+		sizes.append(srng.randf_range(1.0, 1.9) if big else srng.randf_range(0.2, 0.8))
+	Rocks.scatter(host, stones, sizes, 961 + host.world_seed)
+
 	# Rocks beyond the outer edge of each bend (the extremes of the road across the slope)
 	for i in range(1, path.size() - 1):
 		if (path[i].x - path[i - 1].x) * (path[i + 1].x - path[i].x) >= 0.0:
@@ -195,7 +262,7 @@ func _build_tunnel(path: PackedVector3Array) -> void:
 	hull.radial_segments = 24
 	hull.cap_top = false
 	hull.cap_bottom = false
-	var mat := PathSubject.make_mat(Color(0.38, 0.36, 0.33), 0.95)
+	var mat := PathSubject.make_mat(Color(0.3, 0.29, 0.27), 0.95)
 	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	var mi := MeshInstance3D.new()
 	mi.mesh = hull
@@ -203,6 +270,7 @@ func _build_tunnel(path: PackedVector3Array) -> void:
 	mi.position = _tunnel_center
 	mi.basis = Basis(Quaternion(Vector3.UP, _tunnel_dir))
 	host.add_child(mi)
+	_build_tunnel_hill()
 
 	# Arc lengths of the entry / exit along the (coarse) path
 	var cum := PathUtil.cumulative(path)
@@ -215,6 +283,107 @@ func _build_tunnel(path: PackedVector3Array) -> void:
 				first = false
 			_s_out = cum[i]
 	_drift_event = PathUtil.index_at(cum, (_s_in + _s_out) * 0.5) / float(path.size() - 1)
+
+
+## Seen from outside the tunnel is a grassy / rocky hill with a concrete portal at each end, not a tube. The hill
+## stays below the heights the drone already keeps away from (clearance: the hull top within TUNNEL_R + 3 m of the
+## axis, at least 3 m above the ground elsewhere), so the planned flights do not change.
+func _build_tunnel_hill() -> void:
+	var cy := _tunnel_center.y
+	var cell := 1.5
+	var na := ceili(44.0 / cell)
+	var nl := ceili(TUNNEL_HALF * 2.0 / cell)
+	var grid := []
+	for il in nl + 1:
+		var along := -TUNNEL_HALF + TUNNEL_HALF * 2.0 * il / nl
+		var row := PackedVector3Array()
+		for ia in na + 1:
+			var a := -22.0 + 44.0 * ia / na
+			var p := _tunnel_center + _tunnel_dir * along + _tunnel_right * a
+			row.append(Vector3(p.x, _hill_height(a, ground(p.x, p.z), cy), p.z))
+		grid.append(row)
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for il in nl:
+		var r0: PackedVector3Array = grid[il]
+		var r1: PackedVector3Array = grid[il + 1]
+		for ia in na:
+			_tri_up(st, r0[ia], r0[ia + 1], r1[ia])
+			_tri_up(st, r0[ia + 1], r1[ia + 1], r1[ia])
+	st.generate_normals()
+	var hill := MeshInstance3D.new()
+	hill.name = "TunnelHill"
+	hill.mesh = st.commit()
+	hill.material_override = terrain_material
+	host.add_child(hill)
+
+	# portals: the cross-section of the hill at each end, with the arch of the tube cut out
+	var concrete := PathSubject.make_mat(Color(0.58, 0.57, 0.53), 0.9)
+	concrete.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var pst := SurfaceTool.new()
+	pst.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for end in [-1.0, 1.0]:
+		var row: PackedVector3Array = grid[0 if end < 0.0 else nl]
+		var cols := []
+		for ia in na + 1:
+			var a := -22.0 + 44.0 * ia / na
+			var top: Vector3 = row[ia] + _tunnel_dir * end * 0.15
+			var g := ground(top.x, top.z)
+			var bottom := cy + sqrt(TUNNEL_R * TUNNEL_R - a * a) if absf(a) < TUNNEL_R else g - 1.0
+			if top.y > bottom + 0.05:
+				cols.append([Vector3(top.x, bottom, top.z), top])
+			else:
+				cols.append([])
+		for k in cols.size() - 1:
+			if cols[k].is_empty() or cols[k + 1].is_empty():
+				continue
+			var b0: Vector3 = cols[k][0]
+			var t0: Vector3 = cols[k][1]
+			var b1: Vector3 = cols[k + 1][0]
+			var t1: Vector3 = cols[k + 1][1]
+			for v in [b0, t0, b1, b1, t0, t1]:
+				pst.set_normal(_tunnel_dir * end)
+				pst.add_vertex(v)
+	var portals := MeshInstance3D.new()
+	portals.name = "TunnelPortals"
+	portals.mesh = pst.commit()
+	portals.material_override = concrete
+	host.add_child(portals)
+
+
+## Height of the hill over the tunnel at `a` metres from its axis (ground g, road level cy at the centre).
+func _hill_height(a: float, g: float, cy: float) -> float:
+	var aa := absf(a)
+	var h: float
+	if aa <= TUNNEL_R + 3.0:
+		h = cy + 2.5 + (TUNNEL_R + 1.8 - 2.5) * pow(1.0 - pow(aa / (TUNNEL_R + 3.0), 2.0), 0.8)
+	else:
+		var f := 1.0 - smoothstep(TUNNEL_R + 3.0, 22.0, aa)
+		h = minf(cy + 2.5 * f, g + 2.0 * f - 0.3 * (1.0 - f))
+	return maxf(h, g - 0.3)
+
+
+## True if (x, z) is within r metres of one of the segments (pairs of points) of `segs`.
+static func _near_segments(segs: PackedVector2Array, x: float, z: float, r: float) -> bool:
+	var q := Vector2(x, z)
+	for k in range(0, segs.size() - 1, 2):
+		var a := segs[k]
+		var ab := segs[k + 1] - a
+		var l2 := ab.length_squared()
+		var t := 0.0 if l2 < 0.0001 else clampf((q - a).dot(ab) / l2, 0.0, 1.0)
+		if q.distance_squared_to(a + ab * t) < r * r:
+			return true
+	return false
+
+
+## Adds a triangle facing up (clockwise seen from above, the front face for the renderer).
+static func _tri_up(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3) -> void:
+	if (b - a).cross(c - a).y > 0.0:
+		var tmp := b
+		b = c
+		c = tmp
+	for v in [a, b, c]:
+		st.add_vertex(v)
 
 
 func _in_tunnel(p: Vector3) -> bool:
