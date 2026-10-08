@@ -49,8 +49,15 @@ const EVENT_FADE := 3.0        # s, the sway of the drone fades out before an ev
 const EVENT_GAP := 4.0         # s, free time wanted between two events
 const QUINTIC_PEAK := 5.77     # peak acceleration of a quintic blend = 5.77 x distance / duration^2
 ## Movements that are inherently fast in the image get a larger pan / tilt limit.
-const PAN_CAP_FACTOR := {"pursuit": 1.0, "frontal": 1.1, "lateral": 1.2, "reveal": 1.5, "orbit": 1.25, "flyby": 1.7}
-const TILT_CAP_FACTOR := {"pursuit": 1.0, "frontal": 1.0, "lateral": 1.0, "reveal": 1.2, "orbit": 1.2, "flyby": 1.5}
+const PAN_CAP_FACTOR := {"pursuit": 1.0, "frontal": 1.1, "lateral": 1.2, "reveal": 1.5, "orbit": 1.25, "flyby": 1.7,
+		"approach_orbit": 1.3, "dive": 1.3, "choreo": 1.35}
+const TILT_CAP_FACTOR := {"pursuit": 1.0, "frontal": 1.0, "lateral": 1.0, "reveal": 1.2, "orbit": 1.2, "flyby": 1.5,
+		"approach_orbit": 1.3, "dive": 1.6, "choreo": 1.5}
+## Figures (expert movements, see _build_figures)
+const FIGURE_SIGMA := 0.8      # s, low-pass of the azimuth / distance / height of the drone around the subject
+const FIGURE_SPEED_CAP := 40.0 # m/s (144 km/h), 99th percentile of the drone speed in a figure flight
+const FIGURE_LEAD := 2.5       # s alongside the subject before the first figure
+const FIGURE_HIDDEN_CAP := 0.04  # share of the run the ground may stand between the drone and the subject
 
 
 static func plan(movement: String, S: PackedVector3Array, ctx: Dictionary) -> Dictionary:
@@ -78,7 +85,8 @@ static func _plan_with(movement: String, S: PackedVector3Array, ctx: Dictionary)
 	var sig_mul := 1.0    # smoothing multiplier
 	var time_mul := 1.0   # slows the orbit / the sweeps
 	var sway_k := 1.0     # softens the sway (last resort: a tortuous path leaves little room for it)
-	var fast := movement == "orbit" or movement == "reveal" or movement == "flyby"
+	var figures := movement in DroneDifficulty.EXPERT_MOVEMENTS
+	var fast := movement == "orbit" or movement == "reveal" or movement == "flyby" or figures
 	var cap_pan := float(lp.pan_cap) * float(PAN_CAP_FACTOR[movement])
 	var cap_tilt := float(lp.tilt_cap) * float(TILT_CAP_FACTOR[movement])
 	var best := {}
@@ -90,9 +98,16 @@ static func _plan_with(movement: String, S: PackedVector3Array, ctx: Dictionary)
 		var over_pan: float = stats.pan95 / cap_pan
 		var over_tilt: float = stats.tilt95 / cap_tilt
 		var over_acc: float = stats.acc99 / (1.15 * float(lp.accel_cap))
-		var score := maxf(over_pan, maxf(over_tilt, over_acc))
+		# A figure flight also keeps a believable top speed (the far legs are flown fast), and its far legs
+		# must not put a hill between the drone and the subject (they are brought closer if they do).
+		var over_spd: float = float(stats.spd99) / FIGURE_SPEED_CAP if figures else 0.0
+		var blocked := _terrain_blocked(res.drone, g) if figures else 0.0
+		var over_los := blocked / FIGURE_HIDDEN_CAP if figures else 0.0
+		var score := maxf(maxf(maxf(over_pan, over_spd), over_los), maxf(over_tilt, over_acc))
 		if score < best_score:  # keep the best flight of the attempts
 			best_score = score
+			stats["los_blocked"] = blocked
+			stats["far_k"] = float(g.get("far_k", 1.0))
 			stats["k_dist"] = k_dist
 			stats["sig_mul"] = sig_mul
 			stats["time_mul"] = time_mul
@@ -117,6 +132,10 @@ static func _plan_with(movement: String, S: PackedVector3Array, ctx: Dictionary)
 			k_dist = minf(k_dist * clampf(pow(over, 0.85), 1.06, 1.4), 2.0)
 			if fast:
 				time_mul = minf(time_mul * clampf(pow(over, 0.5), 1.05, 1.3), 2.2)
+		if over_spd > 1.0:
+			time_mul = minf(time_mul * clampf(over_spd, 1.05, 1.4), 2.2)
+		if over_los > 1.0:
+			g["far_k"] = maxf(float(g.get("far_k", 1.0)) * 0.78, 0.45)
 	best["barriers"] = _barriers(g, best.drone, best.events, best.heads)
 	return best
 
@@ -221,6 +240,8 @@ static func _timeline(cum: PackedFloat32Array, total: float, profile: PackedFloa
 # --- One flight -------------------------------------------------------------------------------
 
 static func _build(g: Dictionary, k_dist: float, sig_mul: float, time_mul: float, sway_k := 1.0) -> Dictionary:
+	if g.movement in DroneDifficulty.EXPERT_MOVEMENTS:
+		return _build_figures(g, k_dist, sig_mul, time_mul)
 	var movement: String = g.movement
 	var S: PackedVector3Array = g.S
 	var tt: PackedFloat32Array = g.tt
@@ -334,6 +355,258 @@ static func _finish(g: Dictionary, D_raw: PackedVector3Array, sig_mul: float, d_
 	var D := _smooth(D_raw, tt, sig)
 	D = _keep_away(D, S, tt, d_floor, heads, 0.5 * sig)
 	return {"drone": _clear_ground(D, tt, g.ground, float(g.min_h)), "events": events, "heads": heads}
+
+
+# --- Figures (expert movements) ----------------------------------------------------------------
+
+## Flight of an expert movement (DroneDifficulty.EXPERT_MOVEMENTS): a chain of figures flown around the
+## subject, written in a frame that follows it - azimuth (0 = alongside on `side`, +PI/2 = ahead,
+## -PI/2 = behind), horizontal distance, height above the subject. A figure is a list of keys joined by
+## straight legs flown at the figure speed of the level; the three channels are then low-passed in time, so
+## the drone never changes direction or speed abruptly (the planner still checks its acceleration, its top
+## speed and the pan / tilt speed it asks for):
+##  - "approach": the drone pulls away far and high (the subject gets tiny in the frame), rushes back in and
+##    wraps into a fast orbit of one turn or more, with its height rising and falling;
+##  - "dive": it climbs high ahead of the subject, dives onto it, skims past it low and climbs out behind;
+##  - "cross": it waits far ahead, rushes head-on at the subject, crosses it close and flies away behind;
+##  - "spiral": it orbits the subject while climbing away from it, then comes back down close.
+## approach_orbit chains approaches, dive chains dives, choreo mixes the four (never twice the same in a row).
+static func _build_figures(g: Dictionary, k_dist: float, sig_mul: float, time_mul: float) -> Dictionary:
+	var S: PackedVector3Array = g.S
+	var tt: PackedFloat32Array = g.tt
+	var n: int = g.n
+	var lp: Dictionary = g.lp
+	var T: float = g.T
+	var side: float = g.side
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(g.seed)
+	var size: float = g.size
+	var sf := clampf(pow(float(g.v) / 8.0, 0.3), 0.85, 1.4)
+	var u := float(g.ds) * sf  # distance unit of the sport
+	var d_floor := 1.4 * size + 0.8
+
+	# Close to the subject the drone flies around its real path (a low-passed copy would cut the bends and
+	# leave the drone far from the subject there); far away it flies around a smoother copy, in a frame that
+	# turns slowly (a far drone swinging round with every bend would need a lot of acceleration).
+	var ckey := "f%.3f" % snappedf(sig_mul, 0.001)
+	var cache: Dictionary = g.cache
+	if not cache.has(ckey):
+		var c_near := _smooth(S, tt, 0.6 * sig_mul)
+		cache[ckey] = [c_near, _swing(S, c_near), _smooth(S, tt, 2.0 * sig_mul)]
+	var C_near: PackedVector3Array = cache[ckey][0]
+	var swing: float = cache[ckey][1]
+	var C_far: PackedVector3Array = cache[ckey][2]
+
+	# Distances (m), speed of the legs (m/s, relative to the subject), time scale of the figures
+	var r_close := maxf(12.0 * float(lp.proximity) * u * k_dist, maxf(1.6 * d_floor, 1.25 * swing + 1.4 * d_floor))
+	var r_far := maxf(clampf(36.0 * u, 24.0, 50.0 * maxf(u, 0.6)) * float(g.get("far_k", 1.0)), 3.0 * r_close)
+	var r_orbit := 1.1 * r_close
+	g["far_from"] = 2.5 * r_close
+	var f := {
+		"r_close": r_close, "r_far": r_far, "r_orbit": r_orbit,
+		"h_close": r_close * tan(BASE_ELEVATION), "h_low": 1.0 + 0.9 * size, "h_far": 0.4 * r_far,
+		"r_top": 0.32 * r_far, "h_top": 0.62 * r_far,
+		"v": float(lp.figure_speed) * clampf(u, 0.7, 1.6) / time_mul,
+		"tempo": float(lp.figure_tempo) * time_mul,
+		# an orbit never turns faster than its centripetal acceleration allows
+		"period": maxf(float(lp.orbit_period) * time_mul,
+				TAU * sqrt(1.05 * r_orbit / (ORBIT_ACCEL * float(lp.accel_cap)))),
+		"rot": -1.0 if rng.randf() < 0.5 else 1.0,
+		"b": 0.0,
+	}
+	var kinds: Array
+	match str(g.movement):
+		"approach_orbit": kinds = ["approach", "spiral"]
+		"dive": kinds = ["dive", "cross"]
+		_: kinds = ["approach", "dive", "cross", "spiral"]
+
+	# Alongside the subject, then figures as long as they fit in the run, then back alongside.
+	var keys: Array = [[0.0, 0.0, 1.5 * r_close, float(f.h_close)]]
+	_hold(keys, FIGURE_LEAD)
+	var events := []
+	var last := ""
+	while true:
+		# the movement's own figure, or the shorter one when it no longer fits (choreo: a random one, never
+		# the same twice in a row, an approach first)
+		var order: Array = kinds.duplicate()
+		if kinds.size() > 2:
+			order.clear()
+			for kd in kinds:
+				if kd != last:
+					order.insert(rng.randi_range(0, order.size()), kd)
+			if last == "":
+				order.erase("approach")
+				order.push_front("approach")
+		var placed := false
+		for kind in order:
+			var trial := keys.duplicate(true)
+			var state := f.duplicate()
+			var t0 := float(keys[keys.size() - 1][0])
+			_figure(str(kind), trial, state, rng)
+			if float(trial[trial.size() - 1][0]) <= T - 2.0:
+				keys = trial
+				f = state
+				events.append({"kind": str(kind), "t0": t0, "dur": float(keys[keys.size() - 1][0]) - t0})
+				last = str(kind)
+				placed = true
+				break
+		if not placed:
+			break
+	var a_last := float(keys[keys.size() - 1][1])
+	var a_end := _wrap_near(0.0, a_last)
+	if absf(_wrap_near(PI, a_last) - a_last) < absf(a_end - a_last):
+		a_end = _wrap_near(PI, a_last)
+	_leg(keys, a_end, 1.5 * r_close, float(f.h_close), float(f.v), 2.5 * float(f.tempo))
+	_hold(keys, maxf(T - float(keys[keys.size() - 1][0]), 0.0) + 2.0)
+
+	# Channels at the drone's times, low-passed, then placed around the subject.
+	var P := PackedVector3Array()
+	P.resize(n)
+	var k := 1
+	for i in n:
+		while k < keys.size() - 1 and float(keys[k][0]) < tt[i]:
+			k += 1
+		var a: Array = keys[k - 1]
+		var b: Array = keys[k]
+		var w := clampf((tt[i] - float(a[0])) / maxf(float(b[0]) - float(a[0]), 0.0001), 0.0, 1.0)
+		P[i] = Vector3(lerpf(a[1], b[1], w), lerpf(a[2], b[2], w), lerpf(a[3], b[3], w))
+	P = _smooth(P, tt, FIGURE_SIGMA * sig_mul)
+	var heads_near := _cached_headings(g, S, tt, HEADING_SIGMA * sig_mul)
+	var heads_far := _cached_headings(g, S, tt, HEADING_SIGMA * sig_mul * clampf(r_far / 18.0, 1.0, 3.0))
+	var heads := PackedVector3Array()
+	heads.resize(n)
+	var D := PackedVector3Array()
+	D.resize(n)
+	for i in n:
+		var p := P[i]
+		var w := _sstep(r_close, r_far, p.y)  # 0 close to the subject, 1 far away
+		var head := heads_near[i].lerp(heads_far[i], w)
+		head = head.normalized() if head.length() > 0.01 else heads_far[i]
+		heads[i] = head
+		var right := head.cross(Vector3.UP)
+		D[i] = C_near[i].lerp(C_far[i], w) + (right * (side * cos(p.x)) + head * sin(p.x)) * p.y + Vector3(0.0, p.z, 0.0)
+	return _finish(g, D, sig_mul, d_floor, events, heads)
+
+
+## Headings of the path low-passed with `sigma` (s), cached in the planning context.
+static func _cached_headings(g: Dictionary, S: PackedVector3Array, tt: PackedFloat32Array, sigma: float) -> PackedVector3Array:
+	var cache: Dictionary = g.cache
+	var key := "h%.3f" % snappedf(sigma, 0.05)
+	if not cache.has(key):
+		cache[key] = _headings(_smooth(S, tt, sigma))
+	return cache[key]
+
+
+## Share of the samples where the ground stands between the drone and the subject while the drone is far
+## from it (g.far_from, m; close to the subject the drone flies like in the other movements, and a tunnel
+## hides the subject whatever the drone does).
+static func _terrain_blocked(D: PackedVector3Array, g: Dictionary) -> float:
+	var ground: Callable = g.ground
+	if not ground.is_valid():
+		return 0.0
+	var S: PackedVector3Array = g.S
+	var far_from := float(g.get("far_from", 0.0))
+	var blocked := 0
+	var count := 0
+	for i in range(0, D.size(), 2):
+		count += 1
+		var aim := S[i] + Vector3(0.0, AIM_HEIGHT, 0.0)
+		if Vector2(D[i].x - aim.x, D[i].z - aim.z).length() < far_from:
+			continue
+		for k in range(1, 10):
+			var q := D[i].lerp(aim, k / 10.0)
+			if float(ground.call(q.x, q.z)) > q.y + 0.3:
+				blocked += 1
+				break
+	return blocked / maxf(count, 1.0)
+
+
+## Appends the keys of one figure, from the last key (see _build_figures). f: the distances and speeds of
+## the flight, and what alternates from one figure to the next (orbit direction, side of a dive / crossing).
+static func _figure(kind: String, keys: Array, f: Dictionary, rng: RandomNumberGenerator) -> void:
+	var a0 := float(keys[keys.size() - 1][1])
+	var v := float(f.v)
+	var tempo := float(f.tempo)
+	var r_close := float(f.r_close)
+	var r_far := float(f.r_far)
+	var r_orbit := float(f.r_orbit)
+	var h_close := float(f.h_close)
+	var h_low := float(f.h_low)
+	var h_top := float(f.h_top)
+	var period := float(f.period)
+	# b: the side the figure passes on (0 = the movement's side, PI = the other one); q: the direction of the
+	# azimuth from ahead to behind on that side.
+	var b := float(f.b)
+	var q := -1.0 if b == 0.0 else 1.0
+	match kind:
+		"approach":
+			var rot := float(f.rot)
+			f.rot = -rot
+			var e := rng.randf_range(0.35, 1.1) if rng.randf() < 0.6 else -rng.randf_range(0.35, 1.0)
+			var a_in := _wrap_near(e if rng.randf() < 0.5 else PI - e, a0)
+			_leg(keys, a_in, r_far, float(f.h_far), 1.1 * v, 2.6 * tempo)        # away: the subject gets tiny
+			_hold(keys, 0.4 * tempo)
+			var a_c := a_in + rot * 0.7
+			_leg(keys, a_c, 1.4 * r_orbit, h_close + 0.2 * float(f.h_far), 1.25 * v, 2.2 * tempo)  # rushes in
+			# the orbit rises and falls one and a half times: the camera tilts while it pans
+			var turns := rng.randf_range(1.25, 1.75)
+			var steps := 12
+			for s in steps:
+				var ph := float(s + 1) / steps
+				_append(keys, period * turns / steps, a_c + rot * TAU * turns * ph, r_orbit,
+						lerpf(h_low + 0.5, maxf(h_close, h_low) + 0.7 * r_orbit, 0.5 + 0.5 * cos(3.0 * PI * ph)))
+		"dive":
+			f.b = PI - b
+			var a_top := b - q * (0.5 * PI - rng.randf_range(0.2, 0.55))
+			var off := _wrap_near(a_top, a0) - a_top
+			_leg(keys, a_top + off, float(f.r_top), h_top, v, 2.6 * tempo)                  # up, ahead
+			_hold(keys, 0.3 * tempo)
+			_leg(keys, b - q * 0.15 + off, r_close, h_low, 1.35 * v, 1.8 * tempo)            # dives onto it
+			_leg(keys, b + q * 0.9 + off, 1.2 * r_close, h_low + 0.5 * h_close, v, 1.6 * tempo)  # skims past
+			_leg(keys, b + q * 1.35 + off, float(f.r_top), 0.75 * h_top, 0.9 * v, 2.5 * tempo)  # climbs out behind
+		"cross":
+			f.b = PI - b
+			var a_far := b - q * (0.5 * PI - rng.randf_range(0.12, 0.3))
+			var off := _wrap_near(a_far, a0) - a_far
+			_leg(keys, a_far + off, 0.85 * r_far, h_close + 0.12 * r_far, 1.1 * v, 2.6 * tempo)  # far ahead
+			_hold(keys, 0.3 * tempo)
+			_leg(keys, b - q * 0.1 + off, 1.15 * r_close, h_low + 0.3 * h_close, 1.4 * v, 2.0 * tempo)  # head-on
+			_leg(keys, b + q * (0.5 * PI - 0.3) + off, 0.75 * r_far, h_close + 0.2 * r_far, 1.4 * v, 2.5 * tempo)
+		_:  # spiral
+			var rot := float(f.rot)
+			f.rot = -rot
+			var a_s := a0 + rot * 0.5
+			_leg(keys, a_s, r_orbit, h_close, v, 2.0 * tempo)
+			var turns := 1.25
+			var steps := 10
+			for s in steps:
+				var ph := float(s + 1) / steps
+				var up := sin(PI * ph)
+				# a wider turn is flown slower: the centripetal acceleration stays the same
+				_append(keys, period * turns / steps * (1.0 + 0.7 * up), a_s + rot * TAU * turns * ph,
+						r_orbit * (1.0 + 1.6 * up), h_close + (0.7 * h_top - h_close) * up)
+
+
+## Straight leg to (azimuth, distance, height) at `speed` (m/s, along the leg), lasting at least `min_dur` s.
+static func _leg(keys: Array, az: float, r: float, h: float, speed: float, min_dur: float) -> void:
+	var last: Array = keys[keys.size() - 1]
+	var r0 := float(last[2])
+	var length := Vector3(r - r0, 0.5 * (r + r0) * (az - float(last[1])), h - float(last[3])).length()
+	_append(keys, maxf(min_dur, length / maxf(speed, 0.1)), az, r, h)
+
+
+static func _hold(keys: Array, dur: float) -> void:
+	var last: Array = keys[keys.size() - 1]
+	_append(keys, dur, float(last[1]), float(last[2]), float(last[3]))
+
+
+static func _append(keys: Array, dur: float, az: float, r: float, h: float) -> void:
+	keys.append([float(keys[keys.size() - 1][0]) + dur, az, r, h])
+
+
+## The angle equal to `a` (modulo a turn) nearest to `ref`.
+static func _wrap_near(a: float, ref: float) -> float:
+	return a + TAU * roundf((ref - a) / TAU)
 
 
 # --- Events (reveal / flyby) -----------------------------------------------------------------
@@ -533,7 +806,7 @@ static func _track(keys: Array, t: float) -> float:
 # --- Measures ---------------------------------------------------------------------------------
 
 ## 95th percentile of the pan / tilt speed of the subject in the image (deg/s), 99th percentile of the
-## acceleration of the drone (m/s²) and the closest distance (m).
+## acceleration (m/s²) and of the speed (m/s) of the drone, and the closest distance (m).
 static func _measure(D: PackedVector3Array, S: PackedVector3Array, tt: PackedFloat32Array) -> Dictionary:
 	var n := D.size()
 	var az := PackedFloat32Array()
@@ -554,6 +827,7 @@ static func _measure(D: PackedVector3Array, S: PackedVector3Array, tt: PackedFlo
 	var wa := PackedFloat32Array()
 	var we := PackedFloat32Array()
 	var ac := PackedFloat32Array()
+	var sp := PackedFloat32Array()
 	for i in range(2, n - 2):
 		var h0 := tt[i] - tt[i - 1]
 		var h1 := tt[i + 1] - tt[i]
@@ -563,7 +837,9 @@ static func _measure(D: PackedVector3Array, S: PackedVector3Array, tt: PackedFlo
 		we.append(absf(el[i + 1] - el[i - 1]) / (h0 + h1))
 		var a2 := 2.0 * ((D[i + 1] - D[i]) / h1 - (D[i] - D[i - 1]) / h0) / (h0 + h1)
 		ac.append(a2.length())
-	return {"pan95": _pct(wa, 0.95), "tilt95": _pct(we, 0.95), "acc99": _pct(ac, 0.99), "dmin": dmin}
+		sp.append((D[i + 1] - D[i - 1]).length() / (h0 + h1))
+	return {"pan95": _pct(wa, 0.95), "tilt95": _pct(we, 0.95), "acc99": _pct(ac, 0.99), "dmin": dmin,
+			"spd99": _pct(sp, 0.99)}
 
 
 static func _pct(a: PackedFloat32Array, q: float) -> float:

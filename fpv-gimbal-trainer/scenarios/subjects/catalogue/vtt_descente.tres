@@ -32,5 +32,5 @@ placeholder_color = Color(0.1, 0.5, 0.15, 1)
 placeholder_accent = Color(0.1, 0.1, 0.1, 1)
 environment = "foret"
 env_overrides = {}
-recommended_movements = PackedStringArray("pursuit", "lateral", "frontal", "orbit", "reveal", "flyby")
+recommended_movements = PackedStringArray("pursuit", "lateral", "frontal", "orbit", "reveal", "flyby", "approach_orbit", "dive", "choreo")
 base_difficulty = 4

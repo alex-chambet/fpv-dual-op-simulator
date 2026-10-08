@@ -157,15 +157,21 @@ func populate(_path: PackedVector3Array, _drone: PackedVector3Array, _plan: Dict
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 5 + host.world_seed
 
-	# Pines on the valley sides
+	# Pines on the valley sides, never in the drone's flight (a far drone of a generated session crosses them)
 	var grounds := PackedVector3Array()
 	var scales := PackedFloat32Array()
+	var flight := PackedVector2Array()
+	if not legacy:
+		for i in range(0, _drone.size(), 3):
+			flight.append(Vector2(_drone[i].x, _drone[i].z))
 	for i in 90:
 		var side := -1.0 if rng.randf() < 0.5 else 1.0
 		var x := side * rng.randf_range(68.0, 125.0)
 		var z := rng.randf_range(b.position.y - 40.0, b.end.y + 65.0)
 		var g := Vector3(x, ground(x, z), z)
 		var s := rng.randf_range(1.0, 1.8)
+		if _near_points(flight, x, z, 6.0 + 3.0 * s):
+			continue
 		grounds.append(g)
 		scales.append(s)
 		host.add_tree_occluder(g, s)
@@ -369,6 +375,19 @@ static func _near_segments(segs: PackedVector2Array, x: float, z: float, r: floa
 	for k in range(0, segs.size() - 1, 2):
 		var a := segs[k]
 		var ab := segs[k + 1] - a
+		var l2 := ab.length_squared()
+		var t := 0.0 if l2 < 0.0001 else clampf((q - a).dot(ab) / l2, 0.0, 1.0)
+		if q.distance_squared_to(a + ab * t) < r * r:
+			return true
+	return false
+
+
+## True if (x, z) is within r metres of the polyline `pts`.
+static func _near_points(pts: PackedVector2Array, x: float, z: float, r: float) -> bool:
+	var q := Vector2(x, z)
+	for k in range(pts.size() - 1):
+		var a := pts[k]
+		var ab := pts[k + 1] - a
 		var l2 := ab.length_squared()
 		var t := 0.0 if l2 < 0.0001 else clampf((q - a).dot(ab) / l2, 0.0, 1.0)
 		if q.distance_squared_to(a + ab * t) < r * r:

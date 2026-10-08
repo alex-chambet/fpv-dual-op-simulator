@@ -15,10 +15,13 @@ const MOVEMENT_LABELS := {
 	"orbit": ["Orbite", "Le drone tourne autour du sujet pendant qu'il avance."],
 	"reveal": ["Dévoilement", "Le sujet est caché derrière un obstacle, puis découvert quand le drone le dépasse."],
 	"flyby": ["Survol rapide", "Le drone croise le sujet à grande vitesse, tout près."],
+	"approach_orbit": ["Entrée + orbite", "Le drone s'éloigne loin et haut (le sujet devient minuscule), revient à toute vitesse et s'enroule autour du sujet dans une orbite rapide qui monte et descend, puis repart chercher une autre entrée."],
+	"dive": ["Plongeon", "Le drone monte haut devant le sujet, plonge sur lui, le frôle à basse altitude et remonte derrière lui, en alternant les côtés."],
+	"choreo": ["Chorégraphie expert", "Enchaînement de figures : entrées de loin en orbite, plongeons, croisements face à face et spirales montantes, jamais deux fois la même à la suite."],
 }
 
-const LEVEL_LABELS := ["Auto (difficulté du sport)", "Aléatoire", "Niveau 1 - très facile", "Niveau 2 - facile",
-		"Niveau 3 - moyen", "Niveau 4 - difficile", "Niveau 5 - très difficile"]
+const LEVEL_LABELS := ["Auto (difficulté du sport)", "Aléatoire (niveaux 1 à 5)", "Niveau 1 - très facile", "Niveau 2 - facile",
+		"Niveau 3 - moyen", "Niveau 4 - difficile", "Niveau 5 - très difficile", "Niveau 6 - EXPERT"]
 ## What makes a session hard (see DroneDifficulty): the movement, the axes (pan / tilt) and the proximity.
 const DIFFICULTY_HELP := "La difficulté vient du mouvement du drone, des axes à gérer (pan seul / tilt seul, puis les deux) et de la distance au sujet. Le drone vole toujours de façon fluide."
 
@@ -285,6 +288,8 @@ static func _stars(n: int) -> String:
 
 
 static func _dots(n: int) -> String:
+	if n > 5:
+		return "●●●●●  EXPERT"
 	return "●".repeat(n) + "○".repeat(5 - n)
 
 
@@ -308,8 +313,8 @@ func _update_info() -> void:
 	_level_opt.disabled = duo
 	_train_button.text = "Lancer la session à 2 joueurs (Entrée)" if duo else "Lancer la session d'entraînement (Entrée)"
 	var m := _selected_movement()
-	_movement_info.text = str(MOVEMENT_LABELS[m][1]) if m != "" else "Un mouvement tiré au hasard, d'autant plus difficile que le niveau est élevé."
-	var lv := _level_opt.selected  # 0 auto, 1 random, 2..6 = level 1..5
+	_movement_info.text = str(MOVEMENT_LABELS[m][1]) if m != "" else "Un mouvement tiré au hasard, d'autant plus difficile que le niveau est élevé (au niveau Expert : orbite, survol ou une figure expert)."
+	var lv := _level_opt.selected  # 0 auto, 1 random, 2..7 = level 1..6
 	if lv == 0:
 		_level_info.text = "Niveau %d (celui du sport). %s" % [_sport.base_difficulty, DroneDifficulty.describe(_sport.base_difficulty)]
 	elif lv == 1:
@@ -332,7 +337,7 @@ func _start_training() -> void:
 	if _sport == null:
 		return
 	DuoSession.dual_screen = _screens_opt.selected == 1
-	var lv := _level_opt.selected  # 0 auto, 1 random, 2..6 = level 1..5
+	var lv := _level_opt.selected  # 0 auto, 1 random, 2..7 = level 1..6
 	var level := -1 if lv == 0 else (0 if lv == 1 else lv - 1)
 	ScenarioMatrix.launch(get_tree(), ScenarioMatrix.generate(_sport.id, _selected_movement(), level, null, {}, SessionConfig.LENSES[_lens_opt.selected], _two_players()))
 

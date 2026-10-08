@@ -4,8 +4,8 @@ extends RefCounted
 ##  - sports   : the catalogue (every SubjectDefinition .tres under scenarios/subjects/catalogue/)
 ##  - movements: MOVEMENTS below (planned by MovementPlanner); a random session picks among the
 ##               movements the sport recommends
-##  - level    : 1..5, mapped to subject speed, turn frequency, occlusion frequency and how
-##               aggressive the drone is (closer, faster, more changes)
+##  - level    : 1..6 (6 = Expert), mapped by DroneDifficulty to how close and how fast the drone flies
+##               and the axes the operator has to handle
 ## ScenarioBase reads ScenarioMatrix.current when its scene starts.
 
 const STATS_PATH := "user://matrix_stats.json"
@@ -23,6 +23,10 @@ const MOVEMENTS: Array[Dictionary] = [
 	{"id": "orbit", "name": "Orbit", "desc": "The drone circles the subject while it moves."},
 	{"id": "reveal", "name": "Reveal", "desc": "The subject is hidden behind a barrier, then discovered as the drone flies past it."},
 	{"id": "flyby", "name": "Flyby", "desc": "The drone crosses the subject at high relative speed, close to it."},
+	# Expert figures (see MovementPlanner._build_figures)
+	{"id": "approach_orbit", "name": "Approach + orbit", "desc": "The drone comes in from far and high and wraps into a fast orbit, again and again."},
+	{"id": "dive", "name": "Dive", "desc": "The drone climbs high ahead of the subject, dives onto it, skims past and climbs out behind."},
+	{"id": "choreo", "name": "Expert choreography", "desc": "Chained figures: approaches into an orbit, dives, head-on crossings, spirals."},
 ]
 
 ## The session being played.
@@ -47,7 +51,8 @@ static func level_params(level: int) -> Dictionary:
 
 
 ## A random session. Empty subject_id / movement = random (movement among those the sport
-## recommends); level 0 = random, -1 = the base difficulty of the sport, 1..5 = that level.
+## recommends); level 0 = random (1..5: the Expert level is only played on purpose), -1 = the base
+## difficulty of the sport, 1..6 = that level.
 ## filter: {"category": "", "difficulty": 0, "movement": ""} restricts the sports drawn at random.
 static func generate(subject_id := "", movement := "", level := 0, rng: RandomNumberGenerator = null,
 		filter := {}, lens := 24, two_player := false) -> SessionConfig:

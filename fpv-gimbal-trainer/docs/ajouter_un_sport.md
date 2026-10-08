@@ -29,7 +29,8 @@ sont lus aussi : vous pouvez ranger vos fiches comme vous voulez).
    - `subject_size` (taille en mètres ; 0 = taille typique de l'archétype), `placeholder_shape`,
      `placeholder_gear`, couleurs.
    - `recommended_movements` : les mouvements de drone qui conviennent (`pursuit`, `lateral`,
-     `frontal`, `orbit`, `reveal`, `flyby`). Vide = tous.
+     `frontal`, `orbit`, `reveal`, `flyby`, et les figures expert `approach_orbit`, `dive`, `choreo`).
+     Vide = tous.
    - `base_difficulty` : 1 (facile à cadrer) à 5 (très difficile).
 3. **Ctrl+S**, puis lancez le jeu (**F5**).
 4. Dans le menu, panneau **Training session** : choisissez votre sport dans la liste « Sport »
@@ -101,7 +102,7 @@ règle avec `speed_min` / `speed_max`.
 
 ### Niveau de session
 
-Le niveau (1 à 5) choisi dans le menu **ne change pas le sujet** : sa vitesse, ses virages et ses sauts
+Le niveau (1 à 5, plus le niveau 6 **Expert**) choisi dans le menu **ne change pas le sujet** : sa vitesse, ses virages et ses sauts
 sont ceux de la fiche, et la durée de la course ne dépend pas du niveau. Seul le vol du drone change, et il
 reste **toujours fluide** (accélérations limitées, pas de changement de direction brusque). Trois choses font
 la difficulté pour le cadreur :
@@ -119,6 +120,17 @@ la difficulté pour le cadreur :
 | 3 | ×1,00 | pan + tilt | 19 s | 7 s |
 | 4 | ×0,82 | pan + tilt | 15 s | 6 s |
 | 5 | ×0,68 | pan + tilt | 12 s | 5 s |
+| 6 Expert | ×0,56 | pan + tilt | 8 s | 4 s |
+
+**Niveau 6 – Expert.** Le drone vole comme un drone FPV de cinéma rapide : accélération jusqu'à 9 m/s²
+(6 au niveau 5), jusqu'à environ 140 km/h sur les longues lignes, orbites d'un tour en 8 s au plus près du
+sujet. Tiré « au hasard », le mouvement est une **figure expert** (voir les mouvements plus bas), sinon une
+orbite ou un survol. Les figures enchaînent des phases très différentes : le sujet passe de minuscule
+(drone à 25 - 50 m) à plein cadre, le pan et le tilt changent sans cesse de sens et de vitesse. Mesuré sur
+les 5 sports du menu : pan de 40 à 70°/s (95e centile, pointes de 90 à 150°/s pendant les croisements), tilt
+jusqu'à -70° pendant les plongeons, contre 35 à 58°/s de pan au niveau 5. Le drone reste fluide (pas de
+changement brusque) et ne touche ni le sol, ni les arbres. Le niveau Expert n'est jamais tiré par
+`Aléatoire` : il se choisit exprès.
 
 Dans un dévoilement ou un survol, le drone passe devant puis derrière le sujet : l'approche, le balayage et le
 retour durent chacun **assez longtemps pour ne jamais dépasser l'accélération maximale du niveau** (un drone
@@ -136,8 +148,8 @@ trajectoire, ralentit l'orbite ou les balayages et, en dernier recours, atténue
 jusqu'à la respecter. Un sport qui bouge très vite ou en lacets serrés (voiture dans des épingles) verra donc
 le drone plus loin, ou un peu plus calme, que prévu.
 
-`Auto` prend la `base_difficulty` de la fiche comme niveau. `Aléatoire` tire un niveau, puis un mouvement
-d'autant plus difficile que le niveau est élevé.
+`Auto` prend la `base_difficulty` de la fiche comme niveau. `Aléatoire` tire un niveau de 1 à 5, puis un
+mouvement d'autant plus difficile que le niveau est élevé (jamais une figure expert).
 
 ---
 
@@ -218,6 +230,16 @@ texte, il suffit d'y saisir votre tag.
 | `reveal` dévoilement | le sujet est caché derrière une barrière, puis découvert quand le drone la dépasse | ●●●○○ |
 | `orbit` orbite | tourne autour du sujet pendant qu'il avance | ●●●●○ |
 | `flyby` survol rapide | croise le sujet de près, d'un côté à l'autre | ●●●●● |
+| `approach_orbit` entrée + orbite | s'éloigne loin et haut, revient à toute vitesse et s'enroule autour du sujet (1 tour à 1 tour 3/4, en montant et descendant), puis repart chercher une autre entrée | Expert |
+| `dive` plongeon | monte haut devant le sujet, plonge sur lui, le frôle à basse altitude et remonte derrière, en alternant les côtés | Expert |
+| `choreo` chorégraphie expert | enchaîne les figures : entrée + orbite, plongeon, croisement face à face (le drone attend loin devant et fonce sur le sujet), spirale montante ; jamais deux fois la même à la suite | Expert |
+
+Les figures expert (`scenarios/movement_planner.gd`, `_build_figures`) sont décrites autour du sujet
+(angle, distance, hauteur) par des segments parcourus à la vitesse du niveau, puis lissés dans le temps :
+le drone ne change jamais brusquement de direction ni de vitesse. Le planificateur vérifie ensuite
+l'accélération, la vitesse maximale (40 m/s), la vitesse de pan / tilt et, pour les phases lointaines, que
+le relief ne cache pas le sujet (il rapproche le drone sinon). Elles peuvent aussi être choisies à un niveau
+plus bas : elles sont alors plus lentes et plus lointaines.
 
 Tous ces vols sont dessinés en secondes (balancements lents de quelques degrés vus du sujet, courbes
 quintiques), autour d'une copie lissée de la trajectoire du sujet : le drone ne reproduit pas les

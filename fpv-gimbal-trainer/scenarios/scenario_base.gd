@@ -326,6 +326,8 @@ func _place_barriers() -> void:
 		var gy := float(ground.call(p.x, p.z)) if ground.is_valid() else 0.0
 		if kind == "trees":
 			var g := Vector3(p.x, gy, p.z)
+			if _tree_in_drone_flight(g, b.scale):
+				continue  # the drone would fly through its crown (the row keeps its other trees)
 			grounds.append(g)
 			scales.append(b.scale)
 			add_tree_occluder(g, b.scale)
@@ -340,7 +342,8 @@ func _place_barriers() -> void:
 
 ## Obstacles on the drone->subject line of sight at the given path fractions (in matrix mode,
 ## where the drone path is arbitrary). With trees: every other event is a rock, the others a row
-## of trees; other kinds (rocks / walls / players / clouds) come from the environment.
+## of trees; other kinds (rocks / walls / players / clouds) come from the environment. An obstacle
+## that would stand in the drone's flight at another moment is left out.
 func add_los_occluders(fractions: Array, rocks := true) -> void:
 	var kind := _occluder_kind()
 	if kind == "none":
@@ -371,23 +374,48 @@ func add_los_occluders(fractions: Array, rocks := true) -> void:
 				var gy := float(ground.call(tp.x, tp.z)) if ground.is_valid() else s.y
 				if kind == "clouds":
 					gy = (s.y + d.y) * 0.5 - 6.0
+				elif _in_drone_flight(Vector3(tp.x, gy, tp.z), 2.0 * maxf(ds, 0.5), 6.0 * maxf(ds, 0.5)):
+					continue  # it stands on the line of sight now, but in the drone's flight at another moment
 				for spec in PropFactory.add_occluder_prop(self, kind, Vector3(tp.x, gy, tp.z), yaw, rng, maxf(ds, 0.2)):
 					add_cylinder_occluder(spec.pos, spec.r, spec.h)
 		elif rocks and e % 2 == 1:
 			var rp := s + flat * 0.35
 			var g := Vector3(rp.x, float(ground.call(rp.x, rp.z)) if ground.is_valid() else s.y, rp.z)
 			var size := Vector3(2.2, 2.2, 4.5)
+			if _in_drone_flight(g, maxf(size.x, size.z) * 0.9, size.y * 1.4):
+				continue
 			PropFactory.add_rock(self, g, size)
 			add_cylinder_occluder(g, maxf(size.x, size.z) * 0.9, size.y * 1.4)
 		else:
 			for k in [-2, -1, 0, 1, 2]:
 				var tp: Vector3 = s + flat * 0.5 + perp * (k * 2.4 + rng.randf_range(-0.6, 0.6))
 				var g := Vector3(tp.x, float(ground.call(tp.x, tp.z)) if ground.is_valid() else s.y, tp.z)
+				if _in_drone_flight(g, PropFactory.CONE_R[0] * 1.5, PropFactory.TREE_HEIGHT * 1.5):
+					continue
 				grounds.append(g)
 				scales.append(1.5)
 				add_tree_occluder(g, 1.5)
 	if kind == "trees":
 		PropFactory.build_forest(self, grounds, scales, Color(0.08, 0.3, 0.14), 19)
+
+## True if an obstacle of radius r and height h standing at g would be within 2 m of the drone's flight.
+func _in_drone_flight(g: Vector3, r: float, h: float) -> bool:
+	var c := Vector2(g.x, g.z)
+	for p in drone_pts:
+		if p.y < g.y + h + 1.0 and Vector2(p.x, p.z).distance_to(c) < r + 2.0:
+			return true
+	return false
+
+
+## True if the drone flies through the crown (or the trunk) of a tree of scale s standing at g, with 0.8 m to spare.
+func _tree_in_drone_flight(g: Vector3, s: float) -> bool:
+	var c := Vector2(g.x, g.z)
+	for p in drone_pts:
+		var d := Vector2(p.x, p.z).distance_to(c)
+		if d < PropFactory.CONE_R[0] * s + 0.8 and d < PropFactory.tree_radius_at((p.y - g.y) / s) * s + 0.8:
+			return true
+	return false
+
 
 ## Horizontal distance from p to the subject path.
 func _dist_to_path_xz(p: Vector3) -> float:
