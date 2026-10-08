@@ -1,2 +1,3 @@
-res://ui/main_menu.gd
-res://scenarios/duo_session.gd
+res://scenarios/scenario_base.gd
+res://scenarios/sandbox/sandbox.gd
+res://ui/pause_menu.gd

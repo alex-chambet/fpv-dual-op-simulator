@@ -2,9 +2,13 @@ class_name Sandbox
 extends Node3D
 ## Sandbox mode: the Départementale countryside (SandboxWorld) with no time limit, no subject and no score.
 ## The drone flies freely and the gimbal operator films whatever they like: traffic, cyclists, villagers...
-##  - drone in ACRO with the pilot controller (menu > Configuration manette > Drone), as in the 2-player mode;
-##  - without a pilot controller (or with key M), an assisted drone flown with the keyboard:
-##    I/K forward/back, J/L left/right, U/O turn, Y/H up/down, Shift = fast. It holds its position when released.
+## Drone modes (key M cycles through them):
+##  - "auto" (default with no pilot controller, i.e. no controller or only the gimbal's): the drone takes off by
+##    itself and flies a random but smooth path around the map (AutoFlight), so the gimbal operator can test their
+##    settings alone;
+##  - "acro" (default when a second controller is the pilot's, menu > Paramètres > Configuration manette > Drone):
+##    flown by the pilot as in the 2-player mode;
+##  - "assisted": flown with the keyboard: I/K forward/back, J/L left/right, U/O turn, Y/H up/down, Shift = fast.
 ## Gimbal as everywhere (controller, or arrows/WASD + Q/E). Esc: pause, Backspace: drone back to the take-off spot.
 
 const MENU_SCENE := "res://scenes/main_menu.tscn"
@@ -19,7 +23,9 @@ var people: Pedestrians
 var drone: FpvDrone
 var rig: GimbalRig
 var grass: GrassField
-var assisted := true
+## Drone mode: "auto", "acro" or "assisted".
+var mode := "auto"
+var autopilot := AutoFlight.new()
 
 var _env: WorldEnvironment
 var _sun: DirectionalLight3D
@@ -110,18 +116,20 @@ func _build_drone() -> void:
 	rig.camera.fov = SessionConfig.fov_for(lens_mm)
 	rig.camera.far = 9000.0
 	rig.camera.add_child(MotionBlur.new())
+	mode = "acro" if ControllerInput.has_pilot_device() else "auto"
 	_reset_drone()
-	assisted = not ControllerInput.has_pilot_device()
 
 
 func _reset_drone() -> void:
 	var p := world.start_pos
 	p.y = world.ground(p.x, p.z) + drone.radius
 	drone.reset_to(p, world.start_look)
-	drone.armed = false
+	drone.armed = mode != "acro"
 	_vel = Vector3.ZERO
 	_yaw_rate = 0.0
 	_body.global_position = drone.position
+	if mode == "auto":
+		autopilot.start(world, drone.position, world.start_look)
 
 
 func _build_hud() -> void:
@@ -141,6 +149,11 @@ func _build_hud() -> void:
 	add_child(_view)
 	_view.build(_hud_layer, drone, DuoSession.dual_screen)
 	_pause = PauseMenu.new()
+	_pause.lens_mm = lens_mm
+	_pause.lens_editable = true  # nothing is scored in the sandbox
+	_pause.lens_changed.connect(func(mm: int):
+		lens_mm = mm
+		rig.camera.fov = SessionConfig.fov_for(mm))
 	add_child(_pause)
 	_pause.resume_requested.connect(_close_pause)
 	_pause.restart_requested.connect(func():
@@ -159,7 +172,9 @@ func _obstacle_push(pos: Vector3, r: float) -> Vector3:
 
 func _process(delta: float) -> void:
 	_time += delta
-	if assisted:
+	if mode == "auto":
+		_fly_auto(delta)
+	elif mode == "assisted":
 		_fly_assisted(delta)
 	else:
 		var inp: Array = ControllerInput.pilot_inputs
@@ -167,9 +182,46 @@ func _process(delta: float) -> void:
 			drone.armed = true
 		drone.step(delta, inp)
 	_body.global_position = drone.position
-	_view.set_shown(not assisted)
+	_view.set_shown(mode == "acro")
 	_guide.visible = FrameGuide.show_thirds
 	_update_hud()
+
+
+## Random smooth flight (AutoFlight): the drone follows the autopilot and leans with its acceleration.
+func _fly_auto(delta: float) -> void:
+	autopilot.step(delta)
+	var p := autopilot.position
+	var push := _obstacle_push(p, drone.radius)  # (safety net: the generated legs are clear already)
+	if push.length() > 0.0:
+		p += push
+		autopilot.position = p
+	drone.position = p
+	drone.velocity = autopilot.velocity
+	drone.heading = autopilot.heading
+	var yaw_basis := Basis(Vector3.UP, drone.heading)
+	var local := yaw_basis.inverse() * autopilot.accel
+	var tilt := yaw_basis * Basis(Vector3.RIGHT, clampf(local.z * 0.05, -0.5, 0.5)) \
+			* Basis(Vector3.BACK, clampf(-local.x * 0.05, -0.5, 0.5))
+	drone.orientation = tilt.get_rotation_quaternion()
+	drone._sync()
+
+
+## M: auto -> assisted -> acro (only with a pilot controller) -> auto. The drone keeps its position and speed.
+func _next_mode() -> void:
+	var order := ["auto", "assisted"]
+	if ControllerInput.has_pilot_device():
+		order.append("acro")
+	mode = order[(order.find(mode) + 1) % order.size()]
+	match mode:
+		"auto":
+			autopilot.start(world, drone.position, Vector3(-sin(drone.heading), 0.0, -cos(drone.heading)), false, drone.velocity)
+			drone.armed = true
+		"assisted":
+			_vel = drone.velocity
+			_yaw_rate = 0.0
+			drone.armed = true
+		"acro":
+			drone.armed = false  # the pilot arms it again with the throttle at its minimum
 
 
 ## Assisted flight (keyboard): the sticks give velocities, the drone accelerates smoothly and holds its position.
@@ -214,15 +266,15 @@ func _key(k: Key) -> float:
 
 func _update_hud() -> void:
 	var gy := world.ground(drone.position.x, drone.position.z)
-	var mode := "ASSISTÉ (clavier : I/K J/L avancer / côtés, U/O tourner, Y/H monter / descendre, Maj rapide)" if assisted \
-			else "ACRO (manette pilote)" + ("" if drone.armed else " - DÉSARMÉ : gaz au minimum pour armer")
+	var label := "AUTO : décollage puis vol aléatoire fluide" if mode == "auto" else ("ASSISTÉ (clavier : I/K J/L avancer / côtés, U/O tourner, Y/H monter / descendre, Maj rapide)" if mode == "assisted" \
+			else "ACRO (manette pilote)" + ("" if drone.armed else " - DÉSARMÉ : gaz au minimum pour armer"))
 	var t := int(_time)
 	_hud.text = "BAC À SABLE - Départementale   temps libre %02d:%02d   %d véhicules\nDrone %s\nAlt %.0f m   %.0f km/h   %d mm   gimbal [%s]  pan %+.0f°  tilt %+.0f°  roll %+.0f°\nFlèches/WASD : gimbal   Q/E : roll   1/2/3 : profil   G : grille   M : mode drone   Retour : drone au départ   Échap : pause   F1 : masquer" % [
-			t / 60, t % 60, traffic.count(), mode, drone.position.y - gy, drone.speed_kmh(), lens_mm,
+			t / 60, t % 60, traffic.count(), label, drone.position.y - gy, drone.speed_kmh(), lens_mm,
 			PROFILE_NAMES[rig.pan_profile], rig.angles[0], rig.angles[1], rig.angles[2]]
 	if _view.osd != null:
 		_view.osd.text = "PILOTE   ALT %.0f m   %.0f km/h   %s" % [drone.position.y - gy, drone.speed_kmh(),
-				"assisté" if assisted else ("acro, %d crash" % drone.crash_count)]
+				mode if mode != "acro" else ("acro, %d crash" % drone.crash_count)]
 
 
 func _set_profile(p: GimbalRig.SpeedProfile) -> void:
@@ -257,9 +309,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			FrameGuide.show_thirds = not FrameGuide.show_thirds
 			_guide.queue_redraw()
 		KEY_M:
-			assisted = not assisted
-			if not assisted:
-				drone.armed = false
+			_next_mode()
 		KEY_BACKSPACE:
 			_reset_drone()
 		KEY_F1:

@@ -247,7 +247,7 @@ func _build_training_panel() -> Control:
 func _build_sandbox_panel() -> Control:
 	var v := _panel("Bac à sable", 400)
 	var d := Label.new()
-	d.text = "La campagne de la Départementale en libre, sans limite de temps ni score : routes, village, fermes, voitures, camions, cyclistes et piétons. Vole où tu veux et filme ce qui te plaît.\n\nDrone : manette pilote en acro (comme à 2 joueurs) ou, sans elle, au clavier en vol assisté (I/K J/L, U/O, Y/H, Maj). La touche M change de mode.\nL'optique et l'écran du pilote sont ceux de la session d'entraînement."
+	d.text = "La campagne de la Départementale en libre, sans limite de temps ni score : routes, village, fermes, voitures, camions, cyclistes et piétons.\n\nSans manette, ou avec une seule (celle de la gimbal) : le drone décolle tout seul et vole de façon aléatoire mais fluide dans la carte, pour que tu règles ta gimbal.\nAvec une 2e manette (pilote) : vol acro.\nLa touche M change de mode (auto, clavier, acro).\nL'optique et l'écran du pilote sont ceux de la session d'entraînement."
 	d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	d.modulate = Color(1, 1, 1, 0.65)
 	d.size_flags_vertical = Control.SIZE_EXPAND_FILL

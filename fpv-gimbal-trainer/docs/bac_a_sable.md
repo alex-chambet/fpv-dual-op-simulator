@@ -9,12 +9,13 @@ Menu principal > panneau « Bac à sable » > *Lancer le bac à sable* (ou touch
 
 ## Commandes
 - **Gimbal** : comme partout (manette gimbal, ou flèches / WASD + Q / E), profils 1 / 2 / 3, G = grille des tiers.
-- **Drone** :
-  - avec une manette pilote configurée : vol **acro** comme en mode 2 joueurs (gaz au minimum pour armer), vue FPV
-    du pilote en incrustation ou sur le 2e écran ;
-  - sans manette pilote : **vol assisté au clavier** (I / K avancer / reculer, J / L décaler, U / O tourner,
-    Y / H monter / descendre, Maj = rapide). Le drone garde sa position quand on lâche les touches ;
-  - **M** passe de l'un à l'autre, **Retour arrière** ramène le drone à son point de départ (place du village).
+- **Drone** (**M** passe d'un mode à l'autre, **Retour arrière** ramène le drone sur la place du village) :
+  - **auto** (par défaut sans manette, ou avec une seule manette, celle de la gimbal) : le drone décolle tout seul
+    puis vole de façon aléatoire mais toujours fluide dans toute la carte, pour que le cadreur règle sa gimbal seul ;
+  - **acro** (par défaut quand une 2e manette est configurée comme manette pilote) : vol acro comme en mode
+    2 joueurs (gaz au minimum pour armer), vue FPV en incrustation ou sur le 2e écran ;
+  - **assisté** : vol au clavier (I / K avancer / reculer, J / L décaler, U / O tourner, Y / H monter / descendre,
+    Maj = rapide).
 - Échap : pause (Reprendre, Recommencer, Graphismes, Quitter). F1 : masquer l'affichage.
 
 ## La carte (scenarios/sandbox/)
@@ -31,6 +32,12 @@ Menu principal > panneau « Bac à sable » > *Lancer le bac à sable* (ou touch
   distances, ralentissent dans les virages et dans le village. Aux carrefours, la rocade et la route A sont
   prioritaires ; un véhicule qui tourne, ou qui traverse la route A par la route B, cède le passage et ne s'engage
   que si le carrefour est libre.
+- `auto_flight.gd` : le pilote automatique. Un générateur enchaîne sans fin des tronçons le long des routes (juste
+  au-dessus des toits dans le village, au-dessus des arbres à la campagne) et des traversées libres à 16 - 45 m, tous
+  vérifiés contre les bâtiments et les arbres. Le drone est un point matériel dont l'accélération (3,2 m/s² au plus)
+  est elle-même lissée : pas de changement brusque de direction ni de vitesse, virages arrondis, vitesse réduite dans
+  les virages serrés. Mesuré sur 10 minutes : accélération max 3,6 m/s², variation d'accélération max environ
+  8 m/s³, aucune collision, toute la carte parcourue.
 - `pedestrians.gd` : villageois qui marchent sur les trottoirs (demi-tour au bout) et petits groupes qui discutent
   sur la place.
 - `sandbox.gd` : la scène (drone, gimbal, affichage, pause).

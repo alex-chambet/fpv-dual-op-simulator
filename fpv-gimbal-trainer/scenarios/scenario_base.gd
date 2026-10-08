@@ -458,6 +458,7 @@ func _open_pause() -> void:
 		_pause.restart_requested.connect(_restart)
 		_pause.quit_requested.connect(_goto_menu)
 		add_child(_pause)
+	_pause.lens_mm = matrix.lens if matrix != null and not matrix.fixed else 24  # (not editable: scored session)
 	get_tree().paused = true
 	_pause.open()
 

@@ -1,14 +1,24 @@
 class_name PauseMenu
 extends CanvasLayer
-## Pause menu of a session (Esc): resume, restart, graphics, back to the main menu. It keeps working while the
+## Pause menu of a session (Esc): resume, restart, graphics, gameplay (lens), back to the main menu. It keeps working while the
 ## game tree is paused (process_mode ALWAYS). Esc resumes (or leaves the graphics page).
 
 signal resume_requested
 signal restart_requested
 signal quit_requested
+## The player picked another lens (focal length in mm); only emitted when `lens_editable`.
+signal lens_changed(mm: int)
+
+## Lens shown in the Gameplay page, and whether it can be changed here (not during a scored session: the score and
+## the replay depend on it).
+var lens_mm := 24
+var lens_editable := false
 
 var _main_page: Control
 var _graphics_page: Control
+var _gameplay_page: Control
+var _lens_opt: OptionButton
+var _lens_note: Label
 var _resume_button: Button
 
 
@@ -47,7 +57,8 @@ func _build() -> void:
 	_main_page.add_child(title)
 	_resume_button = _button(_main_page, "Reprendre (Échap)", func(): resume_requested.emit())
 	_button(_main_page, "Recommencer", func(): restart_requested.emit())
-	_button(_main_page, "Graphismes", func(): _show_graphics(true))
+	_button(_main_page, "Graphismes", func(): _show_page(_graphics_page))
+	_button(_main_page, "Gameplay", func(): _show_page(_gameplay_page))
 	_button(_main_page, "Quitter vers le menu", func(): quit_requested.emit())
 
 	_graphics_page = VBoxContainer.new()
@@ -89,8 +100,36 @@ func _build() -> void:
 		MotionBlur.level = i
 		MotionBlur.save_level())
 	row.add_child(opt)
-	_button(_graphics_page, "Retour (Échap)", func(): _show_graphics(false))
+	_button(_graphics_page, "Retour (Échap)", func(): _show_page(null))
 
+	_gameplay_page = VBoxContainer.new()
+	_gameplay_page.custom_minimum_size.x = 380
+	_gameplay_page.add_theme_constant_override("separation", 12)
+	_gameplay_page.visible = false
+	stack.add_child(_gameplay_page)
+	var ptitle := Label.new()
+	ptitle.text = "GAMEPLAY"
+	ptitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	ptitle.add_theme_font_size_override("font_size", 32)
+	_gameplay_page.add_child(ptitle)
+	var lrow := HBoxContainer.new()
+	_gameplay_page.add_child(lrow)
+	var ll := Label.new()
+	ll.text = "Optique"
+	ll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lrow.add_child(ll)
+	_lens_opt = OptionButton.new()
+	for mm in SessionConfig.LENSES:
+		_lens_opt.add_item("%d mm" % mm)
+	_lens_opt.item_selected.connect(func(i):
+		lens_mm = SessionConfig.LENSES[i]
+		lens_changed.emit(lens_mm))
+	lrow.add_child(_lens_opt)
+	_lens_note = Label.new()
+	_lens_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_lens_note.modulate = Color(1, 1, 1, 0.65)
+	_gameplay_page.add_child(_lens_note)
+	_button(_gameplay_page, "Retour (Échap)", func(): _show_page(null))
 
 func _button(parent: Control, text: String, action: Callable) -> Button:
 	var b := Button.new()
@@ -101,15 +140,22 @@ func _button(parent: Control, text: String, action: Callable) -> Button:
 	return b
 
 
-func _show_graphics(on: bool) -> void:
-	_graphics_page.visible = on
-	_main_page.visible = not on
-	if not on:
+## Shows a sub-page (null = the main page).
+func _show_page(page: Control) -> void:
+	_graphics_page.visible = page == _graphics_page
+	_gameplay_page.visible = page == _gameplay_page
+	_main_page.visible = page == null
+	if page == _gameplay_page:
+		var i := SessionConfig.LENSES.find(lens_mm)
+		_lens_opt.select(maxi(i, 0))
+		_lens_opt.disabled = not lens_editable
+		_lens_note.text = "" if lens_editable else "L'optique est figée pendant une session notée (le score en dépend) : change-la dans le menu d'accueil."
+	if page == null:
 		_resume_button.grab_focus()
 
 
 func open() -> void:
-	_show_graphics(false)
+	_show_page(null)
 	visible = true
 	_resume_button.grab_focus()
 
@@ -123,7 +169,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_ESCAPE:
 		get_viewport().set_input_as_handled()
-		if _graphics_page.visible:
-			_show_graphics(false)
+		if not _main_page.visible:
+			_show_page(null)
 		else:
 			resume_requested.emit()
