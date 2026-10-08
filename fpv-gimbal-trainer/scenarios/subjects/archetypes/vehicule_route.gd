@@ -2,7 +2,7 @@ class_name ArchetypeVehiculeRoute
 extends SubjectArchetype
 ## VEHICULE_ROUTE: follows a road at a steady speed, braking in bends (car, motorbike, road bike,
 ## kart). Layouts: 'switchback' (hairpins: straight legs of 2 x lateral_amplitude joined by half
-## circles; legs = turn_frequency x path_length / 100) or 'winding' (sinusoidal road).
+## circles; legs = turn_frequency x path_length / 100, their length adjusted to the path length) or 'winding' (sinusoidal road).
 
 const ARC_STEPS := 12
 
@@ -53,9 +53,11 @@ func generate(ctx: ArchetypeContext) -> Dictionary:
 
 ## Hairpin road in plan: straight legs along x joined by semicircles, climbing along +Z.
 func _switchback(ctx: ArchetypeContext, p: Dictionary, step: float) -> PackedVector3Array:
-	var legs := clampi(roundi(float(p.turn_frequency) * path_length(p) / 100.0), 3, 12)
-	var half := float(p.lateral_amplitude)
+	var target := path_length(p)
+	var legs := clampi(roundi(float(p.turn_frequency) * target / 100.0), 3, 16)
 	var r := float(p.turn_radius)
+	# the legs are as long as needed for the road to be path_length long (a whole number of legs only gives steps)
+	var half := clampf((target - (legs - 1) * PI * r) / (2.0 * legs), 0.6 * float(p.lateral_amplitude), 1.6 * float(p.lateral_amplitude))
 	var out := PackedVector3Array()
 	for k in legs:
 		var z0 := k * 2.0 * r

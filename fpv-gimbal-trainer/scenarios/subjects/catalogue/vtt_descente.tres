@@ -10,6 +10,7 @@ category = "Montagne / outdoor"
 description = "VTT de descente en forêt : vitesse irrégulière, sauts, virages serrés."
 archetype = "TOUT_TERRAIN_ERRATIQUE"
 overrides = {
+"duration": 60.0,
 "bump": 0.08,
 "cornering_accel": 6.0,
 "irregularity": 0.7,

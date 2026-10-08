@@ -10,12 +10,12 @@ category = "Neige / glace"
 description = "Descente à ski avec virages en S entre des portes de slalom."
 archetype = "GLISSE_PENTE"
 overrides = {
+"duration": 60.0,
 "gates": true,
 "lateral_amplitude": 9.0,
 "lean_gain": 0.8,
 "lean_max_deg": 30.0,
 "leaves_tracks": true,
-"path_length": 360.0,
 "speed_max": 16.0,
 "speed_min": 6.0,
 "speed_variability": 1.0,

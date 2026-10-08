@@ -10,10 +10,10 @@ category = "Montagne / outdoor"
 description = "Coureur sur un sentier sinueux en sous-bois dense."
 archetype = "COURSE_SOL_CYCLIQUE"
 overrides = {
+"duration": 60.0,
 "cadence": 1.7,
 "cornering_accel": 3.0,
 "lateral_amplitude": 14.0,
-"path_length": 260.0,
 "speed_max": 5.5,
 "speed_min": 3.0,
 "speed_variability": 0.5,

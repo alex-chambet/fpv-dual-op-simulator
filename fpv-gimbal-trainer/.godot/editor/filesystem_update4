@@ -1,3 +1,4 @@
 res://scenarios/scenario_base.gd
 res://scenarios/sandbox/sandbox.gd
 res://ui/pause_menu.gd
+res://scenarios/subjects/archetypes/vehicule_route.gd

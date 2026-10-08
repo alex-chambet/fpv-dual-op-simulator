@@ -10,10 +10,11 @@ category = "Mécanique"
 description = "Voiture sur une route de montagne en lacets, avec un tunnel."
 archetype = "VEHICULE_ROUTE"
 overrides = {
+"duration": 60.0,
 "cornering_accel": 5.5,
 "lateral_amplitude": 35.0,
 "layout": "switchback",
-"path_length": 600.0,
+"path_length": 0.0,
 "speed_max": 16.0,
 "speed_min": 6.5,
 "speed_variability": 0.25,
