@@ -1,6 +1,6 @@
 78098b89c88a74ebe8c20117b8754620
 ::res://::1791445703
-export_presets.cfg::TextFile::-1::1791443021::0::1::::<><><>0<>0<><>::
+export_presets.cfg::TextFile::-1::1791445902::0::1::::<><><>0<>0<><>::
 ski_slope.tscn::PackedScene::1215708909317113592::1791212617::0::1::::<><><>0<>0<><>::res://scenarios/ski_slope/ski_slope.gd<>res://flight/flight_path.tscn<>uid://bl20o0do6rxhw::::res://ui/camera_look.gd<>res://scenarios/ski_slope/frame_guide.gd
 ::res://docs/::1791445553
 ajouter_un_sport.md::TextFile::-1::1791445553::0::1::::<><><>0<>0<><>::
