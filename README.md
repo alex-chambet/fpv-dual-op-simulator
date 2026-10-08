@@ -45,7 +45,7 @@ Votre meilleur score est enregistré pour chaque sport. Vous pouvez revoir et re
 Un joueur **pilote** le drone en mode acro (manette FPV, sans stabilisation, comme en vrai). L'autre tient la **gimbal**. Le pilote voit sa vue FPV en incrustation, ou sur un second écran. Les deux sont notés, et vous obtenez un score d'équipe.
 
 ### Bac à sable
-Un monde ouvert, sans chrono ni score : 1,6 × 1,6 km de campagne avec un village, des fermes, une rocade, des voitures, des camions, des cyclistes et des piétons.
+Un monde ouvert, sans chrono ni score : 1,6 × 1,6 km de campagne avec un village, des fermes, une rocade, des voitures, des camions, des cyclistes, des piétons, et un avion et un hélicoptère dans le ciel.
 - **Sans manette, ou avec une seule** (celle de la gimbal) : le drone décolle tout seul et vole de façon aléatoire mais fluide dans toute la carte. C'est idéal pour régler sa gimbal et filmer ce qui passe.
 - **Avec une 2e manette** : vol acro libre.
 - **Au clavier** : vol assisté.
@@ -91,6 +91,8 @@ Pour changer les réglages de manette, la qualité graphique et le flou de mouve
 Dans le bac à sable : **M** change de mode de vol (auto, clavier, acro), **Retour arrière** ramène le drone sur la place du village. Au menu : **R** lance une session aléatoire, **B** le bac à sable.
 
 **Configurer ses manettes** : menu « Paramètres » → « Configuration manette ». Vous pouvez y choisir la manette de la gimbal et celle du pilote, affecter chaque axe, inverser, régler la zone morte et l'expo.
+
+**Option « Noir hors du cadre »** : dans la pause (Échap → Gameplay), elle assombrit complètement tout ce qui est hors du rectangle vert. Vous ne voyez alors que ce que montrerait le cadre, sans l'environnement autour. Elle est désactivée par défaut et mémorisée d'une partie à l'autre.
 
 **Conseil pour le niveau Expert** : prenez un profil de gimbal rapide (touche 2 ou 3). Les croisements demandent des pointes de plus de 100 °/s.
 

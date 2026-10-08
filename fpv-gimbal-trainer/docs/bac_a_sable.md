@@ -40,6 +40,18 @@ Menu principal > panneau « Bac à sable » > *Lancer le bac à sable* (ou touch
   8 m/s³, aucune collision, toute la carte parcourue.
 - `pedestrians.gd` : villageois qui marchent sur les trottoirs (demi-tour au bout) et petits groupes qui discutent
   sur la place.
+- `sky_traffic.gd` : un **avion** léger (hélice qui tourne) et un **hélicoptère** qui volent dans le ciel.
+  L'avion décrit une grande boucle autour de la carte à environ 190 m, virages inclinés de 23° au plus, 40 m/s
+  (144 km/h). L'hélicoptère tourne autour du village à environ 95 m (rotor principal et rotor de queue qui
+  tournent, nez baissé en avançant) et ralentit presque jusqu'au vol stationnaire au-dessus de deux endroits.
+  Les deux volent toujours bien au-dessus du drone automatique (45 m au plus) : pas de collision. Mesuré : accélération
+  de 4,2 m/s² au plus pour l'avion, 3 m/s² pour l'hélicoptère.
 - `sandbox.gd` : la scène (drone, gimbal, affichage, pause).
 
-Vérifié sur 3 minutes de trafic simulé : aucun véhicule bloqué, aucune voiture qui en traverse une autre.
+Un véhicule qui tient un carrefour (un long camion qui tourne, par exemple) n'attend pas les véhicules qui
+attendent après lui, et un véhicule qui cède le passage accepte un écart de plus en plus petit à mesure qu'il
+attend (de 70 m à 26 m) : les files ne se bloquent plus.
+
+Vérifié sur 20 minutes de trafic simulé (64 véhicules) : aucune voiture qui en traverse une autre, aucun carrefour
+bloqué (le centre d'un carrefour n'a jamais eu de véhicule arrêté plus de quelques secondes) ; l'attente la plus
+longue est d'environ 50 s dans une file à un carrefour de la rocade.

@@ -55,7 +55,7 @@ func _ready() -> void:
 		for i in _sports.size():
 			if _sports[i].id == str(prefs.get("sport", "")):
 				idx = i
-		_select(idx)
+		_select(idx, false)  # (saving here would overwrite the saved choices with the defaults before they are applied)
 	_apply_prefs(prefs)
 	for o in [_mode_opt, _movement_opt, _level_opt, _lens_opt, _screens_opt]:
 		o.item_selected.connect(func(_i): _save_prefs())
@@ -77,6 +77,7 @@ func _load_prefs() -> Dictionary:
 
 func _apply_prefs(prefs: Dictionary) -> void:
 	MotionBlur.level = clampi(int(prefs.get("blur", MotionBlur.level)), 0, MotionBlur.LABELS.size() - 1)
+	FrameGuide.blackout = bool(prefs.get("blackout", FrameGuide.blackout))
 	GraphicsSettings.quality = clampi(int(prefs.get("quality", GraphicsSettings.quality)), 0, GraphicsSettings.LABELS.size() - 1)
 	for pair in [[_mode_opt, "mode"], [_movement_opt, "movement"], [_level_opt, "level"], [_lens_opt, "lens"], [_screens_opt, "screens"]]:
 		var o: OptionButton = pair[0]
@@ -89,11 +90,14 @@ func _apply_prefs(prefs: Dictionary) -> void:
 func _save_prefs() -> void:
 	if _sport == null:
 		return
+	# merged into the file: the other keys (gimbal profile, blackout...) are written by other screens
+	var prefs := _load_prefs()
+	prefs.merge({"sport": _sport.id, "mode": _mode_opt.selected, "movement": _movement_opt.selected,
+			"level": _level_opt.selected, "lens": _lens_opt.selected, "screens": _screens_opt.selected, "blur": MotionBlur.level,
+			"quality": GraphicsSettings.quality, "blackout": FrameGuide.blackout}, true)
 	var f := FileAccess.open(PREFS_PATH, FileAccess.WRITE)
 	if f:
-		f.store_string(JSON.stringify({"sport": _sport.id, "mode": _mode_opt.selected, "movement": _movement_opt.selected,
-				"level": _level_opt.selected, "lens": _lens_opt.selected, "screens": _screens_opt.selected, "blur": MotionBlur.level,
-				"quality": GraphicsSettings.quality}, "\t"))
+		f.store_string(JSON.stringify(prefs, "\t"))
 
 
 # --- UI -------------------------------------------------------------------------------------------
@@ -295,11 +299,11 @@ static func _dots(n: int) -> String:
 
 # --- State ---------------------------------------------------------------------------------------
 
-func _select(i: int) -> void:
+func _select(i: int, save := true) -> void:
 	_sport = _sports[i]
 	_cards[i].button_pressed = true
 	_update_info()
-	if is_node_ready() and _lens_opt != null and _mode_opt != null:
+	if save and is_node_ready() and _lens_opt != null and _mode_opt != null:
 		_save_prefs()
 
 

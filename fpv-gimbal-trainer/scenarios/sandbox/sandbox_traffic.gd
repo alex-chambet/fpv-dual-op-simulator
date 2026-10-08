@@ -31,6 +31,8 @@ class Vehicle:
 	var pos := Vector3.ZERO
 	var fwd := Vector3.FORWARD
 	var wheels: Array = []
+	## seconds spent (almost) stopped
+	var stuck := 0.0
 
 var world: SandboxWorld
 var _routes: Array[Route] = []
@@ -254,9 +256,15 @@ func _process(delta: float) -> void:
 			var gap := along - v.half_len - o.half_len - 3.0 - 0.6 * v.v
 			target = minf(target, sqrt(o.v * o.v + 2.0 * 4.5 * maxf(0.0, gap)) if gap > 0.0 else minf(o.v, maxf(0.0, gap + 3.0)))
 		target = minf(target, _junction_limit(v))
-		# last guard: never drive into anything just in front (merges, crossings)
+		# last guard: never drive into anything just in front (merges, crossings). A vehicle that holds a junction
+		# does not wait for the ones that are waiting for it (a long truck turning would otherwise be stopped by
+		# the oncoming car waiting at the line, which waits for the truck: a jam of the whole junction); if it is
+		# stuck anyway it goes on slowly.
+		var holds := _holds_junction(v)
 		for o in _vehicles:
 			if o == v or o.cyclist != v.cyclist or absf(o.pos.x - v.pos.x) > 14.0 or absf(o.pos.z - v.pos.z) > 14.0:
+				continue
+			if holds and (o.fwd.dot(v.fwd) < 0.3 or v.stuck > 4.0):
 				continue
 			var rel2 := o.pos - v.pos
 			rel2.y = 0.0
@@ -267,6 +275,7 @@ func _process(delta: float) -> void:
 					v.v = 0.0
 		var rate := ACCEL if target > v.v else BRAKE
 		v.v = move_toward(v.v, target, rate * delta)
+		v.stuck = v.stuck + delta if v.v < 0.3 else 0.0
 		v.s = fposmod(v.s + v.v * delta, v.route.total)
 		_place(v)
 		var spin := v.v * delta / 0.33
@@ -323,9 +332,18 @@ func _junction_limit(v: Vehicle) -> float:
 	return lim
 
 
+func _holds_junction(v: Vehicle) -> bool:
+	for j in _owner:
+		if _owner[j] == v:
+			return true
+	return false
+
+
 ## Nothing in the junction j and nothing coming towards it within 70 m (vehicles waiting to give way do not count).
 func _clear(j: int, me: Vehicle) -> bool:
 	var jp := world.junctions[j]
+	# the longer a vehicle has waited, the smaller the gap it accepts (the others brake for it): no endless queues
+	var gap := maxf(26.0, 70.0 - 6.0 * me.stuck)
 	for o in _vehicles:
 		if o == me:
 			continue
@@ -333,7 +351,7 @@ func _clear(j: int, me: Vehicle) -> bool:
 		var d := rel.length()
 		if d < 8.0 or (d < 12.0 and o.v > 1.0):  # (vehicles waiting at the line do not count)
 			return false
-		if d < 70.0 and o.v > 2.0 and rel.dot(Vector2(o.fwd.x, o.fwd.z)) > 0.0:
+		if d < gap and o.v > 2.0 and rel.dot(Vector2(o.fwd.x, o.fwd.z)) > 0.0:
 			return false
 	return true
 

@@ -9,6 +9,35 @@ extends Node3D
 
 enum SpeedProfile { SLOW, MEDIUM, FAST }
 
+## Speed profile every new gimbal starts with (keys 1 / 2 / 3 change it): Medium by default, then the last one chosen,
+## kept in the menu preferences. -1 = not read yet.
+static var default_profile := -1
+const PREFS_PATH := "user://menu_prefs.json"
+
+
+static func load_default_profile() -> int:
+	if default_profile < 0:
+		default_profile = SpeedProfile.MEDIUM
+		if FileAccess.file_exists(PREFS_PATH):
+			var parsed = JSON.parse_string(FileAccess.get_file_as_string(PREFS_PATH))
+			if typeof(parsed) == TYPE_DICTIONARY and parsed.has("gimbal_profile"):
+				default_profile = clampi(int(parsed["gimbal_profile"]), 0, SpeedProfile.FAST)
+	return default_profile
+
+
+## Remembers the profile chosen by the player for the next sessions.
+static func save_default_profile(p: int) -> void:
+	default_profile = p
+	var prefs := {}
+	if FileAccess.file_exists(PREFS_PATH):
+		var parsed = JSON.parse_string(FileAccess.get_file_as_string(PREFS_PATH))
+		if typeof(parsed) == TYPE_DICTIONARY:
+			prefs = parsed
+	prefs["gimbal_profile"] = p
+	var f := FileAccess.open(PREFS_PATH, FileAccess.WRITE)
+	if f:
+		f.store_string(JSON.stringify(prefs, "\t"))
+
 @export_group("Stabilization")
 ## true: camera orientation is world-fixed, unaffected by the parent's rotation
 ## (drone turns, banks, pitches). Pan 0 = heading of the parent at start / recenter.
@@ -82,6 +111,10 @@ var _aligned := false
 
 
 func _ready() -> void:
+	var start := load_default_profile()
+	pan_profile = start
+	tilt_profile = start
+	roll_profile = start
 	# Wait one frame so a parent (e.g. PathFollow3D) has its final orientation.
 	await get_tree().process_frame
 	_heading0 = _parent_heading()

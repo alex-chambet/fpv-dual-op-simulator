@@ -8,6 +8,8 @@ signal restart_requested
 signal quit_requested
 ## The player picked another lens (focal length in mm); only emitted when `lens_editable`.
 signal lens_changed(mm: int)
+## The player turned the "dark outside the frame" option on or off (FrameGuide.blackout was already updated).
+signal blackout_changed
 
 ## Lens shown in the Gameplay page, and whether it can be changed here (not during a scored session: the score and
 ## the replay depend on it).
@@ -125,6 +127,24 @@ func _build() -> void:
 		lens_mm = SessionConfig.LENSES[i]
 		lens_changed.emit(lens_mm))
 	lrow.add_child(_lens_opt)
+	var brow := HBoxContainer.new()
+	_gameplay_page.add_child(brow)
+	var bl := Label.new()
+	bl.text = "Noir hors du cadre"
+	bl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	brow.add_child(bl)
+	var bcheck := CheckButton.new()
+	bcheck.button_pressed = FrameGuide.blackout
+	bcheck.toggled.connect(func(on: bool):
+		FrameGuide.blackout = on
+		FrameGuide.save_blackout()
+		blackout_changed.emit())
+	brow.add_child(bcheck)
+	var bnote := Label.new()
+	bnote.text = "Assombrit tout ce qui est hors du rectangle vert : on ne voit pas l'environnement autour du cadre, comme avec une vraie caméra."
+	bnote.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	bnote.modulate = Color(1, 1, 1, 0.65)
+	_gameplay_page.add_child(bnote)
 	_lens_note = Label.new()
 	_lens_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_lens_note.modulate = Color(1, 1, 1, 0.65)

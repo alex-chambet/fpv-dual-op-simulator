@@ -20,6 +20,7 @@ static var lens_mm := 24
 var world: SandboxWorld
 var traffic: SandboxTraffic
 var people: Pedestrians
+var sky: SkyTraffic
 var drone: FpvDrone
 var rig: GimbalRig
 var grass: GrassField
@@ -55,6 +56,10 @@ func _ready() -> void:
 	people.name = "Pedestrians"
 	add_child(people)
 	people.setup(world)
+	sky = SkyTraffic.new()
+	sky.name = "SkyTraffic"
+	add_child(sky)
+	sky.setup(world)
 	_build_drone()
 	_build_hud()
 	grass = GrassField.new()
@@ -154,6 +159,7 @@ func _build_hud() -> void:
 	_pause.lens_changed.connect(func(mm: int):
 		lens_mm = mm
 		rig.camera.fov = SessionConfig.fov_for(mm))
+	_pause.blackout_changed.connect(_guide.queue_redraw)
 	add_child(_pause)
 	_pause.resume_requested.connect(_close_pause)
 	_pause.restart_requested.connect(func():
@@ -281,6 +287,7 @@ func _set_profile(p: GimbalRig.SpeedProfile) -> void:
 	rig.pan_profile = p
 	rig.tilt_profile = p
 	rig.roll_profile = p
+	GimbalRig.save_default_profile(p)
 
 
 func _open_pause() -> void:
