@@ -16,6 +16,9 @@ var _last_vals := {}
 
 
 func _ready() -> void:
+	var bg := Neon.backdrop()
+	bg.material.set_shader_parameter("dim", 0.8)
+	add_child(bg)
 	_build_ui()
 	ControllerInput.devices_changed.connect(_on_devices_changed)
 	ControllerInput.config_loaded.connect(func(_p): _sync_from_config())

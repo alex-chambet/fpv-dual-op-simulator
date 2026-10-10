@@ -29,9 +29,8 @@ func _ready() -> void:
 
 
 func _build_ui() -> void:
-	var bg := ColorRect.new()
-	bg.color = Color(0.09, 0.1, 0.13)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var bg := Neon.backdrop()
+	bg.material.set_shader_parameter("dim", 0.78)
 	add_child(bg)
 
 	var margin := MarginContainer.new()
@@ -53,7 +52,7 @@ func _build_ui() -> void:
 	top.add_child(back)
 	var title := Label.new()
 	title.text = "HISTORY"
-	title.add_theme_font_size_override("font_size", 30)
+	Neon.title(title, 44)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(title)
 	top.add_child(_label("Show"))
@@ -66,7 +65,7 @@ func _build_ui() -> void:
 	_fill_filter()
 
 	_summary = _label("")
-	_summary.modulate = Color(1, 1, 1, 0.75)
+	_summary.add_theme_color_override("font_color", Neon.TEXT_DIM)
 	root.add_child(_summary)
 
 	_chart = Control.new()
@@ -245,10 +244,10 @@ func _cell(text: String, width: float) -> Label:
 
 func _score_color(s: float) -> Color:
 	if s >= 80.0:
-		return Color(0.5, 1.0, 0.55)
+		return Neon.GOOD
 	if s >= 50.0:
-		return Color(1.0, 0.85, 0.4)
-	return Color(1.0, 0.5, 0.45)
+		return Neon.MID
+	return Neon.BAD
 
 
 func _unhandled_input(event: InputEvent) -> void:

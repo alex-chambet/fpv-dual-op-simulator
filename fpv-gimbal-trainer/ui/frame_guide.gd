@@ -52,19 +52,21 @@ func _draw() -> void:
 		draw_rect(Rect2(0.0, rect.end.y, size.x, size.y - rect.end.y), black)
 		draw_rect(Rect2(0.0, rect.position.y, rect.position.x, rect.size.y), black)
 		draw_rect(Rect2(rect.end.x, rect.position.y, size.x - rect.end.x, rect.size.y), black)
-	var col := Color(0.3, 1.0, 0.4, 0.7) if in_frame else Color(1.0, 0.3, 0.2, 0.9)
+	# neon frame: cyan when the subject is in it, sunset yellow near the edge, hot pink out of it (with a soft halo)
+	var col := Color(Neon.GOOD, 0.8) if in_frame else Color(Neon.BAD, 0.95)
 	if in_frame and danger:
-		col = Color(1.0, 0.75, 0.15, 0.9)
+		col = Color(Neon.MID, 0.95)
+	draw_rect(rect.grow(2.0), Color(col, 0.18), false, 6.0)
 	draw_rect(rect, col, false, 2.0)
 	if show_thirds:
-		var tc := Color(1, 1, 1, 0.45)
+		var tc := Color(Neon.PINK, 0.5)
 		for k in 2:
 			var x: float = rect.position.x + rect.size.x * (k + 1.0) / 3.0
 			var y: float = rect.position.y + rect.size.y * (k + 1.0) / 3.0
 			draw_line(Vector2(x, rect.position.y), Vector2(x, rect.end.y), tc, 1.0)
 			draw_line(Vector2(rect.position.x, y), Vector2(rect.end.x, y), tc, 1.0)
 	var safe_px := size_px * (1.0 - safe_margin)
-	draw_rect(Rect2((size - safe_px) * 0.5, safe_px), Color(1, 1, 1, 0.25), false, 1.0)
+	draw_rect(Rect2((size - safe_px) * 0.5, safe_px), Color(Neon.PURPLE.lightened(0.4), 0.35), false, 1.0)
 	var c := size * 0.5
 	draw_line(c + Vector2(-8, 0), c + Vector2(8, 0), col, 1.0)
 	draw_line(c + Vector2(0, -8), c + Vector2(0, 8), col, 1.0)

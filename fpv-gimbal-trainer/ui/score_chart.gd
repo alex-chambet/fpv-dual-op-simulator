@@ -4,9 +4,9 @@ extends Control
 var scores: Array[float] = []
 var window := 5
 
-const COL_GRID := Color(1, 1, 1, 0.12)
-const COL_LINE := Color(0.45, 0.7, 1.0, 0.55)
-const COL_AVG := Color(1.0, 0.75, 0.2, 1.0)
+const COL_GRID := Color(0.75, 0.4, 1.0, 0.18)
+const COL_LINE := Color(0.15, 0.95, 1.0, 0.7)
+const COL_AVG := Color(1.0, 0.2, 0.72, 1.0)
 
 
 func set_scores(values: Array[float]) -> void:
@@ -44,4 +44,4 @@ func _draw() -> void:
 		draw_circle(p, 3.0, COL_LINE.lightened(0.3))
 	draw_string(font, Vector2(rect.position.x, size.y - 4), "oldest", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 1, 0.5))
 	draw_string(font, Vector2(rect.end.x - 40, size.y - 4), "latest", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 1, 0.5))
-	draw_string(font, Vector2(rect.position.x + 60, size.y - 4), "- line: each session   - orange: average of %d" % window, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 1, 0.5))
+	draw_string(font, Vector2(rect.position.x + 60, size.y - 4), "- line: each session   - pink: average of %d" % window, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 1, 0.5))

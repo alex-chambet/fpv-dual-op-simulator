@@ -39,6 +39,7 @@ var _home: Control
 var _play: Control
 var _setup: Control
 var _page: Control
+var _backdrop: ColorRect
 var _play_tile: MenuTile
 var _train_tab: Button
 var _sandbox_tab: Button
@@ -129,17 +130,9 @@ func _save_prefs() -> void:
 # --- UI: common ---------------------------------------------------------------------------------
 
 func _build_ui() -> void:
-	var bg := ColorRect.new()
-	bg.color = Color(0.025, 0.035, 0.07)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(bg)
-	var backdrop := TextureRect.new()
-	backdrop.texture = _thumb("ski_descente")
-	backdrop.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	backdrop.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
-	backdrop.modulate = Color(0.55, 0.62, 0.9, 0.1)
-	add_child(backdrop)
+	# the synthwave night (animated), a little darker behind the pages with options
+	_backdrop = Neon.backdrop()
+	add_child(_backdrop)
 	_home = _build_home()
 	_play = _build_play()
 	_setup = _build_setup()
@@ -152,6 +145,7 @@ func _show(page: Control) -> void:
 	for p in [_home, _play, _setup]:
 		p.visible = p == page
 	_page = page
+	_backdrop.material.set_shader_parameter("dim", 0.0 if page == _home else 0.5)
 	match page:
 		_home:
 			_focus_later(_play_tile)
@@ -181,8 +175,9 @@ func _label(text: String, font_size: int, alpha := 1.0, bold := false) -> Label:
 	l.text = text
 	l.add_theme_font_size_override("font_size", font_size)
 	if bold:
-		l.add_theme_font_override("font", MenuTile.bold_italic())
-	l.modulate = Color(1, 1, 1, alpha)
+		Neon.title(l, font_size, font_size >= 50)
+	elif alpha < 1.0:
+		l.add_theme_color_override("font_color", Color(Neon.TEXT_DIM, alpha))
 	return l
 
 
@@ -192,9 +187,10 @@ func _text_button(text: String, font_size: int, action: Callable) -> Button:
 	b.flat = true
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	b.add_theme_font_size_override("font_size", font_size)
-	b.add_theme_color_override("font_color", Color(1, 1, 1, 0.85))
-	b.add_theme_color_override("font_hover_color", MenuTile.AMBER)
-	b.add_theme_color_override("font_focus_color", MenuTile.AMBER)
+	b.add_theme_font_override("font", Neon.title_font())
+	b.add_theme_color_override("font_color", Color(Neon.TEXT, 0.85))
+	b.add_theme_color_override("font_hover_color", Neon.PINK)
+	b.add_theme_color_override("font_focus_color", Neon.CYAN)
 	b.pressed.connect(action)
 	return b
 
@@ -216,7 +212,7 @@ func _side_column(title: String, subtitle: String, back: Callable) -> VBoxContai
 	v.custom_minimum_size.x = 360
 	v.add_theme_constant_override("separation", 6)
 	v.add_child(_label(title, 60, 1.0, true))
-	v.add_child(_label(subtitle, 26, 0.9, true))
+	v.add_child(Neon.caps(_label(subtitle, 22), 22))
 	return v
 
 
@@ -243,7 +239,7 @@ func _build_home() -> Control:
 	head.add_child(t)
 	var st := _label("SIMULATEUR DE CADRAGE GIMBAL  ·  DRONE FPV", 18, 1.0)
 	st.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	st.add_theme_color_override("font_color", Color(0.35, 1.0, 0.45))
+	Neon.caps(st, 18)
 	head.add_child(st)
 
 	var tiles := VBoxContainer.new()
@@ -348,16 +344,19 @@ func _tab(text: String, group: ButtonGroup, left: bool) -> Button:
 	b.button_group = group
 	b.custom_minimum_size = Vector2(260, 52)
 	b.add_theme_font_size_override("font_size", 22)
+	b.add_theme_font_override("font", Neon.title_font())
 	b.focus_mode = Control.FOCUS_ALL
 	for state in ["normal", "hover", "pressed", "hover_pressed", "focus"]:
 		var sb := StyleBoxFlat.new()
-		sb.bg_color = Color(0.5, 0.52, 0.58, 0.55) if state in ["pressed", "hover_pressed"] else Color(0.08, 0.1, 0.16, 0.85)
+		sb.bg_color = Color(0.75, 0.1, 0.55, 0.8) if state in ["pressed", "hover_pressed"] else Color(0.08, 0.02, 0.16, 0.85)
 		if state == "hover":
-			sb.bg_color = Color(0.16, 0.19, 0.27, 0.9)
+			sb.bg_color = Color(0.22, 0.05, 0.34, 0.9)
 		if state == "focus":
 			sb.bg_color = Color(0, 0, 0, 0)
 			sb.draw_center = false
-		sb.border_color = MenuTile.AMBER if state == "focus" else Color(0.75, 0.78, 0.85)
+		sb.border_color = Neon.CYAN if state == "focus" else Neon.PINK
+		sb.shadow_color = Color(sb.border_color, 0.4)
+		sb.shadow_size = 10 if state in ["pressed", "hover_pressed", "focus"] else 0
 		sb.set_border_width_all(2)
 		sb.corner_radius_top_left = 26 if left else 0
 		sb.corner_radius_bottom_left = 26 if left else 0
@@ -435,11 +434,9 @@ func _build_setup() -> Control:
 
 	var panel := PanelContainer.new()
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.04, 0.06, 0.11, 0.85)
-	sb.border_color = MenuTile.BLUE
-	sb.set_border_width_all(2)
+	var sb := Neon.box(Neon.PANEL, Neon.PINK, 2, 18, 6, 28.0)
 	sb.set_content_margin_all(28)
+	sb.shadow_color = Color(Neon.PINK, 0.25)
 	panel.add_theme_stylebox_override("panel", sb)
 	h.add_child(panel)
 	var v := VBoxContainer.new()
@@ -476,20 +473,26 @@ func _build_setup() -> Control:
 	v.add_child(spacer)
 	_launch = Button.new()
 	_launch.custom_minimum_size = Vector2(0, 70)
-	_launch.add_theme_font_override("font", MenuTile.bold_italic())
-	_launch.add_theme_font_size_override("font_size", 30)
-	for state in ["normal", "hover", "pressed", "focus"]:
-		var bsb := StyleBoxFlat.new()
-		bsb.bg_color = MenuTile.AMBER if state != "normal" else MenuTile.AMBER.darkened(0.15)
-		bsb.border_color = Color(1, 1, 1)
-		bsb.set_border_width_all(3 if state == "focus" else 0)
-		bsb.skew = Vector2(0.15, 0.0)
-		bsb.set_corner_radius_all(4)
+	_launch.add_theme_font_override("font", Neon.title_font())
+	_launch.add_theme_font_size_override("font_size", 32)
+	# a sunset bar (yellow, orange, pink) that glows; a cyan neon frame when focused
+	var grad := Gradient.new()
+	grad.offsets = PackedFloat32Array([0.0, 0.5, 1.0])
+	grad.colors = PackedColorArray([Neon.SUN, Neon.ORANGE, Neon.PINK])
+	for state in ["normal", "hover", "pressed"]:
+		var tex := GradientTexture2D.new()
+		tex.gradient = grad
+		tex.width = 256
+		tex.height = 8
+		var bsb := StyleBoxTexture.new()
+		bsb.texture = tex
+		bsb.modulate_color = Color(1, 1, 1) if state != "normal" else Color(0.85, 0.8, 0.85)
 		_launch.add_theme_stylebox_override(state, bsb)
-	_launch.add_theme_color_override("font_color", Color(0.05, 0.05, 0.08))
-	_launch.add_theme_color_override("font_hover_color", Color(0.05, 0.05, 0.08))
-	_launch.add_theme_color_override("font_focus_color", Color(0.05, 0.05, 0.08))
-	_launch.add_theme_color_override("font_pressed_color", Color(0.05, 0.05, 0.08))
+	var fsb := Neon.box(Color(0, 0, 0, 0), Neon.CYAN, 3, 14, 3)
+	fsb.draw_center = false
+	_launch.add_theme_stylebox_override("focus", fsb)
+	for k in ["font_color", "font_hover_color", "font_focus_color", "font_pressed_color", "font_hover_pressed_color"]:
+		_launch.add_theme_color_override(k, Color(0.12, 0.0, 0.2))
 	_launch.pressed.connect(_launch_session)
 	v.add_child(_launch)
 	return root
@@ -500,6 +503,7 @@ func _option_row(parent: Control, key: String, label: String) -> OptionButton:
 	parent.add_child(row)
 	_rows[key] = row
 	var l := _label(label, 19)
+	l.add_theme_font_override("font", Neon.bold_font())
 	l.custom_minimum_size.x = 220
 	row.add_child(l)
 	var o := OptionButton.new()
@@ -521,14 +525,14 @@ func _info(parent: Control, key: String) -> Label:
 func _open_setup(sandbox: bool) -> void:
 	_sandbox = sandbox
 	if sandbox:
-		_setup_heading.text = "Bac à sable"
+		_setup_heading.text = "BAC À SABLE"
 		_setup_title.text = "Bac à sable  -  vol libre"
 		_setup_picture.picture = _thumb("sandbox")
 		_setup_picture.title = "Campagne"
 		_setup_picture.badge = ""
 		_setup_text.text = "Pas de chrono, pas de score. Retour arrière en jeu : le drone revient sur la place du village."
 	elif _sport != null:
-		_setup_heading.text = "Entraînement"
+		_setup_heading.text = "ENTRAÎNEMENT"
 		_setup_title.text = "Session d'entraînement"
 		_setup_picture.picture = _thumb(_sport.id)
 		_setup_picture.title = _sport.display_name

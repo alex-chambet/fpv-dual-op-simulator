@@ -1,19 +1,19 @@
 class_name MenuTile
 extends Button
-## A big menu tile in the style of the FPV simulators' menus: a slanted card with a picture (or a drawn icon), a dark
-## gradient at the bottom and the title in bold italics. It lights up when hovered or focused (mouse, keyboard or
-## controller) and when `selected`.
+## A big menu tile in the style of the FPV simulators' menus, in the neon retro look (Neon): a slanted card with a
+## picture (or a drawn icon), a purple gradient at the bottom and the title in bold italics. Cyan neon border; it
+## turns hot pink and glows when hovered or focused (mouse, keyboard or controller) and when `selected`.
 
-const BLUE := Color(0.12, 0.55, 1.0)
-const AMBER := Color(1.0, 0.68, 0.12)
-const BG := Color(0.05, 0.07, 0.12)
+const BLUE := Neon.CYAN
+const AMBER := Neon.PINK
+const BG := Color(0.08, 0.02, 0.16, 0.92)
 
 var title := ""
 var subtitle := ""
 ## Small text in the top right corner (e.g. the difficulty).
 var badge := ""
 var picture: Texture2D
-## Drawn icon when there is no picture: "gear", "history", "dice", "play", "sandbox".
+## Drawn icon when there is no picture: "gear", "history", "dice", "play".
 var icon_kind := ""
 var skew := 18.0
 var title_size := 28
@@ -22,16 +22,9 @@ var selected := false:
 		selected = v
 		queue_redraw()
 
-static var _bold: FontVariation
-
 
 static func bold_italic() -> FontVariation:
-	if _bold == null:
-		_bold = FontVariation.new()
-		_bold.base_font = ThemeDB.fallback_font
-		_bold.variation_embolden = 0.9
-		_bold.variation_transform = Transform2D(Vector2(1.0, 0.0), Vector2(0.2, 1.0), Vector2.ZERO)
-	return _bold
+	return Neon.title_font()
 
 
 func _init() -> void:
@@ -53,7 +46,13 @@ func _draw() -> void:
 	var h := size.y
 	var hot := is_hovered() or has_focus() or selected
 	var pts := PackedVector2Array([Vector2(skew, 0.0), Vector2(w, 0.0), Vector2(w - skew, h), Vector2(0.0, h)])
-	# background: the picture, cropped to fill the tile, or a plain dark card
+	var outline := pts.duplicate()
+	outline.append(pts[0])
+	# neon glow around a lit tile (drawn first, under the card)
+	if hot:
+		draw_polyline(outline, Color(Neon.PINK, 0.12), 18.0, true)
+		draw_polyline(outline, Color(Neon.PINK, 0.25), 9.0, true)
+	# background: the picture, cropped to fill the tile, or a plain night-purple card
 	if picture != null:
 		var ps := picture.get_size()
 		var scale := maxf(w / ps.x, h / ps.y)
@@ -62,38 +61,44 @@ func _draw() -> void:
 		var uvs := PackedVector2Array()
 		for p in pts:
 			uvs.append(off + p / Vector2(w, h) * crop)
-		var tint := Color(1, 1, 1) if hot else Color(0.78, 0.8, 0.85)
+		var tint := Color(1, 1, 1) if hot else Color(0.78, 0.72, 0.9)
 		draw_polygon(pts, PackedColorArray([tint, tint, tint, tint]), uvs, picture)
 	else:
-		var c := BG.lightened(0.08) if hot else BG
-		draw_colored_polygon(pts, c)
-	# dark gradient under the title
-	var g0 := h * 0.5
+		draw_colored_polygon(pts, BG.lightened(0.06) if hot else BG)
+	# purple gradient under the title
+	var g0 := h * 0.45
 	var top_l := Vector2(skew * (1.0 - g0 / h), g0)
 	var top_r := Vector2(w - skew * g0 / h, g0)
+	var deep := Color(0.1, 0.0, 0.2, 0.88)
 	draw_polygon(PackedVector2Array([top_l, top_r, Vector2(w - skew, h), Vector2(0.0, h)]),
-			PackedColorArray([Color(0, 0, 0, 0.0), Color(0, 0, 0, 0.0), Color(0, 0, 0, 0.78), Color(0, 0, 0, 0.78)]))
+			PackedColorArray([Color(deep, 0.0), Color(deep, 0.0), deep, deep]))
 	if icon_kind != "":
-		_draw_icon(Vector2(w * 0.5, h * 0.43), minf(w, h) * 0.24, AMBER.lightened(0.15) if hot else AMBER)
-	# border
-	var border := AMBER if hot else BLUE
-	var outline := pts.duplicate()
-	outline.append(pts[0])
-	draw_polyline(outline, border, 4.0 if hot else 2.5, true)
-	# texts
-	var font := bold_italic()
-	var x := 22.0
-	draw_string(font, Vector2(x, h - 20.0), title.to_upper(), HORIZONTAL_ALIGNMENT_LEFT, w - 40.0, title_size,
-			Color(1, 1, 1))
+		var r := minf(w, h) * 0.24
+		var c := Vector2(w * 0.5, h * 0.42)
+		_draw_icon(c, r * 1.04, Color(Neon.PINK, 0.35))  # halo
+		_draw_icon(c, r, Neon.SUN.lightened(0.2) if hot else Neon.SUN)
+	draw_polyline(outline, Neon.PINK if hot else Color(Neon.CYAN, 0.85), 3.0 if hot else 2.0, true)
+	# texts: white title with a thin dark rim and a drop shadow (pink when the tile is lit)
+	var font := Neon.title_font()
+	var x := 24.0
+	var title_pos := Vector2(x, h - 20.0)
+	var up := title.to_upper()
+	var sh := Vector2(2.0, 3.0) * maxf(title_size / 28.0, 1.0)
+	draw_string_outline(font, title_pos + sh, up, HORIZONTAL_ALIGNMENT_LEFT, w - 40.0, title_size, 3,
+			Color(Neon.PINK, 0.7) if hot else Color(0, 0, 0.05, 0.6))
+	draw_string(font, title_pos + sh, up, HORIZONTAL_ALIGNMENT_LEFT, w - 40.0, title_size,
+			Color(Neon.PINK, 0.7) if hot else Color(0, 0, 0.05, 0.6))
+	draw_string_outline(font, title_pos, up, HORIZONTAL_ALIGNMENT_LEFT, w - 40.0, title_size, 3, Color(0.06, 0.02, 0.14, 0.9))
+	draw_string(font, title_pos, up, HORIZONTAL_ALIGNMENT_LEFT, w - 40.0, title_size, Color(1, 1, 1))
 	if subtitle != "":
-		draw_string(ThemeDB.fallback_font, Vector2(x + 4.0, h - 26.0 - title_size), subtitle, HORIZONTAL_ALIGNMENT_LEFT,
-				w - 50.0, 15, Color(1, 1, 1, 0.8))
+		draw_string(Neon.body_font(), Vector2(x + 4.0, h - 28.0 - title_size), subtitle, HORIZONTAL_ALIGNMENT_LEFT,
+				w - 50.0, 16, Color(Neon.CYAN.lightened(0.5), 0.9))
 	if badge != "":
-		var bw := ThemeDB.fallback_font.get_string_size(badge, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
+		var bf := Neon.bold_font()
+		var bw := bf.get_string_size(badge, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x
 		var bp := Vector2(w - bw - 18.0, 30.0)
-		draw_rect(Rect2(bp - Vector2(8.0, 20.0), Vector2(bw + 16.0, 28.0)), Color(0, 0, 0, 0.55))
-		draw_string(ThemeDB.fallback_font, bp, badge, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, AMBER)
-
+		draw_rect(Rect2(bp - Vector2(8.0, 20.0), Vector2(bw + 16.0, 28.0)), Color(0.08, 0.0, 0.16, 0.75))
+		draw_string(bf, bp, badge, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Neon.SUN)
 
 func _draw_icon(c: Vector2, r: float, col: Color) -> void:
 	match icon_kind:

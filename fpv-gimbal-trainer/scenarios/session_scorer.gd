@@ -80,6 +80,7 @@ var _layer: CanvasLayer
 
 func _ready() -> void:
 	process_priority = 1000  # after the rig has moved this frame
+	Neon.apply(get_tree())  # the look of every menu and HUD of the game (this autoload is loaded first)
 
 
 ## subject_provider: Callable returning the world position of the tracked subject.
@@ -251,7 +252,7 @@ func _show_results() -> void:
 	add_child(_layer)
 
 	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.6)
+	dim.color = Color(0.06, 0.0, 0.13, 0.72)
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_layer.add_child(dim)
 
@@ -273,12 +274,13 @@ func _show_results() -> void:
 	var title := Label.new()
 	title.text = "RUN RESULT"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	Neon.caps(title, 22)
 	box.add_child(title)
 
 	var overall := Label.new()
 	overall.text = "%d / 100    [ %s ]" % [results.overall, results.grade]
 	overall.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	overall.add_theme_font_size_override("font_size", 40)
+	Neon.title(overall, 56)
 	box.add_child(overall)
 
 	box.add_child(HSeparator.new())
@@ -300,7 +302,7 @@ func _show_results() -> void:
 	if float(results.get("team", -1.0)) >= 0.0:
 		var team_l := Label.new()
 		team_l.text = "TEAM SCORE: %d / 100" % results.team
-		team_l.add_theme_font_size_override("font_size", 22)
+		Neon.caps(team_l, 24, Neon.SUN)
 		box.add_child(team_l)
 	if scenario_id != "":
 		var best_l := Label.new()
@@ -336,15 +338,20 @@ func _add_row(parent: Control, title: String, value: float, detail: String) -> v
 	var name_l := Label.new()
 	name_l.text = title
 	name_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_l.add_theme_font_override("font", Neon.bold_font())
 	head.add_child(name_l)
 	var val_l := Label.new()
 	val_l.text = "%.0f / 100" % value
+	var col: Color = Neon.GOOD if value >= 80.0 else (Neon.MID if value >= 55.0 else Neon.BAD)
+	val_l.add_theme_font_override("font", Neon.bold_font())
+	val_l.add_theme_color_override("font_color", col)
 	head.add_child(val_l)
 	var bar := ProgressBar.new()
 	bar.max_value = 100.0
 	bar.value = value
 	bar.show_percentage = false
 	bar.custom_minimum_size.y = 14
+	bar.add_theme_stylebox_override("fill", Neon.box(col, Color(0, 0, 0, 0), 0, 8))
 	row.add_child(bar)
 	var d := Label.new()
 	d.text = detail

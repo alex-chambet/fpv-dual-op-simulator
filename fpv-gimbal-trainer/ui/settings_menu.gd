@@ -7,9 +7,8 @@ const INPUT_SCENE := "res://scenes/input_debug.tscn"
 
 
 func _ready() -> void:
-	var bg := ColorRect.new()
-	bg.color = Color(0.09, 0.1, 0.13)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var bg := Neon.backdrop()
+	bg.material.set_shader_parameter("dim", 0.55)
 	add_child(bg)
 	var center := CenterContainer.new()
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -22,7 +21,7 @@ func _ready() -> void:
 	var title := Label.new()
 	title.text = "PARAMÈTRES"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 32)
+	Neon.title(title, 52)
 	box.add_child(title)
 	box.add_child(HSeparator.new())
 
@@ -45,7 +44,7 @@ func _ready() -> void:
 		MotionBlur.save_level())
 	var hint := Label.new()
 	hint.text = "Ces réglages sont aussi accessibles en jeu (Échap > Graphismes)."
-	hint.modulate = Color(1, 1, 1, 0.6)
+	hint.add_theme_color_override("font_color", Neon.TEXT_DIM)
 	box.add_child(hint)
 	box.add_child(HSeparator.new())
 
@@ -60,8 +59,7 @@ func _ready() -> void:
 func _heading(t: String) -> Label:
 	var l := Label.new()
 	l.text = t
-	l.add_theme_font_size_override("font_size", 22)
-	return l
+	return Neon.caps(l, 20)
 
 
 func _option_row(parent: Control, label: String, items: Array, selected: int) -> OptionButton:

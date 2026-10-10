@@ -33,7 +33,7 @@ func _init() -> void:
 
 func _build() -> void:
 	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.6)
+	dim.color = Color(0.06, 0.0, 0.13, 0.72)
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(dim)
 	var center := CenterContainer.new()
@@ -55,7 +55,7 @@ func _build() -> void:
 	var title := Label.new()
 	title.text = "PAUSE"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 32)
+	Neon.title(title, 44)
 	_main_page.add_child(title)
 	_resume_button = _button(_main_page, "Reprendre (Échap)", func(): resume_requested.emit())
 	_button(_main_page, "Recommencer", func(): restart_requested.emit())
@@ -71,7 +71,7 @@ func _build() -> void:
 	var gtitle := Label.new()
 	gtitle.text = "GRAPHISMES"
 	gtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	gtitle.add_theme_font_size_override("font_size", 32)
+	Neon.title(gtitle, 44)
 	_graphics_page.add_child(gtitle)
 	var qrow := HBoxContainer.new()
 	_graphics_page.add_child(qrow)
@@ -112,7 +112,7 @@ func _build() -> void:
 	var ptitle := Label.new()
 	ptitle.text = "GAMEPLAY"
 	ptitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	ptitle.add_theme_font_size_override("font_size", 32)
+	Neon.title(ptitle, 44)
 	_gameplay_page.add_child(ptitle)
 	var lrow := HBoxContainer.new()
 	_gameplay_page.add_child(lrow)
@@ -143,11 +143,11 @@ func _build() -> void:
 	var bnote := Label.new()
 	bnote.text = "Assombrit tout ce qui est hors du rectangle vert : on ne voit pas l'environnement autour du cadre, comme avec une vraie caméra."
 	bnote.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	bnote.modulate = Color(1, 1, 1, 0.65)
+	bnote.add_theme_color_override("font_color", Neon.TEXT_DIM)
 	_gameplay_page.add_child(bnote)
 	_lens_note = Label.new()
 	_lens_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_lens_note.modulate = Color(1, 1, 1, 0.65)
+	_lens_note.add_theme_color_override("font_color", Neon.TEXT_DIM)
 	_gameplay_page.add_child(_lens_note)
 	_button(_gameplay_page, "Retour (Échap)", func(): _show_page(null))
 
