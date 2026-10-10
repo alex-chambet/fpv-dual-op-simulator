@@ -79,8 +79,14 @@ func advance(delta: float) -> void:
 	if ground_height.is_valid():
 		var gp := follower.global_position
 		var dy := float(ground_height.call(gp.x, gp.z)) - gp.y
-		model.position.y = dy if absf(dy) < snap_tolerance else 0.0
+		# not in the air: the flight would stay glued to the ground, then pop up by snap_tolerance
+		model.position.y = dy if absf(dy) < snap_tolerance and not _in_air() else 0.0
 	_on_advanced(delta)
+
+
+## True during a jump (the model follows the path, not the ground).
+func _in_air() -> bool:
+	return false
 
 
 ## Nominal speed: base_speed / speed_profile plus the slow oscillation (speed_variation).

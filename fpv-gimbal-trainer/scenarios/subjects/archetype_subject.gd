@@ -54,6 +54,10 @@ func _on_advanced(delta: float) -> void:
 	arch.animate(self, delta)
 
 
+func _in_air() -> bool:
+	return not current_jump().is_empty()
+
+
 ## The jump event the subject is in right now (empty dictionary if none).
 func current_jump() -> Dictionary:
 	for ev in jump_events:

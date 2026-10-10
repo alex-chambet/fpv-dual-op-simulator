@@ -14,6 +14,7 @@ const X_LIMIT := 170.0        # m: the course stays within this distance of the 
 const BRAKE := 6.5            # m/s², braking (skidding) before a tight turn
 const START_SPEED := 7.0      # m/s, after the push out of the start house
 const GRAVITY := 9.81
+const POP_TIME := 0.12         # s: how fast the pop at the lip builds up
 const FINISH_STRAIGHT := 170.0  # m of straight schuss into the finish
 
 
@@ -213,13 +214,31 @@ func _jumps(ctx: ArchetypeContext, pts: PackedVector3Array, kappa: PackedFloat32
 	var n := pts.size()
 	var last_end := 0
 	for c in crests:
-		var i0 := -1
+		var ic := -1
 		for i in range(maxi(last_end, 4), n - 6):
 			if pts[i].z >= c:
+				ic = i
+				break
+		if ic < 0:
+			continue
+		# take-off: the crest is the middle of a rounded break; the skier leaves the snow where the slope starts to
+		# fall away faster than his ballistic arc (the first point, from 40 m before the crest, where the arc launched
+		# along the slope is already 6 cm above the snow 6 m further)
+		var i0 := ic
+		for i in range(maxi(ic - 20, maxi(last_end, 4)), ic + 1):
+			var a0 := pts[i - 2]
+			var b0 := pts[i]
+			var run0 := Vector2(b0.x - a0.x, b0.z - a0.z).length()
+			var ang0 := atan2(b0.y - a0.y, run0)
+			var vh0 := maxf(speeds[i] * cos(ang0), 1.0)
+			var d0 := 0.0
+			for k in range(i + 1, i + 4):
+				d0 += Vector2(pts[k].x - pts[k - 1].x, pts[k].z - pts[k - 1].z).length()
+			var t0 := d0 / vh0
+			var y0 := b0.y + speeds[i] * sin(ang0) * t0 - 0.5 * GRAVITY * t0 * t0
+			if y0 - pts[i + 3].y > 0.06:
 				i0 = i
 				break
-		if i0 < 0:
-			continue
 		var straight := true
 		for i in range(maxi(i0 - 5, 0), mini(i0 + 15, n)):
 			if absf(kappa[i]) > 1.0 / 400.0:
@@ -232,15 +251,19 @@ func _jumps(ctx: ArchetypeContext, pts: PackedVector3Array, kappa: PackedFloat32
 		var angle := atan2(b.y - a.y, run)  # negative: going down
 		var v := speeds[i0]
 		var vh := v * cos(angle)
-		var vy := v * sin(angle) + pop
+		var vy := v * sin(angle)
 		var d := 0.0
 		var i1 := -1
 		var flight := PackedFloat32Array()
 		for k in range(i0 + 1, n):
 			d += Vector2(pts[k].x - pts[k - 1].x, pts[k].z - pts[k - 1].z).length()
 			var t := d / maxf(vh, 1.0)
-			var y := b.y + vy * t - 0.5 * GRAVITY * t * t
-			if y <= pts[k].y or d > 90.0:
+			# the pop (legs extending at the lip) lifts the skier progressively, not in one frame
+			var lift := pop * (t - POP_TIME * (1.0 - exp(-t / POP_TIME)))
+			var y := b.y + vy * t - 0.5 * GRAVITY * t * t + lift
+			if d < 10.0:
+				y = maxf(y, pts[k].y)  # still on the rounded lip: the snow carries the skier until it falls away
+			elif y <= pts[k].y or d > 90.0:
 				i1 = k
 				break
 			flight.append(y)
@@ -248,9 +271,11 @@ func _jumps(ctx: ArchetypeContext, pts: PackedVector3Array, kappa: PackedFloat32
 			continue
 		var peak := 0.0
 		for k in range(i0 + 1, i1):
-			var y := flight[k - i0 - 1]
-			peak = maxf(peak, y - pts[k].y)
-			pts[k] = Vector3(pts[k].x, y, pts[k].z)
+			peak = maxf(peak, flight[k - i0 - 1] - pts[k].y)
+		if peak < 0.3:
+			continue  # the skier never really leaves the snow here
+		for k in range(i0 + 1, i1):
+			pts[k] = Vector3(pts[k].x, flight[k - i0 - 1], pts[k].z)
 		events.append({"type": "jump", "i0": i0, "i1": i1, "p0": pts[i0], "p1": pts[i1], "height": peak,
 				"ramp_i": i0, "ramp_h": 0.0, "length": d})
 		last_end = i1 + 10
