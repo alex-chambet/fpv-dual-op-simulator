@@ -1,12 +1,10 @@
 extends Control
-## Main menu, in three steps: 1. choose a sport (only the sports flagged `in_menu`), 2. choose how to
-## play it (training session: 1 or 2 players, drone movement, level, lens), 3. launch. Next to it the sandbox
-## (free flight in the countryside, no time limit). Tools at the bottom.
-
-const TOOLS := [
-	{"name": "Historique et replays", "scene": "res://scenes/history.tscn"},
-	{"name": "Paramètres", "scene": "res://scenes/settings.tscn"},
-]
+## Main menu, in pages (like the menus of the FPV simulators):
+##  1. Home: PLAY (big tile), then random session, history and replays, settings; quit.
+##  2. Play: training (a scored session on one of the sports) or sandbox (free flight in the countryside), and the
+##     terrain, as a grid of picture cards.
+##  3. Session: only the options of what was chosen (players, screens, drone movement, level, lens), and LAUNCH.
+## Esc (or Back) goes back one page. After a session the menu opens on the page of that session, ready to play again.
 
 const MOVEMENT_LABELS := {
 	"pursuit": ["Poursuite arrière", "Le drone suit le sujet par l'arrière."],
@@ -24,22 +22,45 @@ const LEVEL_LABELS := ["Auto (difficulté du sport)", "Aléatoire (niveaux 1 à 
 		"Niveau 3 - moyen", "Niveau 4 - difficile", "Niveau 5 - très difficile", "Niveau 6 - EXPERT"]
 ## What makes a session hard (see DroneDifficulty): the movement, the axes (pan / tilt) and the proximity.
 const DIFFICULTY_HELP := "La difficulté vient du mouvement du drone, des axes à gérer (pan seul / tilt seul, puis les deux) et de la distance au sujet. Le drone vole toujours de façon fluide."
+const LENS_HELP := {24: "  (large, plus facile)", 35: "", 50: "  (le sujet est plus gros, plus dur à garder)", 85: "  (très serré : chaque geste compte)"}
+const SANDBOX_TEXT := "La campagne de la Départementale en libre, sans limite de temps ni score : routes, village, fermes, voitures, camions, cyclistes, piétons, un avion et un hélicoptère.\n\nSans manette, ou avec seulement celle de la gimbal, le drone décolle tout seul et vole de façon aléatoire mais fluide dans toute la carte : tu règles ta gimbal et tu filmes ce qui passe. Avec une 2e manette (pilote) : vol acro. En jeu, la touche M change le mode du drone (auto, clavier, acro)."
+const VERSION := "Version 1.6"
+const THUMBS := "res://ui/thumbs/%s.png"
+
+## Page to open the next time the menu is shown ("home", "play", "setup"), and whether "setup" is the sandbox.
+static var return_page := "home"
+static var return_sandbox := false
 
 var _sports: Array[SubjectDefinition] = []
 var _sport: SubjectDefinition
-var _group := ButtonGroup.new()
-var _cards: Array[Button] = []
-var _sport_info: Label
+var _sandbox := false   ## the play / setup pages are for the sandbox (else a training session)
+
+var _home: Control
+var _play: Control
+var _setup: Control
+var _page: Control
+var _play_tile: MenuTile
+var _train_tab: Button
+var _sandbox_tab: Button
+var _grid: GridContainer
+var _play_text: Label
+var _cards: Array[MenuTile] = []
+
+# setup page
+var _setup_picture: MenuTile
+var _setup_title: Label
+var _setup_text: Label
+var _setup_heading: Label
+var _rows := {}   ## option name -> the row (shown / hidden by mode)
 var _mode_opt: OptionButton
 var _mode_info: Label
 var _screens_opt: OptionButton
 var _movement_opt: OptionButton
-var _level_opt: OptionButton
 var _movement_info: Label
+var _level_opt: OptionButton
 var _level_info: Label
-const LENS_HELP := {24: "  (large, plus facile)", 35: "", 50: "  (le sujet est plus gros, plus dur à garder)", 85: "  (très serré : chaque geste compte)"}
 var _lens_opt: OptionButton
-var _train_button: Button
+var _launch: Button
 
 
 func _ready() -> void:
@@ -50,17 +71,22 @@ func _ready() -> void:
 	_sports = SubjectCatalogue.menu_sports()
 	_build_ui()
 	var prefs := _load_prefs()
-	if not _sports.is_empty():
-		var idx := 0
-		for i in _sports.size():
-			if _sports[i].id == str(prefs.get("sport", "")):
-				idx = i
-		_select(idx, false)  # (saving here would overwrite the saved choices with the defaults before they are applied)
+	_sport = _sports[0] if not _sports.is_empty() else null
+	for s in _sports:
+		if s.id == str(prefs.get("sport", "")):
+			_sport = s
 	_apply_prefs(prefs)
 	for o in [_mode_opt, _movement_opt, _level_opt, _lens_opt, _screens_opt]:
 		o.item_selected.connect(func(_i): _save_prefs())
-	if not _cards.is_empty():
-		_cards[0].grab_focus()
+	_sandbox = return_sandbox
+	match return_page:
+		"setup":
+			_open_setup(_sandbox)
+		"play":
+			_open_play(_sandbox)
+		_:
+			_show(_home)
+	return_page = "home"
 
 
 # --- Saved choices ---------------------------------------------------------------------------------
@@ -81,7 +107,7 @@ func _apply_prefs(prefs: Dictionary) -> void:
 	GraphicsSettings.quality = clampi(int(prefs.get("quality", GraphicsSettings.quality)), 0, GraphicsSettings.LABELS.size() - 1)
 	for pair in [[_mode_opt, "mode"], [_movement_opt, "movement"], [_level_opt, "level"], [_lens_opt, "lens"], [_screens_opt, "screens"]]:
 		var o: OptionButton = pair[0]
-		var i := int(prefs.get(pair[1], 1 if pair[1] == "blur" else 0))
+		var i := int(prefs.get(pair[1], 0))
 		if i >= 0 and i < o.item_count:
 			o.select(i)
 	_update_info()
@@ -100,231 +126,452 @@ func _save_prefs() -> void:
 		f.store_string(JSON.stringify(prefs, "\t"))
 
 
-# --- UI -------------------------------------------------------------------------------------------
+# --- UI: common ---------------------------------------------------------------------------------
 
 func _build_ui() -> void:
 	var bg := ColorRect.new()
-	bg.color = Color(0.09, 0.1, 0.13)
+	bg.color = Color(0.025, 0.035, 0.07)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
-	# Scrolls if the menu is taller than the window
-	var scroll := ScrollContainer.new()
-	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	add_child(scroll)
-	var center := CenterContainer.new()
-	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	center.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.add_child(center)
-	var box := VBoxContainer.new()
-	box.custom_minimum_size.x = 1140
-	box.add_theme_constant_override("separation", 8)
-	center.add_child(box)
-
-	var title := Label.new()
-	title.text = "FPV GIMBAL TRAINER"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 32)
-	box.add_child(title)
-	var sub := Label.new()
-	sub.text = "Garde le sujet dans le cadre avec le gimbal."
-	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sub.modulate = Color(1, 1, 1, 0.7)
-	box.add_child(sub)
-	box.add_child(HSeparator.new())
-
-	box.add_child(_heading("1.  Choisis ton sport"))
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
-	box.add_child(row)
-	for i in _sports.size():
-		var s := _sports[i]
-		var card := Button.new()
-		card.toggle_mode = true
-		card.button_group = _group
-		card.text = "%d   %s\n%s" % [i + 1, s.display_name, _stars(s.base_difficulty)]
-		card.custom_minimum_size = Vector2(0, 70)
-		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		card.add_theme_font_size_override("font_size", 18)
-		card.pressed.connect(_select.bind(i))
-		row.add_child(card)
-		_cards.append(card)
-	_sport_info = Label.new()
-	_sport_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_sport_info.custom_minimum_size.y = 44
-	_sport_info.modulate = Color(1, 1, 1, 0.75)
-	box.add_child(_sport_info)
-	box.add_child(HSeparator.new())
-
-	box.add_child(_heading("2.  Choisis comment jouer"))
-	var cols := HBoxContainer.new()
-	cols.add_theme_constant_override("separation", 20)
-	box.add_child(cols)
-	cols.add_child(_build_training_panel())
-	cols.add_child(_build_sandbox_panel())
-	box.add_child(HSeparator.new())
-
-	var tools := HBoxContainer.new()
-	tools.add_theme_constant_override("separation", 10)
-	box.add_child(tools)
-	var rnd := Button.new()
-	rnd.text = "Session aléatoire (R)"
-	rnd.pressed.connect(_start_random)
-	tools.add_child(rnd)
-	tools.add_child(VSeparator.new())
-	for t in TOOLS:
-		var b := Button.new()
-		b.text = t.name
-		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		b.pressed.connect(func(): get_tree().change_scene_to_file(t.scene))
-		tools.add_child(b)
-	var quit := Button.new()
-	quit.text = "Quitter"
-	quit.pressed.connect(func(): get_tree().quit())
-	tools.add_child(quit)
+	var backdrop := TextureRect.new()
+	backdrop.texture = _thumb("ski_descente")
+	backdrop.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	backdrop.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
+	backdrop.modulate = Color(0.55, 0.62, 0.9, 0.1)
+	add_child(backdrop)
+	_home = _build_home()
+	_play = _build_play()
+	_setup = _build_setup()
+	for p in [_home, _play, _setup]:
+		p.visible = false
+		add_child(p)
 
 
-func _panel(heading: String, width: float) -> VBoxContainer:
-	var panel := PanelContainer.new()
-	panel.custom_minimum_size.x = width
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var margin := MarginContainer.new()
-	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 14)
-	panel.add_child(margin)
+func _show(page: Control) -> void:
+	for p in [_home, _play, _setup]:
+		p.visible = p == page
+	_page = page
+	match page:
+		_home:
+			_focus_later(_play_tile)
+		_play:
+			if not _cards.is_empty():
+				var focus: MenuTile = _cards[0]
+				for c in _cards:
+					if c.selected:
+						focus = c
+				_focus_later(focus)
+		_setup:
+			_focus_later(_launch)
+
+
+## Focus for the keyboard / controller, at the end of the frame (when the page is laid out), if still in the menu.
+func _focus_later(c: Control) -> void:
+	(func(): if is_instance_valid(c) and c.is_inside_tree() and c.is_visible_in_tree(): c.grab_focus()).call_deferred()
+
+
+func _thumb(id: String) -> Texture2D:
+	var path := THUMBS % id
+	return load(path) if ResourceLoader.exists(path) else null
+
+
+func _label(text: String, font_size: int, alpha := 1.0, bold := false) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", font_size)
+	if bold:
+		l.add_theme_font_override("font", MenuTile.bold_italic())
+	l.modulate = Color(1, 1, 1, alpha)
+	return l
+
+
+func _text_button(text: String, font_size: int, action: Callable) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.flat = true
+	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	b.add_theme_font_size_override("font_size", font_size)
+	b.add_theme_color_override("font_color", Color(1, 1, 1, 0.85))
+	b.add_theme_color_override("font_hover_color", MenuTile.AMBER)
+	b.add_theme_color_override("font_focus_color", MenuTile.AMBER)
+	b.pressed.connect(action)
+	return b
+
+
+## A full-window page with margins.
+func _page_root() -> MarginContainer:
+	var m := MarginContainer.new()
+	m.set_anchors_preset(Control.PRESET_FULL_RECT)
+	for side in ["left", "right"]:
+		m.add_theme_constant_override("margin_" + side, 70)
+	m.add_theme_constant_override("margin_top", 40)
+	m.add_theme_constant_override("margin_bottom", 30)
+	return m
+
+
+## Column on the left of the play / setup pages: big title, subtitle, free space, then Back and Quit.
+func _side_column(title: String, subtitle: String, back: Callable) -> VBoxContainer:
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 8)
-	margin.add_child(v)
-	var h := Label.new()
-	h.text = heading
-	h.add_theme_font_size_override("font_size", 20)
-	v.add_child(h)
+	v.custom_minimum_size.x = 360
+	v.add_theme_constant_override("separation", 6)
+	v.add_child(_label(title, 60, 1.0, true))
+	v.add_child(_label(subtitle, 26, 0.9, true))
 	return v
 
 
-func _build_training_panel() -> Control:
-	var v := _panel("Session d'entraînement", 640)
-	var d := Label.new()
-	d.text = "Choisis le mouvement du drone et la difficulté : chaque session est générée avec un trajet différent."
-	d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	d.modulate = Color(1, 1, 1, 0.65)
-	v.add_child(d)
-	_mode_opt = _option_row(v, "Mode de jeu")
+func _side_bottom(v: VBoxContainer, back: Callable) -> void:
+	var spacer := Control.new()
+	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	v.add_child(spacer)
+	v.add_child(_text_button("Retour  (Échap)", 26, back))
+	v.add_child(_text_button("Quitter le jeu", 26, func(): get_tree().quit()))
+
+
+# --- Page 1: home -------------------------------------------------------------------------------
+
+func _build_home() -> Control:
+	var root := _page_root()
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 22)
+	root.add_child(v)
+	var head := VBoxContainer.new()
+	head.add_theme_constant_override("separation", 0)
+	v.add_child(head)
+	var t := _label("FPV DUALOP", 72, 1.0, true)
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	head.add_child(t)
+	var st := _label("SIMULATEUR DE CADRAGE GIMBAL  ·  DRONE FPV", 18, 1.0)
+	st.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	st.add_theme_color_override("font_color", Color(0.35, 1.0, 0.45))
+	head.add_child(st)
+
+	var tiles := VBoxContainer.new()
+	tiles.add_theme_constant_override("separation", 22)
+	tiles.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	tiles.alignment = BoxContainer.ALIGNMENT_CENTER
+	v.add_child(tiles)
+	var row1 := HBoxContainer.new()
+	row1.alignment = BoxContainer.ALIGNMENT_CENTER
+	tiles.add_child(row1)
+	_play_tile = _tile("Jouer", "Entraînement noté sur 6 sports, ou bac à sable en vol libre", Vector2(1180, 380), 52)
+	_play_tile.picture = _thumb("ski_descente")
+	_play_tile.icon_kind = ""
+	_play_tile.pressed.connect(func(): _open_play(false))
+	row1.add_child(_play_tile)
+	var row2 := HBoxContainer.new()
+	row2.alignment = BoxContainer.ALIGNMENT_CENTER
+	row2.add_theme_constant_override("separation", 22)
+	tiles.add_child(row2)
+	var small := [
+		["Session aléatoire", "Sport, mouvement et niveau au hasard", "dice", _start_random],
+		["Historique et replays", "Tes scores, revoir tes sessions", "history",
+			func(): get_tree().change_scene_to_file("res://scenes/history.tscn")],
+		["Paramètres", "Manettes, graphismes, flou", "gear",
+			func(): get_tree().change_scene_to_file("res://scenes/settings.tscn")],
+	]
+	for s in small:
+		var tile := _tile(s[0], s[1], Vector2(378, 220), 26)
+		tile.icon_kind = s[2]
+		tile.pressed.connect(s[3])
+		row2.add_child(tile)
+
+	var bottom := HBoxContainer.new()
+	v.add_child(bottom)
+	var quit := _text_button("Quitter le jeu", 26, func(): get_tree().quit())
+	bottom.add_child(quit)
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bottom.add_child(spacer)
+	var ver := _label(VERSION, 14, 0.5)
+	ver.size_flags_vertical = Control.SIZE_SHRINK_END
+	bottom.add_child(ver)
+	return root
+
+
+func _tile(title: String, subtitle: String, min_size: Vector2, title_size: int) -> MenuTile:
+	var t := MenuTile.new()
+	t.title = title
+	t.subtitle = subtitle
+	t.custom_minimum_size = min_size
+	t.title_size = title_size
+	return t
+
+
+# --- Page 2: play (training or sandbox, terrain) -------------------------------------------------
+
+func _build_play() -> Control:
+	var root := _page_root()
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 40)
+	root.add_child(h)
+	var side := _side_column("Jouer", "Choisis ton terrain", Callable())
+	h.add_child(side)
+	_play_text = _label("", 17, 0.75)
+	_play_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_play_text.custom_minimum_size = Vector2(340, 0)
+	side.add_child(Control.new())
+	side.add_child(_play_text)
+	_side_bottom(side, func(): _show(_home))
+
+	var right := VBoxContainer.new()
+	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right.add_theme_constant_override("separation", 22)
+	h.add_child(right)
+	var tabs := HBoxContainer.new()
+	tabs.add_theme_constant_override("separation", 0)
+	right.add_child(tabs)
+	var group := ButtonGroup.new()
+	_train_tab = _tab("Entraînement", group, true)
+	_train_tab.pressed.connect(func(): _fill_play(false))
+	tabs.add_child(_train_tab)
+	_sandbox_tab = _tab("Bac à sable", group, false)
+	_sandbox_tab.pressed.connect(func(): _fill_play(true))
+	tabs.add_child(_sandbox_tab)
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	right.add_child(scroll)
+	_grid = GridContainer.new()
+	_grid.columns = 3
+	_grid.add_theme_constant_override("h_separation", 22)
+	_grid.add_theme_constant_override("v_separation", 22)
+	scroll.add_child(_grid)
+	return root
+
+
+## A tab of the "Training / Sandbox" switch: a pill, filled when selected.
+func _tab(text: String, group: ButtonGroup, left: bool) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.toggle_mode = true
+	b.button_group = group
+	b.custom_minimum_size = Vector2(260, 52)
+	b.add_theme_font_size_override("font_size", 22)
+	b.focus_mode = Control.FOCUS_ALL
+	for state in ["normal", "hover", "pressed", "hover_pressed", "focus"]:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0.5, 0.52, 0.58, 0.55) if state in ["pressed", "hover_pressed"] else Color(0.08, 0.1, 0.16, 0.85)
+		if state == "hover":
+			sb.bg_color = Color(0.16, 0.19, 0.27, 0.9)
+		if state == "focus":
+			sb.bg_color = Color(0, 0, 0, 0)
+			sb.draw_center = false
+		sb.border_color = MenuTile.AMBER if state == "focus" else Color(0.75, 0.78, 0.85)
+		sb.set_border_width_all(2)
+		sb.corner_radius_top_left = 26 if left else 0
+		sb.corner_radius_bottom_left = 26 if left else 0
+		sb.corner_radius_top_right = 0 if left else 26
+		sb.corner_radius_bottom_right = 0 if left else 26
+		b.add_theme_stylebox_override(state, sb)
+	return b
+
+
+func _open_play(sandbox: bool) -> void:
+	_fill_play(sandbox)
+	_show(_play)
+
+
+## Fills the grid: one card per sport (training), or the sandbox map.
+func _fill_play(sandbox: bool) -> void:
+	_sandbox = sandbox
+	_train_tab.set_pressed_no_signal(not sandbox)
+	_sandbox_tab.set_pressed_no_signal(sandbox)
+	for c in _grid.get_children():
+		c.queue_free()
+	_cards.clear()
+	if sandbox:
+		_play_text.text = SANDBOX_TEXT
+		var card := _tile("Campagne", "Village, routes, fermes, trafic, avion, hélicoptère", Vector2(420, 250), 26)
+		card.picture = _thumb("sandbox")
+		card.skew = 0.0
+		card.pressed.connect(func(): _open_setup(true))
+		_grid.add_child(card)
+		_cards.append(card)
+	else:
+		_play_text.text = "Un sport, un parcours généré à chaque session : le drone vole tout seul (ou piloté par un 2e joueur) et tu gardes le sujet dans le cadre avec la gimbal. À la fin, une note sur 100.\n\nTouches 1 à %d : choisir un sport." % _sports.size()
+		for i in _sports.size():
+			var s := _sports[i]
+			var card := _tile(s.display_name, "", Vector2(330, 210), 24)
+			card.picture = _thumb(s.id)
+			card.skew = 0.0
+			card.badge = _dots(s.base_difficulty)
+			card.selected = _sport == s
+			card.pressed.connect(_choose_sport.bind(i))
+			_grid.add_child(card)
+			_cards.append(card)
+	if _page == _play and not _cards.is_empty():
+		_focus_later(_cards[0])
+
+
+func _choose_sport(i: int) -> void:
+	_sport = _sports[i]
+	_save_prefs()
+	_open_setup(false)
+
+
+# --- Page 3: session setup -----------------------------------------------------------------------
+
+func _build_setup() -> Control:
+	var root := _page_root()
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 50)
+	root.add_child(h)
+	var side := _side_column("Session", "", Callable())
+	_setup_heading = side.get_child(1) as Label
+	h.add_child(side)
+	_setup_picture = MenuTile.new()
+	_setup_picture.custom_minimum_size = Vector2(360, 210)
+	_setup_picture.skew = 0.0
+	_setup_picture.focus_mode = Control.FOCUS_NONE
+	_setup_picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	side.add_child(Control.new())
+	side.add_child(_setup_picture)
+	_setup_text = _label("", 16, 0.75)
+	_setup_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_setup_text.custom_minimum_size = Vector2(360, 0)
+	side.add_child(_setup_text)
+	_side_bottom(side, func(): _open_play(_sandbox))
+
+	var panel := PanelContainer.new()
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.04, 0.06, 0.11, 0.85)
+	sb.border_color = MenuTile.BLUE
+	sb.set_border_width_all(2)
+	sb.set_content_margin_all(28)
+	panel.add_theme_stylebox_override("panel", sb)
+	h.add_child(panel)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	panel.add_child(v)
+	_setup_title = _label("", 34, 1.0, true)
+	v.add_child(_setup_title)
+
+	_mode_opt = _option_row(v, "mode", "Mode de jeu")
 	_mode_opt.add_item("1 joueur  -  le drone vole tout seul")
 	_mode_opt.add_item("2 joueurs  -  un pilote FPV + un cadreur")
 	_mode_opt.item_selected.connect(func(_i): _update_info())
-	_mode_info = Label.new()
-	_mode_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_mode_info.modulate = Color(1, 1, 1, 0.65)
-	v.add_child(_mode_info)
-	_screens_opt = _option_row(v, "Écrans (2 joueurs)")
+	_mode_info = _info(v, "mode_info")
+	_screens_opt = _option_row(v, "screens", "Écran du pilote")
 	_screens_opt.add_item("Un écran  -  vue pilote en incrustation")
 	var n_screens := DisplayServer.get_screen_count()
 	_screens_opt.add_item("Deux écrans  -  vue pilote sur le 2e écran" + ("" if n_screens > 1 else "  (aucun 2e écran détecté)"))
-	_movement_opt = _option_row(v, "Mouvement du drone")
+	_movement_opt = _option_row(v, "movement", "Mouvement du drone")
 	_movement_opt.add_item("Au hasard (selon le niveau)")
 	for m in ScenarioMatrix.MOVEMENTS:
 		_movement_opt.add_item("%s   %s" % [MOVEMENT_LABELS[m.id][0], _dots(DroneDifficulty.movement_tier(m.id))])
 	_movement_opt.item_selected.connect(func(_i): _update_info())
-	_movement_info = Label.new()
-	_movement_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_movement_info.custom_minimum_size.y = 40
-	_movement_info.modulate = Color(1, 1, 1, 0.65)
-	v.add_child(_movement_info)
-	_level_opt = _option_row(v, "Niveau")
+	_movement_info = _info(v, "movement_info")
+	_level_opt = _option_row(v, "level", "Niveau")
 	for t in LEVEL_LABELS:
 		_level_opt.add_item(t)
 	_level_opt.item_selected.connect(func(_i): _update_info())
-	_level_info = Label.new()
-	_level_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_level_info.custom_minimum_size.y = 40
-	_level_info.modulate = Color(1, 1, 1, 0.65)
-	v.add_child(_level_info)
-	_lens_opt = _option_row(v, "Optique")
+	_level_info = _info(v, "level_info")
+	_lens_opt = _option_row(v, "lens", "Optique")
 	for mm in SessionConfig.LENSES:
 		_lens_opt.add_item("%d mm%s" % [mm, LENS_HELP[mm]])
-	_train_button = Button.new()
-	_train_button.text = "Lancer la session d'entraînement (Entrée)"
-	_train_button.custom_minimum_size.y = 46
-	_train_button.pressed.connect(_start_training)
-	v.add_child(_train_button)
-	return v.get_parent().get_parent()
+	var spacer := Control.new()
+	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	v.add_child(spacer)
+	_launch = Button.new()
+	_launch.custom_minimum_size = Vector2(0, 70)
+	_launch.add_theme_font_override("font", MenuTile.bold_italic())
+	_launch.add_theme_font_size_override("font_size", 30)
+	for state in ["normal", "hover", "pressed", "focus"]:
+		var bsb := StyleBoxFlat.new()
+		bsb.bg_color = MenuTile.AMBER if state != "normal" else MenuTile.AMBER.darkened(0.15)
+		bsb.border_color = Color(1, 1, 1)
+		bsb.set_border_width_all(3 if state == "focus" else 0)
+		bsb.skew = Vector2(0.15, 0.0)
+		bsb.set_corner_radius_all(4)
+		_launch.add_theme_stylebox_override(state, bsb)
+	_launch.add_theme_color_override("font_color", Color(0.05, 0.05, 0.08))
+	_launch.add_theme_color_override("font_hover_color", Color(0.05, 0.05, 0.08))
+	_launch.add_theme_color_override("font_focus_color", Color(0.05, 0.05, 0.08))
+	_launch.add_theme_color_override("font_pressed_color", Color(0.05, 0.05, 0.08))
+	_launch.pressed.connect(_launch_session)
+	v.add_child(_launch)
+	return root
 
 
-func _build_sandbox_panel() -> Control:
-	var v := _panel("Bac à sable", 400)
-	var d := Label.new()
-	d.text = "La campagne de la Départementale en libre, sans limite de temps ni score : routes, village, fermes, voitures, camions, cyclistes et piétons.\n\nSans manette, ou avec une seule (celle de la gimbal) : le drone décolle tout seul et vole de façon aléatoire mais fluide dans la carte, pour que tu règles ta gimbal.\nAvec une 2e manette (pilote) : vol acro.\nLa touche M change de mode (auto, clavier, acro).\nL'optique et l'écran du pilote sont ceux de la session d'entraînement."
-	d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	d.modulate = Color(1, 1, 1, 0.65)
-	d.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	v.add_child(d)
-	var b := Button.new()
-	b.text = "Lancer le bac à sable (B)"
-	b.custom_minimum_size.y = 46
-	b.pressed.connect(_start_sandbox)
-	v.add_child(b)
-	return v.get_parent().get_parent()
-
-
-func _option_row(parent: Control, label: String) -> OptionButton:
+func _option_row(parent: Control, key: String, label: String) -> OptionButton:
 	var row := HBoxContainer.new()
 	parent.add_child(row)
-	var l := Label.new()
-	l.text = label
-	l.custom_minimum_size.x = 170
+	_rows[key] = row
+	var l := _label(label, 19)
+	l.custom_minimum_size.x = 220
 	row.add_child(l)
 	var o := OptionButton.new()
 	o.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	o.custom_minimum_size.y = 40
+	o.add_theme_font_size_override("font_size", 17)
 	row.add_child(o)
 	return o
 
 
-func _heading(t: String) -> Label:
-	var l := Label.new()
-	l.text = t
-	l.add_theme_font_size_override("font_size", 22)
+func _info(parent: Control, key: String) -> Label:
+	var l := _label("", 15, 0.65)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	parent.add_child(l)
+	_rows[key] = l
 	return l
 
 
-static func _stars(n: int) -> String:
-	return "Difficulté " + _dots(n)
+func _open_setup(sandbox: bool) -> void:
+	_sandbox = sandbox
+	if sandbox:
+		_setup_heading.text = "Bac à sable"
+		_setup_title.text = "Bac à sable  -  vol libre"
+		_setup_picture.picture = _thumb("sandbox")
+		_setup_picture.title = "Campagne"
+		_setup_picture.badge = ""
+		_setup_text.text = "Pas de chrono, pas de score. Retour arrière en jeu : le drone revient sur la place du village."
+	elif _sport != null:
+		_setup_heading.text = "Entraînement"
+		_setup_title.text = "Session d'entraînement"
+		_setup_picture.picture = _thumb(_sport.id)
+		_setup_picture.title = _sport.display_name
+		_setup_picture.badge = _dots(_sport.base_difficulty)
+		_setup_text.text = _sport.description
+	_setup_picture.queue_redraw()
+	_update_info()
+	_show(_setup)
+
+
+func _update_info() -> void:
+	if _mode_opt == null:
+		return
+	var duo := _two_players()
+	var training := not _sandbox
+	_rows.mode.visible = training
+	_rows.mode_info.visible = training
+	_rows.movement.visible = training and not duo
+	_rows.movement_info.visible = training and not duo
+	_rows.level.visible = training and not duo
+	_rows.level_info.visible = training and not duo
+	# the pilot's screen only matters when someone flies the drone
+	_rows.screens.visible = duo or _sandbox
+	if _sandbox:
+		_launch.text = "LANCER LE BAC À SABLE"
+		return
+	_mode_info.text = "Manette 1 = gimbal (cadreur), manette 2 = drone en mode acro (pilote). Le sujet reste scripté. Réglage : Paramètres > Configuration manette." if duo else "Un seul joueur : le drone suit le sujet, tu gères la gimbal."
+	_launch.text = "LANCER LA SESSION À 2 JOUEURS" if duo else "LANCER LA SESSION"
+	var m := _selected_movement()
+	_movement_info.text = str(MOVEMENT_LABELS[m][1]) if m != "" else "Un mouvement tiré au hasard, d'autant plus difficile que le niveau est élevé (au niveau Expert : orbite, survol ou une figure expert)."
+	var lv := _level_opt.selected  # 0 auto, 1 random, 2..7 = level 1..6
+	if lv == 0 and _sport != null:
+		_level_info.text = "Niveau %d (celui du sport). %s" % [_sport.base_difficulty, DroneDifficulty.describe(_sport.base_difficulty)]
+	elif lv == 1:
+		_level_info.text = "Un niveau tiré au hasard à chaque session. " + DIFFICULTY_HELP
+	else:
+		_level_info.text = DroneDifficulty.describe(lv - 1)
 
 
 static func _dots(n: int) -> String:
 	if n > 5:
 		return "●●●●●  EXPERT"
 	return "●".repeat(n) + "○".repeat(5 - n)
-
-
-# --- State ---------------------------------------------------------------------------------------
-
-func _select(i: int, save := true) -> void:
-	_sport = _sports[i]
-	_cards[i].button_pressed = true
-	_update_info()
-	if save and is_node_ready() and _lens_opt != null and _mode_opt != null:
-		_save_prefs()
-
-
-func _update_info() -> void:
-	if _sport == null:
-		return
-	_sport_info.text = "%s  -  %s" % [_sport.display_name, _sport.description]
-	var duo := _two_players()
-	_mode_info.text = "Manette 1 = gimbal (cadreur), manette 2 = drone en mode acro (pilote). Le sujet reste scripté. Réglage : Paramètres > Configuration manette." if duo else "Un seul joueur : le drone suit le sujet, tu gères la gimbal."
-	_movement_opt.disabled = duo
-	_level_opt.disabled = duo
-	_train_button.text = "Lancer la session à 2 joueurs (Entrée)" if duo else "Lancer la session d'entraînement (Entrée)"
-	var m := _selected_movement()
-	_movement_info.text = str(MOVEMENT_LABELS[m][1]) if m != "" else "Un mouvement tiré au hasard, d'autant plus difficile que le niveau est élevé (au niveau Expert : orbite, survol ou une figure expert)."
-	var lv := _level_opt.selected  # 0 auto, 1 random, 2..7 = level 1..6
-	if lv == 0:
-		_level_info.text = "Niveau %d (celui du sport). %s" % [_sport.base_difficulty, DroneDifficulty.describe(_sport.base_difficulty)]
-	elif lv == 1:
-		_level_info.text = "Un niveau tiré au hasard à chaque session.\n" + DIFFICULTY_HELP
-	else:
-		_level_info.text = DroneDifficulty.describe(lv - 1)
 
 
 func _two_players() -> bool:
@@ -337,9 +584,19 @@ func _selected_movement() -> String:
 
 # --- Launch --------------------------------------------------------------------------------------
 
+func _launch_session() -> void:
+	if _sandbox:
+		_start_sandbox()
+	else:
+		_start_training()
+
+
 func _start_training() -> void:
 	if _sport == null:
 		return
+	_save_prefs()
+	return_page = "setup"
+	return_sandbox = false
 	DuoSession.dual_screen = _screens_opt.selected == 1
 	var lv := _level_opt.selected  # 0 auto, 1 random, 2..7 = level 1..6
 	var level := -1 if lv == 0 else (0 if lv == 1 else lv - 1)
@@ -347,24 +604,39 @@ func _start_training() -> void:
 
 
 func _start_sandbox() -> void:
+	_save_prefs()
+	return_page = "setup"
+	return_sandbox = true
 	DuoSession.dual_screen = _screens_opt.selected == 1
 	Sandbox.lens_mm = SessionConfig.LENSES[_lens_opt.selected]
 	get_tree().change_scene_to_file("res://scenarios/sandbox/sandbox.tscn")
 
 
 func _start_random() -> void:
+	return_page = "home"
 	ScenarioMatrix.launch(get_tree(), ScenarioMatrix.generate())
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel"):
+		get_viewport().set_input_as_handled()
+		match _page:
+			_setup:
+				_open_play(_sandbox)
+			_play:
+				_show(_home)
+		return
 	if not (event is InputEventKey and event.pressed and not event.echo):
 		return
-	var n: int = event.physical_keycode - KEY_1
-	if n >= 0 and n < _sports.size():
-		_select(n)
-		return
-	match event.physical_keycode:
-		KEY_ENTER, KEY_KP_ENTER: _start_training()
-		KEY_R: _start_random()
-		KEY_B: _start_sandbox()
-		KEY_ESCAPE: get_tree().quit()
+	match _page:
+		_home:
+			match event.physical_keycode:
+				KEY_R: _start_random()
+				KEY_ENTER, KEY_KP_ENTER: _open_play(false)
+		_play:
+			var n: int = event.physical_keycode - KEY_1
+			if not _sandbox and n >= 0 and n < _sports.size():
+				_choose_sport(n)
+		_setup:
+			if event.physical_keycode in [KEY_ENTER, KEY_KP_ENTER]:
+				_launch_session()

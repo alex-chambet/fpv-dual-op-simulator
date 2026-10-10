@@ -69,12 +69,15 @@ Un monde ouvert, sans chrono ni score : 1,6 × 1,6 km de campagne avec un villag
 
 ## Premiers pas
 
-1. Dans le menu, **choisissez un sport** (touches 1 à 5).
-2. Réglez le **mouvement du drone**, le **niveau** et l'**optique**. Au début : suivi latéral, niveau 1 ou 2, 24 mm.
-3. **Entrée** pour lancer la session. Un compte à rebours de quelques secondes laisse le temps de s'installer.
+1. Sur l'accueil, cliquez sur **JOUER**.
+2. Choisissez **Entraînement** (ou **Bac à sable** pour le vol libre), puis un **terrain** (touches 1 à 6).
+3. Réglez le **mouvement du drone**, le **niveau** et l'**optique**. Au début : suivi latéral, niveau 1 ou 2, 24 mm.
+4. **LANCER** (ou Entrée). Un compte à rebours de quelques secondes laisse le temps de s'installer.
+
+Le menu se pilote aussi au clavier ou à la manette (flèches, Entrée, Échap pour revenir en arrière). Après une session, il rouvre directement la page de réglages de cette session, pour rejouer en un clic.
 4. Gardez le sujet dans le rectangle vert. À la fin, regardez votre note, et rejouez pour la battre.
 
-Pour changer les réglages de manette, la qualité graphique et le flou de mouvement : **Paramètres**, en bas du menu.
+Pour changer les réglages de manette, la qualité graphique et le flou de mouvement : tuile **Paramètres** de l'accueil.
 
 ## Commandes
 
@@ -88,7 +91,7 @@ Pour changer les réglages de manette, la qualité graphique et le flou de mouve
 | Pause | – | Échap |
 | Recommencer | – | Entrée |
 
-Dans le bac à sable : **M** change de mode de vol (auto, clavier, acro), **Retour arrière** ramène le drone sur la place du village. Au menu : **R** lance une session aléatoire, **B** le bac à sable.
+Dans le bac à sable : **M** change de mode de vol (auto, clavier, acro), **Retour arrière** ramène le drone sur la place du village. Sur l'accueil : **R** lance une session aléatoire.
 
 **Configurer ses manettes** : menu « Paramètres » → « Configuration manette ». Vous pouvez y choisir la manette de la gimbal et celle du pilote, affecter chaque axe, inverser, régler la zone morte et l'expo.
 
