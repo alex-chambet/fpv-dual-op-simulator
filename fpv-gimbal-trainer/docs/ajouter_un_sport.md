@@ -57,6 +57,7 @@ règle avec `speed_min` / `speed_max`.
 | `AIR_LIBRE` | trajectoire 3D lente et ample, changements d'altitude, descente | parapente, wingsuit, parachute |
 | `STOP_AND_GO_ZONE` | déplacements dans une zone délimitée : accélérations brusques, arrêts, directions imprévisibles | football, rugby, basket, tennis, hockey |
 | `SAUT_ACROBATIQUE` | élan, phase aérienne (rotation, saltos), réception, plusieurs sauts | freestyle, saut à ski, skate, BMX, saut d'obstacles |
+| `DESCENTE` | course de descente : grandes courbes, virages serrés (souvent en S), schuss, sauts sur les cassures de pente ; vitesse calculée par un petit modèle physique (pente, frottement, air, freinage avant les virages serrés, vol balistique) | ski de descente |
 
 ### Paramètres communs (tous les archétypes)
 
@@ -94,6 +95,7 @@ règle avec `speed_min` / `speed_max`.
 | `AIR_LIBRE` | `altitude` 180 m, `altitude_variation` 40 m, `altitude_period` 700 m, `descent_per_100m` 3 m (perte d'altitude : 28 pour un wingsuit, 80 pour un parachute) |
 | `STOP_AND_GO_ZONE` | `zone_width` 60 m, `zone_length` 100 m, `corner_radius` 2 m, `pause_probability` 0,35, `burst_ratio` 0,8 (vitesse d'une pointe en fraction de `speed_max`), `bob`, `limb_swing` |
 | `SAUT_ACROBATIQUE` | `jump_count` 3, `approach_length` 80 m (élan), `rollout_length` 45 m (distance entre une réception et le saut suivant), plus `jump_length`, `jump_height`, `flips`, `spin_deg` |
+| `DESCENTE` | `turn_frequency` 0,55 (part des virages parmi les éléments du tracé), `tight_turns` 0,4 (part des virages serrés, rayon 34 - 52 m ; les autres sont de grandes courbes de 110 - 190 m), `cornering_accel` 12 m/s² (accélération latérale max en virage), `air_drag` 0,0042 et `snow_friction` 0,035 (vitesse de pointe selon la pente), `jump_height` 1,2 (impulsion verticale au décollage, m/s), `duration` 98 s. Les sauts ne sont pas tirés au hasard : ils sont placés sur les cassures de pente du terrain (un replat qui se termine sur un mur raide) |
 
 `turn_frequency` selon l'archétype : `GLISSE_PENTE` = demi-périodes du slalom ; `COURSE_SOL_CYCLIQUE`
 = ondes de la trajectoire ; `VEHICULE_ROUTE` = jambes de lacets (`switchback`) ou ondes de la route
@@ -192,6 +194,7 @@ tous les autres utilisent le constructeur générique configuré par un fichier 
 | Tag | Décor |
 |---|---|
 | `neige` | pente neigeuse, arbres, rochers, portes de slalom (`env_overrides` : `slope`, pente de 0,3 par défaut) |
+| `descente` | piste de descente façon Streif / Bellevarde : versant de 2 à 2,5 km dont la pente change par sections (replats 16 - 26 %, parties rapides 30 - 40 %, murs 45 - 62 %), cassures de pente pour les sauts, piste damée de 36 à 60 m de large taillée dans la forêt, portes rouges, filets A rouges (4 m) à l'extérieur des virages et le long des réceptions, filets B orange, lignes bleues avant les sauts, un télésiège le long de la piste et un autre qui la survole, cabane de départ, arrivée (ligne, arche, tribune avec spectateurs, panneaux). Rien n'est construit sur le trajet du drone (un télésiège est déplacé, ou retiré, si le drone passe près de ses câbles) |
 | `route_montagne` | route de montagne posée sur le trajet, bornes, pins, rochers, **tunnel** si le trajet a une partie droite de 66 m ou plus |
 | `foret` | forêt dense et sentier (`env_overrides` : `trail_clearance`, `drone_clearance`, `background_trees`) |
 | `glace` | patinoire : bandes, lignes, tribunes ; les joueurs servent d'obstacles |

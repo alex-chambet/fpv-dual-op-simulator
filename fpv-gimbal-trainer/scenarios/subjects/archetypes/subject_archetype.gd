@@ -36,6 +36,10 @@ const PARAM_DOCS := {
 	"gates": "Place slalom gates along the path (snow).",
 	"leaves_tracks": "Leave tracks behind (snow).",
 	"spray": "Throw spray / powder in hard turns.",
+	# DESCENTE
+	"tight_turns": "Share of tight turns (radius 34-52 m, often two in an S) among the turns (the others are wide sweeps).",
+	"air_drag": "Air drag of the skier, 1/m (the higher, the lower the top speed on a given slope).",
+	"snow_friction": "Friction coefficient of the skis on the snow.",
 	# COURSE_SOL_CYCLIQUE
 	"wiggle_ratio": "Amplitude of the short wiggles relative to lateral_amplitude.",
 	"wiggle_period_ratio": "Period of the wiggles relative to the main turns.",

@@ -5,7 +5,7 @@ extends Resource
 ## To add a sport, duplicate a sheet and edit it - see docs/ajouter_un_sport.md.
 
 const ARCHETYPES := ["GLISSE_PENTE", "COURSE_SOL_CYCLIQUE", "VEHICULE_ROUTE", "TOUT_TERRAIN_ERRATIQUE",
-		"EAU_SURFACE", "AIR_LIBRE", "STOP_AND_GO_ZONE", "SAUT_ACROBATIQUE"]
+		"EAU_SURFACE", "AIR_LIBRE", "STOP_AND_GO_ZONE", "SAUT_ACROBATIQUE", "DESCENTE"]
 
 ## Unique identifier (letters, digits, underscore). Used in saved sessions: do not rename lightly.
 @export var id := ""
@@ -20,7 +20,7 @@ const ARCHETYPES := ["GLISSE_PENTE", "COURSE_SOL_CYCLIQUE", "VEHICULE_ROUTE", "T
 @export_group("Movement")
 ## Movement archetype (see docs): the way the subject moves along its path.
 @export_enum("GLISSE_PENTE", "COURSE_SOL_CYCLIQUE", "VEHICULE_ROUTE", "TOUT_TERRAIN_ERRATIQUE",
-		"EAU_SURFACE", "AIR_LIBRE", "STOP_AND_GO_ZONE", "SAUT_ACROBATIQUE") var archetype := "GLISSE_PENTE"
+		"EAU_SURFACE", "AIR_LIBRE", "STOP_AND_GO_ZONE", "SAUT_ACROBATIQUE", "DESCENTE") var archetype := "GLISSE_PENTE"
 ## Archetype parameters to override, e.g. {"speed_max": 20.0, "lateral_amplitude": 12.0}.
 ## Everything not listed keeps the archetype default (list: docs/ajouter_un_sport.md).
 @export var overrides := {}
@@ -42,7 +42,7 @@ const ARCHETYPES := ["GLISSE_PENTE", "COURSE_SOL_CYCLIQUE", "VEHICULE_ROUTE", "T
 ## Environment tag (free text with suggestions). Specific environments exist for neige,
 ## route_montagne and foret; the other tags are generic styles (res://scenarios/environments/styles/).
 ## An unknown tag falls back to a simple generic ground so the sport can still be tested.
-@export_custom(PROPERTY_HINT_ENUM_SUGGESTION, "neige,glace,route_montagne,foret,terrain_vague,piste_urbaine,stade,salle,court,prairie,eau_vive,lac,mer,ciel,falaise,arete") var environment := "neige"
+@export_custom(PROPERTY_HINT_ENUM_SUGGESTION, "neige,descente,glace,route_montagne,foret,terrain_vague,piste_urbaine,stade,salle,court,prairie,eau_vive,lac,mer,ciel,falaise,arete") var environment := "neige"
 ## Overrides of the environment parameters (e.g. {"slope": 0.08} for a gentle ski slope).
 @export var env_overrides := {}
 

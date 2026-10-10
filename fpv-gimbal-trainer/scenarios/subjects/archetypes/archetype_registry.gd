@@ -1,6 +1,6 @@
 class_name ArchetypeRegistry
 extends RefCounted
-## The eight movement archetypes, by id.
+## The nine movement archetypes, by id.
 
 static var _cache := {}
 
@@ -25,6 +25,7 @@ static func get_archetype(id: String) -> SubjectArchetype:
 		"AIR_LIBRE": a = ArchetypeAirLibre.new()
 		"STOP_AND_GO_ZONE": a = ArchetypeStopAndGoZone.new()
 		"SAUT_ACROBATIQUE": a = ArchetypeSautAcrobatique.new()
+		"DESCENTE": a = ArchetypeDescente.new()
 		_:
 			push_warning("Unknown archetype '%s', using GLISSE_PENTE" % id)
 			a = ArchetypeGlissePente.new()

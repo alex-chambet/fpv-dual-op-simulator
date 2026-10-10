@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="SubjectDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/subjects/subject_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "ski_descente"
+display_name = "Ski de descente"
+category = "Neige / glace"
+description = "Descente de ski façon Streif ou Bellevarde : piste large et raide dans la forêt, grandes courbes et virages serrés, schuss à plus de 110 km/h, sauts sur les cassures de pente. Entre 1 min 30 et 1 min 45."
+archetype = "DESCENTE"
+overrides = {
+"cornering_accel": 12.0,
+"duration": 98.0,
+"lean_gain": 0.9,
+"lean_max_deg": 55.0,
+"speed_max": 34.0,
+"speed_min": 14.0,
+"tight_turns": 0.4,
+"turn_frequency": 0.55
+}
+subject_size = 1.8
+placeholder_shape = "person"
+placeholder_gear = "skis"
+placeholder_color = Color(0.85, 0.08, 0.1, 1)
+placeholder_accent = Color(0.95, 0.95, 0.95, 1)
+environment = "descente"
+env_overrides = {}
+recommended_movements = PackedStringArray("pursuit", "lateral", "frontal", "orbit", "reveal", "flyby", "approach_orbit", "dive", "choreo")
+base_difficulty = 4

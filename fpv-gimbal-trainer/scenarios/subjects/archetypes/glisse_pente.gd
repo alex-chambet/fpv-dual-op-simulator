@@ -73,7 +73,7 @@ func animate(s: ArchetypeSubject, delta: float) -> void:
 		_update_trail(s)
 	if s.state.has("spray"):
 		var spray: GPUParticles3D = s.state["spray"]
-		spray.emitting = absf(s.lean_deg) > 8.0 and s.speed_now > 4.0
+		spray.emitting = absf(s.lean_deg) > 8.0 and s.speed_now > 4.0 and s.current_jump().is_empty()
 
 
 func _build_trail(s: ArchetypeSubject) -> void:
@@ -103,19 +103,20 @@ func _update_trail(s: ArchetypeSubject) -> void:
 	var gp := s.follower.global_position
 	var last: Vector3 = s.state["trail_last"]
 	var count: int = s.state["trail_count"]
-	if last.x > 1e8:
-		last = gp
+	if last.x > 1e8 or not s.current_jump().is_empty():
+		last = gp  # (no tracks under a jump)
 	var b := s.follower.global_basis
-	# Several segments per frame at high speed, so the tracks stay continuous
-	while gp.distance_to(last) >= TRAIL_STEP and count + 2 <= TRAIL_MAX:
+	# Several segments per frame at high speed, so the tracks stay continuous. When all the marks are used, the
+	# oldest ones (far behind) are reused: the tracks never stop behind a skier on a long run.
+	while gp.distance_to(last) >= TRAIL_STEP:
 		last += (gp - last).normalized() * TRAIL_STEP
 		for side in [-1.0, 1.0]:
 			var q: Vector3 = last + b.x * side * 0.2
 			if s.ground_height.is_valid():
 				q.y = float(s.ground_height.call(q.x, q.z)) + 0.02
-			mm.set_instance_transform(count, Transform3D(b, q))
+			mm.set_instance_transform(count % TRAIL_MAX, Transform3D(b, q))
 			count += 1
-	mm.visible_instance_count = count
+	mm.visible_instance_count = mini(count, TRAIL_MAX)
 	s.state["trail_count"] = count
 	s.state["trail_last"] = last
 

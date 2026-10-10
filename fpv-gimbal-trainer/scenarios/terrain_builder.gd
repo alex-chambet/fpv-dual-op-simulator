@@ -25,21 +25,48 @@ static func build(height: Callable, x_half: float, z_min: float, z_max: float, c
 			heights[iz * w + ix] = float(height.call(-x_half + ix * cell, z_min + iz * cell))
 	last_info = {"heights": heights, "w": w, "h": nz + 1, "x0": -x_half, "z0": z_min, "cell": cell}
 
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	# The grid: one vertex per height (normal from the neighbours), two triangles per cell, indexed.
+	var verts := PackedVector3Array()
+	var normals := PackedVector3Array()
+	var uvs := PackedVector2Array()
+	verts.resize(w * (nz + 1))
+	normals.resize(w * (nz + 1))
+	uvs.resize(w * (nz + 1))
+	for cz in nz + 1:
+		for cx in w:
+			var x := -x_half + cx * cell
+			var z := z_min + cz * cell
+			var dx := (_h(heights, nx, nz, cx + 1, cz) - _h(heights, nx, nz, cx - 1, cz)) / (2.0 * cell)
+			var dz := (_h(heights, nx, nz, cx, cz + 1) - _h(heights, nx, nz, cx, cz - 1)) / (2.0 * cell)
+			var k := cz * w + cx
+			verts[k] = Vector3(x, heights[k], z)
+			normals[k] = Vector3(-dx, 1.0, -dz).normalized()
+			uvs[k] = Vector2(x, z) / uv_scale
+	var idx := PackedInt32Array()
+	idx.resize(nx * nz * 6)
+	var j := 0
 	for iz in nz:
 		for ix in nx:
 			# clockwise seen from above: (v00, v10, v01) and (v10, v11, v01)
-			for corner in [[0, 0], [1, 0], [0, 1], [1, 0], [1, 1], [0, 1]]:
-				var cx: int = ix + corner[0]
-				var cz: int = iz + corner[1]
-				var x := -x_half + cx * cell
-				var z := z_min + cz * cell
-				var dx := (_h(heights, nx, nz, cx + 1, cz) - _h(heights, nx, nz, cx - 1, cz)) / (2.0 * cell)
-				var dz := (_h(heights, nx, nz, cx, cz + 1) - _h(heights, nx, nz, cx, cz - 1)) / (2.0 * cell)
-				st.set_normal(Vector3(-dx, 1.0, -dz).normalized())
-				st.set_uv(Vector2(x, z) / uv_scale)
-				st.add_vertex(Vector3(x, heights[cz * w + cx], z))
+			var v00 := iz * w + ix
+			idx[j] = v00
+			idx[j + 1] = v00 + 1
+			idx[j + 2] = v00 + w
+			idx[j + 3] = v00 + 1
+			idx[j + 4] = v00 + w + 1
+			idx[j + 5] = v00 + w
+			j += 6
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_NORMAL] = normals
+	arrays[Mesh.ARRAY_TEX_UV] = uvs
+	arrays[Mesh.ARRAY_INDEX] = idx
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	# skirt: a band hanging 8 m down from the border, so no gap shows where the far terrain meets this one
 	var border := []
 	for ix in nx + 1:
@@ -61,7 +88,8 @@ static func build(height: Callable, x_half: float, z_min: float, z_max: float, c
 			st.set_normal(out)
 			st.set_uv(Vector2(p.x, p.z) / uv_scale)
 			st.add_vertex(p)
-	return st.commit()
+	# the skirt is a second surface of the same mesh (same material: the mesh instance overrides it)
+	return st.commit(mesh)
 
 
 ## Height of the last terrain built at (x, z), bilinear between its vertices (NAN outside it).

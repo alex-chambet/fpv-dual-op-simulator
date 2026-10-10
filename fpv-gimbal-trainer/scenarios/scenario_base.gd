@@ -662,12 +662,50 @@ func _update_framing_state() -> void:
 	guide.in_frame = in_guide
 	_occluded_now = is_occluded(cam.global_position, target)
 
+## Grid of the occluders (cell -> indices), rebuilt when occluders are added: is_occluded only looks at the cells
+## around the line of sight (a downhill course has thousands of trees).
+const OCC_CELL := 20.0
+var _occ_grid := {}
+var _occ_grid_count := -1
+var _occ_reach := 0.0
+
+
+func _occ_grid_update() -> void:
+	if _occ_grid_count == occ_pos.size():
+		return
+	_occ_grid.clear()
+	_occ_reach = 0.0
+	for i in occ_pos.size():
+		var key := Vector2i(floori(occ_pos[i].x / OCC_CELL), floori(occ_pos[i].z / OCC_CELL))
+		if not _occ_grid.has(key):
+			_occ_grid[key] = PackedInt32Array()
+		var arr: PackedInt32Array = _occ_grid[key]
+		arr.append(i)
+		_occ_grid[key] = arr
+		_occ_reach = maxf(_occ_reach, occ_a[i] * 3.0 + 1.0)
+	_occ_grid_count = occ_pos.size()
+
+
 ## True if an obstacle stands on the segment from -> to.
 func is_occluded(from: Vector3, to: Vector3) -> bool:
 	var a := Vector2(from.x, from.z)
 	var ab := Vector2(to.x, to.z) - a
 	var len2 := ab.length_squared()
-	for i in occ_pos.size():
+	_occ_grid_update()
+	var lo := Vector2i(floori((minf(a.x, a.x + ab.x) - _occ_reach) / OCC_CELL), floori((minf(a.y, a.y + ab.y) - _occ_reach) / OCC_CELL))
+	var hi := Vector2i(floori((maxf(a.x, a.x + ab.x) + _occ_reach) / OCC_CELL), floori((maxf(a.y, a.y + ab.y) + _occ_reach) / OCC_CELL))
+	var near := PackedInt32Array()
+	if (hi.x - lo.x + 1) * (hi.y - lo.y + 1) > _occ_grid.size():
+		near.resize(occ_pos.size())  # a very long line of sight: every occluder
+		for i in occ_pos.size():
+			near[i] = i
+	else:
+		for cx in range(lo.x, hi.x + 1):
+			for cz in range(lo.y, hi.y + 1):
+				var key := Vector2i(cx, cz)
+				if _occ_grid.has(key):
+					near.append_array(_occ_grid[key])
+	for i in near:
 		var c := Vector2(occ_pos[i].x, occ_pos[i].z)
 		var t := 0.0 if len2 < 0.0001 else clampf((c - a).dot(ab) / len2, 0.0, 1.0)
 		var d := (a + ab * t).distance_to(c)

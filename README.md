@@ -22,7 +22,7 @@ Le drone vole tout seul autour du sujet. **Vous gérez uniquement la gimbal** : 
 
 Votre meilleur score est enregistré pour chaque sport. Vous pouvez revoir et rejouer vos sessions dans « Historique et replays ».
 
-**Les sports** : ski alpin, trail, VTT de descente, voiture sur la Départementale, voiture sur route de montagne. Chaque session est générée avec un trajet différent.
+**Les sports** : ski alpin (slalom), ski de descente (une piste de 2 km et plus façon Streif ou Bellevarde, à plus de 110 km/h, avec des sauts), trail, VTT de descente, voiture sur la Départementale, voiture sur route de montagne. Chaque session est générée avec un trajet différent.
 
 **Les mouvements du drone** (au choix, ou au hasard) :
 

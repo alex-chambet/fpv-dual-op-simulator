@@ -43,8 +43,8 @@ static func build_round_trees(parent: Node3D, grounds: PackedVector3Array, scale
 
 ## Conifers (spruces), see Vegetation.
 static func build_forest(parent: Node3D, grounds: PackedVector3Array, scales: PackedFloat32Array,
-		foliage := Color(0.08, 0.3, 0.14), seed_value := 1) -> void:
-	Vegetation.plant(parent, "conifer", grounds, scales, foliage, seed_value)
+		foliage := Color(0.08, 0.3, 0.14), seed_value := 1, end_distance := 0.0) -> void:
+	Vegetation.plant(parent, "conifer", grounds, scales, foliage, seed_value, end_distance)
 
 
 ## A boulder (Rocks) of the given size; its shape depends on its position.

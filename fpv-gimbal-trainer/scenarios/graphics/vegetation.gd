@@ -98,9 +98,10 @@ static var _bark_mat: ShaderMaterial
 
 # --- Planting ------------------------------------------------------------------------------------
 
-## Plants trees of `kind` ("conifer" or "broadleaf") at the ground points, scaled by `scales`.
+## Plants trees of `kind` ("conifer" or "broadleaf") at the ground points, scaled by `scales`. end_distance > 0
+## hides them beyond it (very large forests: the far scenery shows the forest further away).
 static func plant(parent: Node3D, kind: String, grounds: PackedVector3Array, scales: PackedFloat32Array,
-		foliage: Color, seed_value: int) -> void:
+		foliage: Color, seed_value: int, end_distance := 0.0) -> void:
 	var n := grounds.size()
 	if n == 0:
 		return
@@ -116,7 +117,7 @@ static func plant(parent: Node3D, kind: String, grounds: PackedVector3Array, sca
 		customs.append(Color(foliage.r * tint * (1.0 + hue * 2.0), foliage.g * tint, foliage.b * tint * (1.0 - hue * 2.0),
 				rng.randf()))
 		xforms.append(Transform3D(basis, grounds[i]))
-	place(parent, kind, xforms, customs, rng)
+	place(parent, kind, xforms, customs, rng, end_distance)
 
 
 ## Places instances of a mesh kind (trees, or a Decor kind) in chunks, each with a detailed and a simple model.
