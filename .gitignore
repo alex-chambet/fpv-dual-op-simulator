@@ -1,1 +1,4 @@
 build/
+
+# Godot: import cache, regenerated automatically when the project is opened or exported
+.godot/
