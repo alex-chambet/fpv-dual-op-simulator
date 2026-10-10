@@ -30,6 +30,26 @@ func apply_graphics() -> void:
 		grass.apply_quality()
 
 
+## Ambiences the pause menu offers here (falling snow on snowy ground only) and the current one.
+func ambience_choices() -> Array:
+	var snowy := Ambience.is_snowy(def.environment)
+	return Ambience.IDS.filter(func(id): return id != "snowfall" or snowy)
+
+
+func current_ambience() -> String:
+	return matrix.ambience
+
+
+## Changes the light and weather of the running session (pause menu).
+func set_ambience(id: String) -> void:
+	if env == null or id == matrix.ambience:
+		return
+	matrix.ambience = id
+	style = Ambience.switch(id, EnvironmentRegistry.style_for(def.environment), env, world_env, sun, self,
+			flight.rig.camera, env.terrain_material)
+	apply_graphics()
+
+
 func _default_config() -> SessionConfig:
 	return ScenarioMatrix.fixed_config(ScenarioRegistry.find("ski_slope"))
 

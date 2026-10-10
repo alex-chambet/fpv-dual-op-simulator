@@ -18,6 +18,7 @@ const PROFILE_NAMES := ["Slow", "Medium", "Fast"]
 static var lens_mm := 24
 ## Time of day / weather of this sandbox (Ambience; the menu choice, or drawn at random).
 var ambience := "noon"
+var _looks: EnvironmentBuilder
 
 var world: SandboxWorld
 var traffic: SandboxTraffic
@@ -91,6 +92,7 @@ func _build_environment() -> void:
 	_sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
 	add_child(_sun)
 	var looks := EnvironmentBuilder.new()
+	_looks = looks
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
 	ambience = Ambience.pick(rng, false)
@@ -101,6 +103,25 @@ func _build_environment() -> void:
 	cam_look.set_script(load("res://ui/camera_look.gd"))
 	add_child(cam_look)
 
+
+## Ambiences the pause menu offers here (no falling snow on the farmland) and the current one.
+func ambience_choices() -> Array:
+	return Ambience.IDS.filter(func(id): return id != "snowfall")
+
+
+func current_ambience() -> String:
+	return ambience
+
+
+## Changes the light of the sandbox (pause menu).
+func set_ambience(id: String) -> void:
+	if _looks == null or id == ambience:
+		return
+	ambience = id
+	var ground = world.get("terrain_material") if world != null else null
+	Ambience.switch(id, load("res://scenarios/environments/styles/departementale.tres"), _looks, _env, _sun, self,
+			rig.camera if rig != null else null, ground as Material)
+	apply_graphics()
 
 ## Applies the graphics quality (GraphicsSettings); called again when it changes in the pause menu.
 func apply_graphics() -> void:

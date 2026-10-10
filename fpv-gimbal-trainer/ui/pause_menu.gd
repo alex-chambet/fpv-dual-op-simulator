@@ -22,6 +22,8 @@ var _gameplay_page: Control
 var _lens_opt: OptionButton
 var _lens_note: Label
 var _resume_button: Button
+var _ambience_opt: OptionButton
+var _ambience_ids: Array = []
 
 
 func _init() -> void:
@@ -102,6 +104,19 @@ func _build() -> void:
 		MotionBlur.level = i
 		MotionBlur.save_level())
 	row.add_child(opt)
+	var arow := HBoxContainer.new()
+	_graphics_page.add_child(arow)
+	var al := Label.new()
+	al.text = "Ambiance"
+	al.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	arow.add_child(al)
+	_ambience_opt = OptionButton.new()
+	_ambience_opt.item_selected.connect(func(i):
+		var scn := get_tree().current_scene
+		if scn != null and scn.has_method("set_ambience") and i < _ambience_ids.size():
+			scn.set_ambience(_ambience_ids[i]))
+	arow.add_child(_ambience_opt)
+	visibility_changed.connect(_refresh_ambience)
 	_button(_graphics_page, "Retour (Échap)", func(): _show_page(null))
 
 	_gameplay_page = VBoxContainer.new()
@@ -193,3 +208,20 @@ func _unhandled_input(event: InputEvent) -> void:
 			_show_page(null)
 		else:
 			resume_requested.emit()
+
+
+## Fills the ambience list with what the running scene offers, its current one selected (hidden if none).
+func _refresh_ambience() -> void:
+	if not visible or _ambience_opt == null:
+		return
+	var scn := get_tree().current_scene
+	var row := _ambience_opt.get_parent() as Control
+	if scn == null or not scn.has_method("ambience_choices"):
+		row.visible = false
+		return
+	row.visible = true
+	_ambience_ids = scn.ambience_choices()
+	_ambience_opt.clear()
+	for id in _ambience_ids:
+		_ambience_opt.add_item(str(Ambience.LABELS[id]))
+	_ambience_opt.select(maxi(_ambience_ids.find(scn.current_ambience()), 0))

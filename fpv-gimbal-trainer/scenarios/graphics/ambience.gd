@@ -118,6 +118,24 @@ static func tune_ground(id: String, ground: Material) -> void:
 		(ground as ShaderMaterial).set_shader_parameter("ripple", float(low.get(id, 1.0)))
 
 
+## Switches a running scene to another ambience (pause menu): sun, sky, fog, exposure, ground, falling snow.
+## `looks` is the builder that lit the scene (its style is replaced). Returns the new style.
+static func switch(id: String, base: EnvironmentStyle, looks: EnvironmentBuilder, world_env: WorldEnvironment,
+		sun: DirectionalLight3D, parent: Node3D, camera: Camera3D, ground: Material) -> EnvironmentStyle:
+	var s := variant(base, id)
+	looks.style = s
+	looks.apply_to_scene(world_env, sun)
+	finish(id, world_env.environment, s)
+	if ground != null:
+		tune_ground(id, ground)
+	var old := parent.get_node_or_null("Snowfall")
+	if old != null:
+		parent.remove_child(old)
+		old.queue_free()
+	add_weather(id, parent, camera)
+	return s
+
+
 ## Weather around the camera (falling snow); nothing for the other ambiences.
 static func add_weather(id: String, parent: Node3D, camera: Camera3D) -> void:
 	if id != "snowfall":
