@@ -29,7 +29,8 @@ func far_scenery() -> Dictionary:
 		"hills": {"height": 1400.0, "r0": 2500.0, "r1": 7000.0, "frequency": 0.0011, "snow_line": -150.0,
 			"tree_line": -250.0, "forest": Color(0.07, 0.15, 0.09), "rock": Color(0.36, 0.35, 0.36)},
 		"trees": {"kind": "conifer", "count": 1100, "r0": 130.0, "r1": 900.0, "colour": Color(0.08, 0.3, 0.14),
-			"grove": 0.1}}
+			"grove": 0.1},
+		"canopy": {"r0": 250.0, "height": 15.0, "colour": Color(0.07, 0.2, 0.1), "grove": 0.05, "snow": 0.3}}
 
 func occluder_kind() -> String:
 	return "trees"
@@ -64,13 +65,20 @@ func populate(path: PackedVector3Array, drone: PackedVector3Array, _plan: Dictio
 	var left_min := maxf(26.0, maxf(-b.position.x, b.end.x) + 14.0)
 	var right_min := maxf(46.0, db.end.x + 14.0)
 
-	# Forest behind the subject (-X side) and behind the drone (+X side)
-	for i in 80:
-		var left := rng.randf() < 0.7
-		var x := rng.randf_range(-maxf(105.0, left_min + 20.0), -left_min) if left \
-				else rng.randf_range(right_min, maxf(105.0, right_min + 20.0))
+	# Forest behind the subject (-X side) and behind the drone (+X side), in groves, denser away from the piste
+	var placed := 0
+	var tries := 0
+	while placed < 380 and tries < 3000:
+		tries += 1
+		var left := rng.randf() < 0.62
+		var x := rng.randf_range(-maxf(140.0, left_min + 40.0), -left_min) if left \
+				else rng.randf_range(right_min, maxf(140.0, right_min + 40.0))
 		var z := rng.randf_range(b.position.y - 40.0, b.end.y + 60.0)
+		var edge := absf(x) - (left_min if left else right_min)
+		if FarScenery.grove_at(x * 2.2, z * 1.6) < 0.25 - 0.012 * edge:
+			continue  # glades near the piste, closed forest further away
 		_add_tree(Vector3(x, base_height(x, z), z), rng.randf_range(0.9, 1.6))
+		placed += 1
 
 	# Decorative rocks
 	for p in [Vector3(-30.0, 0, 90.0), Vector3(-24.0, 0, 250.0), Vector3(52.0, 0, 160.0)]:

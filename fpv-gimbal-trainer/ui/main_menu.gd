@@ -61,6 +61,7 @@ var _movement_info: Label
 var _level_opt: OptionButton
 var _level_info: Label
 var _lens_opt: OptionButton
+var _ambience_opt: OptionButton
 var _launch: Button
 
 
@@ -77,7 +78,7 @@ func _ready() -> void:
 		if s.id == str(prefs.get("sport", "")):
 			_sport = s
 	_apply_prefs(prefs)
-	for o in [_mode_opt, _movement_opt, _level_opt, _lens_opt, _screens_opt]:
+	for o in [_mode_opt, _movement_opt, _level_opt, _lens_opt, _screens_opt, _ambience_opt]:
 		o.item_selected.connect(func(_i): _save_prefs())
 	_sandbox = return_sandbox
 	match return_page:
@@ -106,21 +107,23 @@ func _apply_prefs(prefs: Dictionary) -> void:
 	MotionBlur.level = clampi(int(prefs.get("blur", MotionBlur.level)), 0, MotionBlur.LABELS.size() - 1)
 	FrameGuide.blackout = bool(prefs.get("blackout", FrameGuide.blackout))
 	GraphicsSettings.quality = clampi(int(prefs.get("quality", GraphicsSettings.quality)), 0, GraphicsSettings.LABELS.size() - 1)
-	for pair in [[_mode_opt, "mode"], [_movement_opt, "movement"], [_level_opt, "level"], [_lens_opt, "lens"], [_screens_opt, "screens"]]:
+	for pair in [[_mode_opt, "mode"], [_movement_opt, "movement"], [_level_opt, "level"], [_lens_opt, "lens"], [_screens_opt, "screens"], [_ambience_opt, "ambience"]]:
 		var o: OptionButton = pair[0]
 		var i := int(prefs.get(pair[1], 0))
 		if i >= 0 and i < o.item_count:
 			o.select(i)
+	Ambience.choice = str(Ambience.MENU[_ambience_opt.selected])
 	_update_info()
 
 
 func _save_prefs() -> void:
+	Ambience.choice = str(Ambience.MENU[_ambience_opt.selected])
 	if _sport == null:
 		return
 	# merged into the file: the other keys (gimbal profile, blackout...) are written by other screens
 	var prefs := _load_prefs()
 	prefs.merge({"sport": _sport.id, "mode": _mode_opt.selected, "movement": _movement_opt.selected,
-			"level": _level_opt.selected, "lens": _lens_opt.selected, "screens": _screens_opt.selected, "blur": MotionBlur.level,
+			"level": _level_opt.selected, "lens": _lens_opt.selected, "screens": _screens_opt.selected, "ambience": _ambience_opt.selected, "blur": MotionBlur.level,
 			"quality": GraphicsSettings.quality, "blackout": FrameGuide.blackout}, true)
 	var f := FileAccess.open(PREFS_PATH, FileAccess.WRITE)
 	if f:
@@ -395,12 +398,9 @@ func _fill_play(sandbox: bool) -> void:
 			card.picture = _thumb(s.id)
 			card.skew = 0.0
 			card.badge = _dots(s.base_difficulty)
-			card.selected = _sport == s
 			card.pressed.connect(_choose_sport.bind(i))
 			_grid.add_child(card)
 			_cards.append(card)
-	if _page == _play and not _cards.is_empty():
-		_focus_later(_cards[0])
 
 
 func _choose_sport(i: int) -> void:
@@ -468,6 +468,9 @@ func _build_setup() -> Control:
 	_lens_opt = _option_row(v, "lens", "Optique")
 	for mm in SessionConfig.LENSES:
 		_lens_opt.add_item("%d mm%s" % [mm, LENS_HELP[mm]])
+	_ambience_opt = _option_row(v, "ambience", "Ambiance")
+	for id in Ambience.MENU:
+		_ambience_opt.add_item(str(Ambience.LABELS[id]) + ("  (sports de neige)" if id == "snowfall" else ""))
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	v.add_child(spacer)
@@ -589,6 +592,7 @@ func _selected_movement() -> String:
 # --- Launch --------------------------------------------------------------------------------------
 
 func _launch_session() -> void:
+	Ambience.choice = str(Ambience.MENU[_ambience_opt.selected])
 	if _sandbox:
 		_start_sandbox()
 	else:

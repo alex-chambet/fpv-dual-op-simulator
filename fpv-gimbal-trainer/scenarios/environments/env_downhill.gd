@@ -30,6 +30,8 @@ var _los_cells := {}                 ## cell -> PackedVector2Array of line-of-si
 var _lift_lines := []                ## [Vector2, Vector2]: the forest keeps clear of the lift lines
 ## The lifts that were built ("alongside", "crossing"): a lift is left out when the drone flies near its cables.
 var lifts_built: Array[String] = []
+## Where the spectators stand: [z0, z1, side (-1 / +1 along x), rows], on the forest side of the nets.
+var _crowd_zones := []
 static var _net_mats := {}
 
 
@@ -145,7 +147,8 @@ func far_scenery() -> Dictionary:
 		"hills": {"height": 1500.0, "r0": r + 700.0, "r1": r + 6500.0, "frequency": 0.001, "snow_line": -4000.0,
 			"tree_line": -4000.0, "forest": Color(0.07, 0.15, 0.09), "rock": Color(0.36, 0.35, 0.36)},
 		"trees": {"kind": "conifer", "count": 1800, "r0": 150.0, "r1": r - 150.0, "colour": Color(0.08, 0.3, 0.14),
-			"grove": -0.2}}
+			"grove": -0.2},
+		"canopy": {"r0": 250.0, "height": 16.0, "colour": Color(0.07, 0.21, 0.1), "grove": -0.25, "snow": 0.3}}
 
 
 # --- Terrain -------------------------------------------------------------------------------------
@@ -242,6 +245,9 @@ func populate(path: PackedVector3Array, drone: PackedVector3Array, plan: Diction
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 61 + host.world_seed
 	_lifts(path, rng)
+	var crng := RandomNumberGenerator.new()
+	crng.seed = 97 + host.world_seed
+	_plan_crowds(path, plan, crng)
 	_forest(b, rng)
 	_rocks(b, rng)
 	var dense := RoadBuilder.sample_curve(host.make_curve(path), 2.0)
@@ -250,6 +256,7 @@ func populate(path: PackedVector3Array, drone: PackedVector3Array, plan: Diction
 	_dye_lines()
 	_start(path)
 	_finish(path, rng)
+	_spectators(crng)
 	if not legacy:
 		var count := roundi(float(host.matrix.params.occlusion) * 8.0)
 		var fr: Array = []
@@ -335,7 +342,7 @@ func _forest(b: Rect2, rng: RandomNumberGenerator) -> void:
 		# glades: a few gaps in the forest
 		if sin(x * 0.013 + _phase) * sin(z * 0.011) > 0.72:
 			continue
-		if _near_lift(x, z, 7.0):
+		if _near_lift(x, z, 7.0) or _in_crowd(x, z, PropFactory.CONE_R[0] * s + 1.0):
 			continue
 		if _near_sight(x, z, PropFactory.CONE_R[0] * s + 1.0):
 			continue
@@ -364,7 +371,7 @@ func _rocks(b: Rect2, rng: RandomNumberGenerator) -> void:
 		var side := -1.0 if rng.randf() < 0.5 else 1.0
 		var x := _centre(z) + side * (_half(z) + rng.randf_range(8.0, 70.0))
 		var size := Vector3(rng.randf_range(1.5, 3.5), rng.randf_range(1.0, 2.6), rng.randf_range(1.8, 4.0))
-		if _near_sight(x, z, 4.0) or _near_lift(x, z, 6.0):
+		if _near_sight(x, z, 4.0) or _near_lift(x, z, 6.0) or _in_crowd(x, z, 4.0):
 			continue
 		var g := ground(x, z)
 		if _in_flight(x, z, maxf(size.x, size.z) + 1.5, g + size.y * 1.4):
@@ -817,8 +824,14 @@ func _finish(path: PackedVector3Array, rng: RandomNumberGenerator) -> void:
 			var xb: float = _centre(zb) + sd * (_half(zb) - 0.5)
 			var g := ground(xb, zb)
 			if not _in_flight(xb, zb, 2.0, g + 1.0):
-				var t := Vector3(_centre(zb + 2.0) - _centre(zb - 2.0), 0.0, 4.0).normalized()
-				bxf.append(Transform3D(Basis(Vector3.UP, atan2(t.x, t.z)), Vector3(xb, g + 0.45, zb)))
+				# the board follows the slope (sheared box)
+				var x0: float = _centre(zb - 1.45) + sd * (_half(zb - 1.45) - 0.5)
+				var x1: float = _centre(zb + 1.45) + sd * (_half(zb + 1.45) - 0.5)
+				var e0 := Vector3(x0, ground(x0, zb - 1.45), zb - 1.45)
+				var e1 := Vector3(x1, ground(x1, zb + 1.45), zb + 1.45)
+				var zax := (e1 - e0) / 2.9
+				var xax := Vector3.UP.cross(zax).normalized()
+				bxf.append(Transform3D(Basis(xax, Vector3.UP, zax), (e0 + e1) * 0.5 + Vector3(0, 0.4, 0)))
 				bcol.append(palette[rng.randi() % palette.size()])
 			zb += 3.0
 	if not bxf.is_empty():
@@ -829,8 +842,8 @@ func _finish(path: PackedVector3Array, rng: RandomNumberGenerator) -> void:
 
 func _grandstand(z_end: float, side: float, rng: RandomNumberGenerator) -> void:
 	var grey := PathSubject.make_mat(Color(0.5, 0.52, 0.55), 0.7)
-	var people: Array[Transform3D] = []
-	var colours := PackedColorArray()
+	var crowd := Crowd.new()
+	crowd.host = host
 	var zc := z_end + 5.0
 	var x0 := _centre(zc) + side * (_half(zc) + 8.0)
 	var g := ground(x0, zc)
@@ -838,19 +851,100 @@ func _grandstand(z_end: float, side: float, rng: RandomNumberGenerator) -> void:
 		var xs := x0 + side * step * 1.6
 		var h := 0.6 + step * 0.8
 		_box_at(Vector3(1.6, h, 60.0), Vector3(xs, g + h * 0.5 - 0.3, zc), grey)
-		for k in 34:
-			if rng.randf() < 0.25:
+		for k in 68:
+			if rng.randf() > Crowd.density():
 				continue
-			var zp := zc - 29.0 + k * 1.75 + rng.randf_range(-0.3, 0.3)
-			people.append(Transform3D(Basis().scaled(Vector3.ONE * rng.randf_range(0.9, 1.1)), Vector3(xs, g + h - 0.3 + 0.8, zp)))
-			colours.append(Color.from_hsv(rng.randf(), rng.randf_range(0.5, 0.9), rng.randf_range(0.4, 0.95)))
+			var zp := zc - 29.5 + k * 0.87 + rng.randf_range(-0.15, 0.15)
+			crowd.add_person(Vector3(xs + rng.randf_range(-0.2, 0.2), g + h - 0.3, zp), Vector3(-side, 0.0, -0.4), rng)
 	host.add_cylinder_occluder(Vector3(x0 + side * 4.0, g, zc), 5.0, 4.5)
-	var body := CapsuleMesh.new()
-	body.radius = 0.25
-	body.height = 1.6
-	body.radial_segments = 8
-	body.rings = 2
-	_multimesh(body, people, true, colours)
+	host.add_child(crowd)
+	crowd.build()
+
+
+# --- Spectators ----------------------------------------------------------------------------------
+
+## Crowds on both sides of every jump (from before the take-off to past the landing), a few groups elsewhere
+## along the course, and along both sides of the last 150 m.
+func _plan_crowds(path: PackedVector3Array, plan: Dictionary, rng: RandomNumberGenerator) -> void:
+	_crowd_zones.clear()
+	var z_start := path[0].z
+	var z_end := path[path.size() - 1].z
+	var busy := [Vector2(z_end - 150.0, z_end + 20.0)]
+	for ev in plan.events:
+		if ev.get("type", "") == "jump":
+			var z0 := float(ev.p0.z) - 35.0
+			var z1 := float(ev.p1.z) + 40.0
+			busy.append(Vector2(z0, z1))
+			for sd in [-1.0, 1.0]:
+				_crowd_zones.append([z0, z1, sd, rng.randi_range(3, 6)])
+	for sd in [-1.0, 1.0]:
+		_crowd_zones.append([z_end - 150.0, z_end + 20.0, sd, 3])
+	var tries := 0
+	var groups := 0
+	while groups < 5 and tries < 60:
+		tries += 1
+		var z := rng.randf_range(z_start + 150.0, z_end - 250.0)
+		var length := rng.randf_range(35.0, 75.0)
+		var free := true
+		for bz in busy:
+			if z + length > bz.x - 120.0 and z < bz.y + 120.0:
+				free = false
+		if not free:
+			continue
+		busy.append(Vector2(z, z + length))
+		_crowd_zones.append([z, z + length, -1.0 if rng.randf() < 0.5 else 1.0, rng.randi_range(2, 4)])
+		groups += 1
+
+
+## True within `margin` metres of the place of a crowd.
+func _in_crowd(x: float, z: float, margin: float) -> bool:
+	for zone in _crowd_zones:
+		if z < zone[0] - margin or z > zone[1] + margin:
+			continue
+		var off: float = (x - _centre(z)) * zone[2] - _half(z)
+		if off > 1.0 - margin and off < 3.4 + zone[3] * 0.95 + margin:
+			return true
+	return false
+
+
+## The spectators of the zones: rows of people from 3 m beyond the piste edge (behind the nets), facing the piste
+## and a little up the course, with banners in front of them. Nobody in the drone's flight or in a line of sight.
+func _spectators(rng: RandomNumberGenerator) -> void:
+	var dens := Crowd.density()
+	for zone in _crowd_zones:
+		var side: float = zone[2]
+		var crowd := Crowd.new()
+		crowd.host = host
+		var face := Vector3(-side, 0.0, -0.5).normalized()
+		var z: float = zone[0]
+		while z < zone[1]:
+			for r in int(zone[3]):
+				if rng.randf() > dens:
+					continue
+				var zz := z + rng.randf_range(-0.25, 0.25) + (0.4 if r % 2 == 1 else 0.0)
+				var x := _centre(zz) + side * (_half(zz) + 3.0 + r * 0.95 + rng.randf_range(-0.15, 0.15))
+				var g := ground(x, zz)
+				if _in_flight(x, zz, 2.0, g + 3.4) or _near_sight(x, zz, 1.0) or _near_lift(x, zz, 3.0):
+					continue
+				crowd.add_person(Vector3(x, g, zz), face, rng)
+			z += 0.85
+		var zb: float = zone[0] + 1.5
+		while zb < zone[1] - 1.5:
+			var xb := _centre(zb) + side * (_half(zb) + 2.2)
+			var gb := ground(xb, zb)
+			if not _in_flight(xb, zb, 2.2, gb + 1.4) and not _near_sight(xb, zb, 1.6):
+				var ends := []
+				for dz in [-1.4, 1.4]:
+					var ze: float = zb + dz
+					var xe := _centre(ze) + side * (_half(ze) + 2.2)
+					ends.append(Vector3(xe, ground(xe, ze) - 0.05, ze))
+				crowd.add_banner(ends[0], ends[1], Vector3(-side, 0.0, 0.0), rng)
+			zb += 2.9
+		if crowd.is_empty():
+			crowd.free()
+			continue
+		host.add_child(crowd)
+		crowd.build()
 
 
 # --- Helpers -------------------------------------------------------------------------------------

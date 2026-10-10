@@ -310,6 +310,9 @@ func animate(s: ArchetypeSubject, delta: float) -> void:
 	var tuck := float(s.state.get("tuck", 0.0))
 	tuck = lerpf(tuck, target, 1.0 - exp(-delta / 0.35))
 	s.state["tuck"] = tuck
+	if s.parts.has("athlete"):
+		s.parts["athlete"].tuck = tuck  # (the athlete takes the pose next frame)
+		return
 	var body: Node3D = s.parts["body"]
 	body.scale = Vector3(1.0, 1.0 - 0.3 * tuck, 1.0)
 	var arms: Array = s.parts["arms"]

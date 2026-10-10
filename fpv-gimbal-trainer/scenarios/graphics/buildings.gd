@@ -7,6 +7,7 @@ extends RefCounted
 const SHUTTER_COLORS := [Color(0.24, 0.38, 0.55), Color(0.3, 0.45, 0.3), Color(0.5, 0.33, 0.2), Color(0.62, 0.62, 0.6),
 		Color(0.55, 0.2, 0.17)]
 const WALL_COLORS := [Color(0.88, 0.83, 0.72), Color(0.82, 0.76, 0.64), Color(0.9, 0.88, 0.84), Color(0.76, 0.68, 0.55)]
+const STONE_COLORS := [Color(0.72, 0.66, 0.56), Color(0.62, 0.58, 0.52), Color(0.78, 0.72, 0.6), Color(0.6, 0.52, 0.43)]
 
 const WALL_SHADER := """
 shader_type spatial;
@@ -16,23 +17,44 @@ uniform sampler2D cell_tex : filter_linear_mipmap, repeat_enable;
 uniform float tiles = 0.0;
 varying vec3 wpos;
 varying vec3 opos;
+// horizontal coordinate along the face: z on the faces looking along x, x on the others (hip ends, gables)
+varying float oh;
 
 void vertex() {
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	opos = VERTEX;
+	oh = abs(NORMAL.x) > abs(NORMAL.z) ? VERTEX.z : VERTEX.x;
 }
 
+// vertex colours are sRGB; their alpha picks the variant: walls 1 = plaster, 0 = rubble stone;
+// roofs 1 = roman tiles, 0 = slates
 void fragment() {
 	float n = texture(detail_tex, (wpos.xz + wpos.yy) * 0.4).r;
-	vec3 col = COLOR.rgb * (0.88 + 0.2 * n);
+	vec3 col = pow(COLOR.rgb, vec3(2.2)) * (0.88 + 0.2 * n);
 	float rough = 0.92;
-	if (tiles > 0.5) {
+	if (tiles > 0.5 && COLOR.a > 0.5) {
 		// roman tiles: rows along the slope, rounded channels across, a few darker tiles
-		float row = fract(opos.y * 3.1 + opos.z * 0.0);
-		float ch = 0.5 + 0.5 * cos(opos.z * 26.0);
-		float id = texture(cell_tex, floor(vec2(opos.z * 4.1, opos.y * 3.1)) * 0.137).r;
+		float row = fract(opos.y * 3.1);
+		float ch = 0.5 + 0.5 * cos(oh * 26.0);
+		float id = texture(cell_tex, floor(vec2(oh * 4.1, opos.y * 3.1)) * 0.137).r;
 		col *= (0.78 + 0.22 * ch) * (1.0 - 0.25 * smoothstep(0.85, 1.0, row)) * (0.85 + 0.3 * id);
 		rough = 0.8;
+	} else if (tiles > 0.5) {
+		// slates: small staggered rectangles, slightly bluish, a little sheen
+		float rowi = floor(opos.y * 4.4);
+		float row = fract(opos.y * 4.4);
+		float colm = fract(oh * 3.0 + rowi * 0.5);
+		float id = texture(cell_tex, vec2(floor(oh * 3.0 + rowi * 0.5), rowi) * 0.173).r;
+		col *= (1.0 - 0.35 * smoothstep(0.88, 1.0, row)) * (1.0 - 0.25 * smoothstep(0.92, 1.0, colm)) * (0.85 + 0.3 * id);
+		rough = 0.55;
+	} else if (COLOR.a < 0.5) {
+		// rubble stone: irregular blocks (cellular noise) with light mortar joints, lighter quoins at the corners
+		vec2 sp = vec2(oh * 1.6, opos.y * 2.6);
+		float cell = texture(cell_tex, sp * 0.12).r;
+		float tone = texture(detail_tex, floor(sp) * 0.31).r;
+		col *= (0.72 + 0.45 * tone) * (0.8 + 0.25 * smoothstep(0.05, 0.2, cell));
+		col = mix(col * 1.35, col, smoothstep(0.02, 0.1, cell));
+		rough = 0.95;
 	} else {
 		// plaster with stains towards the ground
 		col *= 1.0 - 0.18 * (1.0 - smoothstep(0.0, 1.2, opos.y)) * n;
@@ -98,64 +120,77 @@ static func _box(parent: Node3D, size: Vector3, pos: Vector3, mat: Material) -> 
 
 
 ## A farmhouse of w x l metres (ridge along local z), walls `height` high. Returns its root node (origin on the
-## ground, at the centre).
-static func farmhouse(rng: RandomNumberGenerator, w: float, l: float, height := 5.0) -> Node3D:
+## ground, at the centre). Plastered or rubble-stone walls; gable or hipped roof in roman tiles or slates. With
+## `annex`, some get a lower outbuilding against a gable; with `garden`, a garden behind (local -x) closed by a
+## wooden fence or a low stone wall.
+static func farmhouse(rng: RandomNumberGenerator, w: float, l: float, height := 5.0, annex := false,
+		garden := false) -> Node3D:
 	var root := Node3D.new()
-	var wall_c: Color = WALL_COLORS[rng.randi() % WALL_COLORS.size()]
-	var roof_c := Color(0.6, 0.3, 0.19) * rng.randf_range(0.85, 1.1)
+	var stone := rng.randf() < 0.35
+	var wall_c: Color = (STONE_COLORS if stone else WALL_COLORS)[rng.randi() % 4]
+	wall_c.a = 0.0 if stone else 1.0
+	var slate := rng.randf() < 0.3
+	var roof_c := (Color(0.32, 0.34, 0.38) if slate else Color(0.6, 0.3, 0.19)) * rng.randf_range(0.85, 1.1)
+	roof_c.a = 0.0 if slate else 1.0
+	var hip := rng.randf() < 0.35 and l > w + 1.0
 	var shutter_c: Color = SHUTTER_COLORS[rng.randi() % SHUTTER_COLORS.size()]
 	var hw := w * 0.5
 	var hl := l * 0.5
-	var ridge := height + w * 0.3
-	var over := 0.5
 
-	# walls (with the gables), from 0.4 m under the ground
+	# walls (from 0.4 m under the ground) and roof of the house and of its annex: two meshes
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var y0 := -0.4
-	_quad(st, Vector3(-hw, y0, -hl), Vector3(-hw, height, -hl), Vector3(-hw, height, hl), Vector3(-hw, y0, hl), wall_c)
-	_quad(st, Vector3(hw, y0, hl), Vector3(hw, height, hl), Vector3(hw, height, -hl), Vector3(hw, y0, -hl), wall_c)
-	for s in [-1.0, 1.0]:
-		var z: float = hl * s
-		var a := Vector3(-hw * s, y0, z)
-		var b := Vector3(-hw * s, height, z)
-		var c := Vector3(hw * s, height, z)
-		var d := Vector3(hw * s, y0, z)
-		_quad(st, a, b, c, d, wall_c)
-		var apex := Vector3(0, ridge, z)
-		var gn := -((apex - b).cross(c - b)).normalized()
-		for v in [b, apex, c]:
-			st.set_color(wall_c)
-			st.set_normal(gn)
-			st.add_vertex(v)
+	var rst := SurfaceTool.new()
+	rst.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var ridge := _block(st, rst, Vector3.ZERO, w, l, height, wall_c, roof_c, hip)
+	# chimney, doors, windows with frames and shutters, fence: one mesh (vertex colours), so a few draw calls
+	var st2 := SurfaceTool.new()
+	st2.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var wood := Color(0.36, 0.27, 0.19) * rng.randf_range(0.8, 1.15)
+	if annex and rng.randf() < 0.55:
+		var w2 := w * rng.randf_range(0.7, 0.85)
+		var l2 := rng.randf_range(4.0, 6.5)
+		var s2 := 1.0 if rng.randf() < 0.5 else -1.0
+		var c2 := Vector3(0.0, 0.0, s2 * (hl + l2 * 0.5 - 0.1))
+		_block(st, rst, c2, w2, l2, height * 0.62, wall_c, roof_c, false)
+		_add_box(st2, Vector3(0.1, 2.5, 2.4), c2 + Vector3(w2 * 0.5 + 0.03, 1.2, 0.0), wood)
+	if garden and rng.randf() < 0.7:
+		var gd := rng.randf_range(6.0, 10.0)
+		var x0 := -hw - gd
+		var gl := hl + 0.6
+		var sides := [[Vector3(x0, 0, -gl), Vector3(x0, 0, gl)], [Vector3(x0, 0, -gl), Vector3(-hw, 0, -gl)],
+				[Vector3(x0, 0, gl), Vector3(-hw, 0, gl)]]
+		if rng.randf() < 0.4:
+			var low := Color(0.66, 0.6, 0.5, 0.0) if not stone else wall_c
+			for sd in sides:
+				var a: Vector3 = sd[0]
+				var b: Vector3 = sd[1]
+				_add_box(st, Vector3(absf(b.x - a.x) + 0.5, 1.3, absf(b.z - a.z) + 0.5), (a + b) * 0.5 + Vector3(0, 0.25, 0), low)
+		else:
+			var post_c := wood * 1.2
+			for sd in sides:
+				var a: Vector3 = sd[0]
+				var b: Vector3 = sd[1]
+				var n_posts := maxi(2, ceili(a.distance_to(b) / 2.4) + 1)
+				for k in n_posts:
+					_add_box(st2, Vector3(0.12, 1.1, 0.12), a.lerp(b, float(k) / (n_posts - 1)) + Vector3(0, 0.45, 0), post_c)
+				var size := Vector3(absf(b.x - a.x) + 0.06, 0.08, absf(b.z - a.z) + 0.06)
+				for y in [0.45, 0.85]:
+					_add_box(st2, size, (a + b) * 0.5 + Vector3(0, y, 0), post_c)
 	var walls := MeshInstance3D.new()
 	walls.mesh = st.commit()
 	walls.material_override = _shader_mat(false)
 	root.add_child(walls)
-
-	# roof: two slopes with an overhang, tiles in the roof's own coordinates (opos)
-	var rst := SurfaceTool.new()
-	rst.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var eave_y := height - over * (ridge - height) / hw
-	for s in [-1.0, 1.0]:
-		var e0 := Vector3((hw + over) * s, eave_y, -hl - over)
-		var e1 := Vector3((hw + over) * s, eave_y, hl + over)
-		var r0 := Vector3(0, ridge + 0.05, -hl - over)
-		var r1 := Vector3(0, ridge + 0.05, hl + over)
-		if s > 0.0:
-			_quad(rst, e1, r1, r0, e0, roof_c)
-		else:
-			_quad(rst, e0, r0, r1, e1, roof_c)
 	var roof := MeshInstance3D.new()
 	roof.mesh = rst.commit()
 	roof.material_override = _shader_mat(true)
 	root.add_child(roof)
 
-	# chimney, door, windows with frames and shutters: one mesh (vertex colours) so a house is only a few draw calls
-	var st2 := SurfaceTool.new()
-	st2.begin(Mesh.PRIMITIVE_TRIANGLES)
-	_add_box(st2, Vector3(0.7, 1.6, 0.7), Vector3(0.6, ridge + 0.3, hl * rng.randf_range(0.3, 0.7) * (1 if rng.randf() < 0.5 else -1)),
-			wall_c * 0.9)
+	# the chimney goes from the top of the walls to above the ridge (a hipped roof is lower towards the ends)
+	var cz := hl * rng.randf_range(0.3, 0.7) * (1 if rng.randf() < 0.5 else -1)
+	if hip:
+		cz *= 0.4
+	_add_box(st2, Vector3(0.7, ridge + 1.1 - height, 0.7), Vector3(0.6, (ridge + 1.1 + height) * 0.5, cz), wall_c * 0.9)
 	var glass := Color(0.12, 0.14, 0.17)
 	var frame := Color(0.92, 0.92, 0.9)
 	var n := maxi(2, floori(l / 3.4))
@@ -181,6 +216,55 @@ static func farmhouse(rng: RandomNumberGenerator, w: float, l: float, height := 
 	details.visibility_range_end = 400.0
 	root.add_child(details)
 	return root
+
+
+## Appends the walls (gables unless the roof is hipped) and the roof (0.5 m overhang) of a w x l block centred on
+## `c` (ground level) to `st` and `rst`. Returns the height of the ridge.
+static func _block(st: SurfaceTool, rst: SurfaceTool, c: Vector3, w: float, l: float, height: float, wall_c: Color,
+		roof_c: Color, hip: bool) -> float:
+	var hw := w * 0.5
+	var hl := l * 0.5
+	var ridge := height + w * 0.3
+	var over := 0.5
+	var y0 := -0.4
+	_quad(st, c + Vector3(-hw, y0, -hl), c + Vector3(-hw, height, -hl), c + Vector3(-hw, height, hl), c + Vector3(-hw, y0, hl), wall_c)
+	_quad(st, c + Vector3(hw, y0, hl), c + Vector3(hw, height, hl), c + Vector3(hw, height, -hl), c + Vector3(hw, y0, -hl), wall_c)
+	for s in [-1.0, 1.0]:
+		var z: float = hl * s
+		var b := c + Vector3(-hw * s, height, z)
+		var d := c + Vector3(hw * s, height, z)
+		_quad(st, c + Vector3(-hw * s, y0, z), b, d, c + Vector3(hw * s, y0, z), wall_c)
+		if not hip:
+			_tri(st, b, c + Vector3(0, ridge, z), d, wall_c, Vector3(0, 0, s))
+	# same pitch on every slope: the hips start at hw from the ends
+	var eave_y := height - over * (ridge - height) / hw
+	var rl := maxf(hl - hw, 0.3) if hip else hl + over
+	var top := ridge + 0.05
+	for s in [-1.0, 1.0]:
+		var e0 := c + Vector3((hw + over) * s, eave_y, -hl - over)
+		var e1 := c + Vector3((hw + over) * s, eave_y, hl + over)
+		var r0 := c + Vector3(0, top, -rl)
+		var r1 := c + Vector3(0, top, rl)
+		if s > 0.0:
+			_quad(rst, e1, r1, r0, e0, roof_c)
+		else:
+			_quad(rst, e0, r0, r1, e1, roof_c)
+		if hip:
+			var z: float = (hl + over) * s
+			_tri(rst, c + Vector3(-hw - over, eave_y, z), c + Vector3(0, top, rl * s), c + Vector3(hw + over, eave_y, z),
+					roof_c, Vector3(0, 0.5, s))
+	return ridge
+
+
+## Appends a triangle whose normal points to the side of `outward`.
+static func _tri(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, col: Color, outward: Vector3) -> void:
+	var n := (b - a).cross(c - a).normalized()
+	if n.dot(outward) < 0.0:
+		n = -n
+	for v in [a, b, c]:
+		st.set_color(col)
+		st.set_normal(n)
+		st.add_vertex(v)
 
 
 static var _detail_mat: StandardMaterial3D

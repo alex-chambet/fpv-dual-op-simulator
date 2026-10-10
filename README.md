@@ -73,9 +73,9 @@ Un monde ouvert, sans chrono ni score : 1,6 × 1,6 km de campagne avec un villag
 2. Choisissez **Entraînement** (ou **Bac à sable** pour le vol libre), puis un **terrain** (touches 1 à 6).
 3. Réglez le **mouvement du drone**, le **niveau** et l'**optique**. Au début : suivi latéral, niveau 1 ou 2, 24 mm.
 4. **LANCER** (ou Entrée). Un compte à rebours de quelques secondes laisse le temps de s'installer.
+5. Gardez le sujet dans le rectangle vert. À la fin, regardez votre note, et rejouez pour la battre.
 
 Le menu se pilote aussi au clavier ou à la manette (flèches, Entrée, Échap pour revenir en arrière). Après une session, il rouvre directement la page de réglages de cette session, pour rejouer en un clic.
-4. Gardez le sujet dans le rectangle vert. À la fin, regardez votre note, et rejouez pour la battre.
 
 Pour changer les réglages de manette, la qualité graphique et le flou de mouvement : tuile **Paramètres** de l'accueil.
 
@@ -105,9 +105,14 @@ Dans le bac à sable : **M** change de mode de vol (auto, clavier, acro), **Reto
 
 Quatre niveaux de qualité (Basse, Moyenne, Haute, Ultra) et un **flou de mouvement** réaliste, par objet : le décor file derrière un sujet net, comme sur une vraie caméra. Si le jeu est lent sur votre machine, baissez la qualité dans « Paramètres » ou pendant la partie (Échap → Graphismes).
 
+- **Ambiances** : plein jour, matin, fin de journée, temps couvert, chute de neige (sur la neige), ou au hasard. Elles se choisissent sur la page de réglages de la session (ligne « Ambiance »).
+- **Athlètes animés** : le skieur prend la position de recherche de vitesse, le coureur passe de la marche au sprint, le vététiste pédale sur un vrai VTT.
+- **Décors vivants** : public, drapeaux et banderoles sur la descente ; fermes, champs labourés et blés mûrs sur la Départementale ; parois rocheuses et massifs sur la route de montagne ; rayons de lumière dans la forêt (qualité Ultra).
+- **Rendu caméra** : vignettage, légère aberration chromatique et grain, comme une vraie optique.
+
 ## Limites connues
 
-- Les sujets sont des **silhouettes simples**, pas des modèles détaillés.
+- Les athlètes sont des **mannequins animés**, sans visage ni vêtements détaillés.
 - Le vol acro à deux manettes n'a pas encore été testé sur tous les modèles de manette.
 - Le niveau Expert a surtout été validé en simulation. Vos retours sont les bienvenus.
 
@@ -121,3 +126,8 @@ Quatre niveaux de qualité (Basse, Moyenne, Haute, Ultra) et un **flou de mouvem
 - L'historique des versions : onglet **Releases**
 
 Le code source est dans le dossier `fpv-gimbal-trainer/` (projet Godot 4.7).
+
+## Crédits
+
+- Mannequin animé des athlètes : « Universal Animation Library » de [Quaternius](https://quaternius.com), licence CC0 (domaine public).
+- Moteur : [Godot Engine](https://godotengine.org) (licence MIT).

@@ -16,6 +16,8 @@ const PROFILE_NAMES := ["Slow", "Medium", "Fast"]
 
 ## Lens of the gimbal camera (mm), set by the menu.
 static var lens_mm := 24
+## Time of day / weather of this sandbox (Ambience; the menu choice, or drawn at random).
+var ambience := "noon"
 
 var world: SandboxWorld
 var traffic: SandboxTraffic
@@ -89,8 +91,12 @@ func _build_environment() -> void:
 	_sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
 	add_child(_sun)
 	var looks := EnvironmentBuilder.new()
-	looks.style = load("res://scenarios/environments/styles/departementale.tres")
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	ambience = Ambience.pick(rng, false)
+	looks.style = Ambience.variant(load("res://scenarios/environments/styles/departementale.tres"), ambience)
 	looks.apply_to_scene(_env, _sun)
+	Ambience.finish(ambience, _env.environment, looks.style)
 	var cam_look := CanvasLayer.new()
 	cam_look.set_script(load("res://ui/camera_look.gd"))
 	add_child(cam_look)

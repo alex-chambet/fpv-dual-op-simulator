@@ -48,7 +48,8 @@ func far_scenery() -> Dictionary:
 		"hills": {"height": 150.0, "r0": 1800.0, "r1": 5500.0, "frequency": 0.0006,
 			"forest": Color(0.1, 0.18, 0.07), "grass": Color(0.3, 0.38, 0.15)},
 		"trees": {"kind": "broadleaf", "count": 1500, "r0": 150.0, "r1": 1200.0, "colour": Color(0.2, 0.42, 0.12),
-			"grove": 0.15}}
+			"grove": 0.15},
+		"canopy": {"r0": 260.0, "height": 14.0, "colour": Color(0.15, 0.3, 0.1), "grove": 0.55}}
 
 func occluder_kind() -> String:
 	return "trees"
@@ -228,8 +229,9 @@ func populate(path: PackedVector3Array, drone: PackedVector3Array, _plan: Dictio
 	var house_s := rng.randf_range(150.0, 350.0)
 	while house_s < total + 200.0:
 		var side_h := 1.0 if rng.randf() < 0.5 else -1.0
-		var hp2 := _line_at(house_s, cum) + _side(house_s, cum) * (side_h * rng.randf_range(26.0, 60.0))
-		_add_house(Vector3(hp2.x, ground(hp2.x, hp2.z), hp2.z), rng)
+		var off := rng.randf_range(26.0, 60.0)
+		var hp2 := _line_at(house_s, cum) + _side(house_s, cum) * (side_h * off)
+		_add_house(Vector3(hp2.x, ground(hp2.x, hp2.z), hp2.z), rng, off)
 		house_s += rng.randf_range(320.0, 700.0)
 
 
@@ -242,7 +244,9 @@ func _add_round_tree(p: Vector3, tree_scale: float, grounds: PackedVector3Array,
 	host.add_round_tree_occluder(g, tree_scale)
 
 
-func _add_house(g: Vector3, rng: RandomNumberGenerator) -> void:
+## A farmhouse (or a lone barn) at `g`, `off` metres from the road; far enough from it, some farms get a barn
+## across their front yard (an L-shaped farmstead).
+func _add_house(g: Vector3, rng: RandomNumberGenerator, off: float) -> void:
 	var w := rng.randf_range(7.0, 10.0)
 	var l := rng.randf_range(11.0, 16.0)
 	var yaw := rng.randf() * PI
@@ -250,11 +254,37 @@ func _add_house(g: Vector3, rng: RandomNumberGenerator) -> void:
 	# the details come from their own random stream (the session's stream is unchanged)
 	var drng := RandomNumberGenerator.new()
 	drng.seed = absi(int(g.x * 13.0 + g.z * 7.0)) + host.world_seed
-	var root := Buildings.barn(drng, w, l) if kind == 2 and drng.randf() < 0.5 else Buildings.farmhouse(drng, w, l, 4.4)
+	var lone_barn := kind == 2 and drng.randf() < 0.5
+	var root := Buildings.barn(drng, w, l) if lone_barn else Buildings.farmhouse(drng, w, l, 4.4, true, true)
 	root.position = g
 	root.rotation.y = yaw
 	host.add_child(root)
 	host.add_cylinder_occluder(g, 0.5 * maxf(w, l), 7.0)
+	# a grass yard around the buildings (no crop under the house or the garden)
+	_yard(g, 0.5 * maxf(w, l) + 9.0)
+	if lone_barn or off < 42.0 or drng.randf() < 0.45:
+		return
+	var bw := drng.randf_range(8.0, 11.0)
+	var bl := drng.randf_range(12.0, 16.0)
+	var side := 1.0 if drng.randf() < 0.5 else -1.0
+	var local := Vector3(w * 0.5 + 3.0 + bl * 0.5, 0.0, side * (l * 0.5 + 1.5 + bw * 0.5))
+	var bp := g + local.rotated(Vector3.UP, yaw)
+	if _near_los(bp.x, bp.z):
+		return
+	bp.y = ground(bp.x, bp.z)
+	var barn := Buildings.barn(drng, bw, bl)
+	barn.position = bp
+	barn.rotation.y = yaw + PI * 0.5
+	host.add_child(barn)
+	host.add_cylinder_occluder(bp, 0.5 * maxf(bw, bl), 6.5)
+	_yard(bp, 0.5 * maxf(bw, bl) + 5.0)
+
+
+func _yard(c: Vector3, r: float) -> void:
+	if ground_mask == null:
+		return
+	ground_mask.add_disc(Vector2(c.x, c.z), r, Color(0, 1, 0))
+	ground_mask.render_target_update_mode = SubViewport.UPDATE_ONCE
 
 ## True if (x, z) is within 5 m of a line of sight (drone -> subject) of the session (a crown is up to 4 m wide).
 func _near_los(x: float, z: float) -> bool:

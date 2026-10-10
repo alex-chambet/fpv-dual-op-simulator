@@ -46,8 +46,11 @@ func grass_params() -> Dictionary:
 
 ## The forest goes on beyond the playing area (the fog hides what is further).
 func far_scenery() -> Dictionary:
-	return {"ring_radius": 700.0, "ring_cell": 20.0,
-		"trees": {"kind": "conifer", "count": 2600, "r0": 60.0, "r1": 420.0, "colour": Color(0.06, 0.22, 0.1)}}
+	return {"ring_radius": 1600.0, "ring_cell": 25.0,
+		"hills": {"height": 320.0, "r0": 1700.0, "r1": 6000.0, "frequency": 0.0007, "snow_line": 100000.0,
+			"tree_line": 100000.0, "forest": Color(0.06, 0.16, 0.08), "grass": Color(0.16, 0.26, 0.1)},
+		"trees": {"kind": "conifer", "count": 2600, "r0": 60.0, "r1": 480.0, "colour": Color(0.06, 0.22, 0.1)},
+		"canopy": {"r0": 300.0, "height": 22.0, "colour": Color(0.06, 0.2, 0.09), "grove": -9.0}}
 
 func occluder_kind() -> String:
 	return "trees"

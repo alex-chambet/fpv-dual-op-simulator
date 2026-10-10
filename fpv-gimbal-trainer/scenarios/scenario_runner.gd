@@ -80,10 +80,13 @@ func _build_scenario() -> void:
 	scenario_id = cfg.scenario_id()
 	scenario_title = cfg.title()
 
-	style = EnvironmentRegistry.style_for(def.environment)
+	# the environment's look, in the light and weather of the session
+	style = Ambience.variant(EnvironmentRegistry.style_for(def.environment), cfg.ambience)
 	env = EnvironmentRegistry.create(style, self, def.env_overrides)
 	env.subject_size = def.effective_size()
 	env.apply_to_scene(world_env, sun)
+	Ambience.finish(cfg.ambience, world_env.environment, style)
+	Ambience.add_weather(cfg.ambience, self, flight.rig.camera)
 	apply_graphics()
 
 	arch = ArchetypeRegistry.get_archetype(def.archetype)
@@ -115,6 +118,8 @@ func _build_scenario() -> void:
 
 	env.populate(subject_pts, drone_pts, plan, cfg.fixed)
 	_add_jump_markers()
+	if env.terrain_material != null:
+		Ambience.tune_ground(cfg.ambience, env.terrain_material)
 	if env.terrain_rect.has_area() and env.terrain_material != null:
 		FarScenery.build(env, env.terrain_rect, env.terrain_material, env.far_scenery())
 	flight.rig.camera.far = 9000.0  # the distant mountains

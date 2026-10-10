@@ -10,6 +10,9 @@ extends RefCounted
 
 
 static func build(def: SubjectDefinition, parts: Dictionary) -> Node3D:
+	# a person on foot, on skis or on a bike: the animated athlete (rigged character)
+	if AthleteModel.supports(def):
+		return AthleteModel.build(def, parts)
 	var root := Node3D.new()
 	root.name = "Model"
 	var body := Node3D.new()

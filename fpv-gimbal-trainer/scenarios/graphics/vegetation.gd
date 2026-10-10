@@ -35,9 +35,12 @@ void vertex() {
 	vec3 root = MODEL_MATRIX[3].xyz;
 	float ph = INSTANCE_CUSTOM.a * 6.2832 + root.x * 0.05 + root.z * 0.03;
 	float h = max(VERTEX.y - 1.0, 0.0);
-	float sway = (sin(TIME * 0.9 + ph) * 0.7 + sin(TIME * 2.3 + ph * 1.7) * 0.3) * wind_strength;
+	// gusts roll across the forest along the wind: stronger sway and leaf flutter where one passes
+	float gust = 0.5 + 0.5 * sin(dot(root.xz, vec2(0.045, 0.03)) - TIME * 1.1);
+	gust *= gust;
+	float sway = (sin(TIME * 0.9 + ph) * 0.7 + sin(TIME * 2.3 + ph * 1.7) * 0.3) * wind_strength * (0.75 + 0.5 * gust);
 	VERTEX.xz += vec2(0.005, 0.0035) * sway * h * h;
-	VERTEX += NORMAL * sin(TIME * 6.5 + dot(VERTEX, vec3(4.1, 3.3, 5.7))) * 0.02 * COLOR.g * wind_strength;
+	VERTEX += NORMAL * sin(TIME * (6.5 + 3.0 * gust) + dot(VERTEX, vec3(4.1, 3.3, 5.7))) * (0.014 + 0.03 * gust) * COLOR.g * wind_strength;
 	up_facing = NORMAL.y;
 }
 

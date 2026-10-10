@@ -61,6 +61,17 @@ static func apply(e: Environment, sun: DirectionalLight3D, vp: Viewport) -> void
 		e.ssil_enabled = q >= 3
 		e.ssil_radius = 6.0
 		e.ssil_intensity = 0.8
+		# light shafts between the trees: volumetric fog lit by the sun, strongly forward-scattering
+		var shafts: float = e.get_meta("light_shafts", 0.0)
+		e.volumetric_fog_enabled = q >= 3 and shafts > 0.0
+		if e.volumetric_fog_enabled:
+			e.volumetric_fog_density = shafts
+			e.volumetric_fog_albedo = Color(0.92, 0.94, 0.96)
+			e.volumetric_fog_anisotropy = 0.6
+			e.volumetric_fog_length = 90.0
+			e.volumetric_fog_detail_spread = 2.0
+			e.volumetric_fog_ambient_inject = 0.05
+			e.volumetric_fog_sky_affect = 0.0
 	if sun != null:
 		sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS if q == 0 \
 				else DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS

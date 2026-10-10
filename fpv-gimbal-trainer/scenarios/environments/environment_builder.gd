@@ -147,6 +147,7 @@ func apply_to_scene(world_env: WorldEnvironment, sun: DirectionalLight3D) -> voi
 	var e := world_env.environment
 	e.sky.sky_material = GameSky.make(style)
 	e.tonemap_mode = Environment.TONE_MAPPER_AGX
+	e.tonemap_exposure = style.exposure
 	e.ambient_light_energy = style.ambient_energy
 	e.ssao_radius = style.ssao_radius
 	e.ssao_intensity = style.ssao_intensity
@@ -161,6 +162,8 @@ func apply_to_scene(world_env: WorldEnvironment, sun: DirectionalLight3D) -> voi
 	e.fog_sun_scatter = style.fog_sun_scatter
 	e.fog_sky_affect = style.fog_sky_affect
 	e.fog_aerial_perspective = style.fog_aerial_perspective
+	# read by GraphicsSettings.apply (volumetric fog on Ultra only)
+	e.set_meta("light_shafts", style.light_shafts)
 	sun.light_color = style.sun_color
 	sun.light_energy = style.sun_energy
 	sun.light_angular_distance = style.sun_angular_distance

@@ -124,6 +124,22 @@ vec4 farmland(vec2 xz, float near_road, float fine) {
 		rows = stripes(along * 12.0, 1.0);
 		c = mix(vec3(0.46, 0.41, 0.25), vec3(0.6, 0.53, 0.33), 0.5 * fine + 0.5 * rows);
 	}
+	// the colours above are sRGB
+	c = pow(c, vec3(2.2));
+	// uneven ripeness / moisture inside a parcel
+	float patchy = texture(macro_tex, xz * 0.017 + h * 7.0).r;
+	c *= 0.84 + 0.3 * patchy;
+	if (h >= 0.5 && h < 0.64) {
+		c = mix(c, c * vec3(0.8, 1.05, 0.75), smoothstep(0.55, 0.75, patchy));
+	}
+	// tractor tramlines (two wheel tracks 1.8 m apart every 24 m) inside the parcel, headland along the border
+	if (h < 0.64 || h >= 0.8) {
+		float m = fract(along / 24.0) * 24.0;
+		float tw = abs(min(m, 24.0 - m) - 0.9);
+		float track = (1.0 - smoothstep(0.16, 0.3, tw)) * (1.0 - smoothstep(0.08, 0.3, fwidth(along)));
+		c = mix(c, c * vec3(0.55, 0.5, 0.45), track * smoothstep(8.0, 10.0, edge));
+	}
+	c *= mix(0.88, 1.0, smoothstep(5.0, 9.0, edge));
 	float w = smoothstep(1.5, 4.0, edge) * (1.0 - near_road);
 	return vec4(c, w);
 }
@@ -162,6 +178,7 @@ void fragment() {
 	col = mix(col, fringe_color * (0.8 + 0.4 * fine), fr * 0.85);
 
 	float slope = 1.0 - wnrm.y;
+	vec3 n_rock = wnrm;
 	float rock_w = smoothstep(rock_start, rock_end, slope + (d1 - 0.5) * 0.14 + (m_mid - 0.5) * 0.1);
 	if (rock_w > 0.001) {
 		vec3 bw = pow(abs(wnrm), vec3(4.0));
@@ -172,14 +189,42 @@ void fragment() {
 		float r = rx * bw.x + ry * bw.y + rz * bw.z;
 		float cracks = texture(cell_tex, (wpos.xz + wpos.yy * 0.7) * 0.18).r;
 		vec3 rock = mix(rock_b, rock_a, smoothstep(0.2, 0.8, r)) * (0.75 + 0.35 * smoothstep(0.1, 0.5, cracks)) * (0.88 + 0.24 * fine);
+		// large scale (seen from afar on the valley walls): strata, dark streaks down the slope, warmer patches
+		float hz = (xz.x + xz.y) * 0.7;
+		float strata = texture(detail_tex, vec2(wpos.y * 0.013 + m_mid * 0.6, hz * 0.0015)).r;
+		float gully = texture(detail_tex, vec2(hz * 0.009, wpos.y * 0.0018)).r;
+		rock *= 0.74 + 0.42 * smoothstep(0.3, 0.7, strata);
+		rock *= 1.0 - 0.45 * smoothstep(0.5, 0.78, gully);
+		rock = mix(rock, rock * vec3(1.15, 1.03, 0.88), smoothstep(0.5, 0.8, m_big));
+		// grassy ledges across the walls and grass on their gentler parts
+		float ledge = texture(detail_tex, vec2(hz * 0.004, wpos.y * 0.028 + m_mid)).r;
+		rock_w *= 1.0 - 0.85 * smoothstep(0.6, 0.7, ledge) * (1.0 - smoothstep(0.62, 0.9, slope));
+		rock_w *= 1.0 - 0.55 * smoothstep(0.55, 0.75, m_mid * 0.6 + d1 * 0.4) * (1.0 - smoothstep(0.45, 0.7, slope));
 		col = mix(col, rock, rock_w);
 		rough = mix(rough, 0.82, rock_w);
 		nstr = mix(nstr, normal_strength * 2.2, rock_w);
+		// relief of the walls (the mesh itself is smooth): buttresses and hollows of 20-40 m from the macro noise
+		// projected on the two wall planes; their gradient bends the normal, the hollows are darker
+		const float STEP = 0.002;
+		vec2 px = wpos.zy * vec2(0.0035, 0.006);
+		vec2 pz = wpos.xy * vec2(0.0035, 0.006);
+		float hx = texture(macro_tex, px).r;
+		float hzz = texture(macro_tex, pz).r;
+		vec2 gx = vec2(texture(macro_tex, px + vec2(STEP, 0.0)).r - hx, texture(macro_tex, px + vec2(0.0, STEP)).r - hx) / STEP;
+		vec2 gz = vec2(texture(macro_tex, pz + vec2(STEP, 0.0)).r - hzz, texture(macro_tex, pz + vec2(0.0, STEP)).r - hzz) / STEP;
+		float wsum = bw.x + bw.z + 1e-4;
+		float relief = (hx * bw.x + hzz * bw.z) / wsum;
+		col = mix(col, col * (0.62 + 0.6 * relief), rock_w * smoothstep(0.3, 0.6, slope));
+		vec2 nx = texture(normal_tex, wpos.zy * vec2(0.03, 0.07)).rg * 2.0 - 1.0;
+		vec2 nz = texture(normal_tex, wpos.xy * vec2(0.03, 0.07)).rg * 2.0 - 1.0;
+		vec3 bend = (vec3(0.0, gx.y, gx.x) * bw.x + vec3(gz.x, gz.y, 0.0) * bw.z) * -0.03
+				+ (vec3(0.0, nx.y, nx.x) * bw.x + vec3(nz.x, nz.y, 0.0) * bw.z) * 0.35;
+		n_rock += bend * rock_w;
 	}
 	ALBEDO = col;
 	ROUGHNESS = rough;
 	SPECULAR = 0.35;
-	NORMAL = detail_normal(wnrm, xz, nstr * (1.0 - far_fade * 0.7), VIEW_MATRIX);
+	NORMAL = detail_normal(normalize(n_rock), xz, nstr * (1.0 - far_fade * 0.7), VIEW_MATRIX);
 }
 """
 
@@ -194,6 +239,8 @@ uniform vec3 rock_b : source_color = vec3(0.2, 0.19, 0.19);
 uniform float rock_start = 0.42;
 uniform float rock_end = 0.58;
 uniform float groom_spacing = 0.06;
+// strength of the wind ripples (a grazing sun makes them stand out a lot: lower at dawn / dusk)
+uniform float ripple = 1.0;
 
 void vertex() {
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
@@ -218,8 +265,8 @@ void fragment() {
 	col *= 1.0 - piste * (0.025 * hash12(vec2(lane, 3.0)) + 0.04 * edge_l);
 
 	// normal: wind ripples off the piste, groomer corduroy (along the fall line) on it
-	vec2 rip = (texture(normal_tex, xz * vec2(0.09, 0.22)).rg * 2.0 - 1.0) * 0.55
-			+ (texture(normal_tex, xz * 0.6).rg * 2.0 - 1.0) * 0.25;
+	vec2 rip = ((texture(normal_tex, xz * vec2(0.09, 0.22)).rg * 2.0 - 1.0) * 0.55
+			+ (texture(normal_tex, xz * 0.6).rg * 2.0 - 1.0) * 0.25) * ripple;
 	float ph = xz.x * 6.2832 / groom_spacing;
 	float aa = clamp(1.0 - fwidth(ph) * 0.6, 0.0, 1.0);
 	float wobble = (texture(detail_tex, xz * vec2(0.05, 0.01)).r - 0.5) * 6.0;

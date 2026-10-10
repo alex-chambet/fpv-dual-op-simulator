@@ -16,6 +16,8 @@ var lens := 24
 var two_player := false
 ## +1 / -1: which side of the subject the drone favours.
 var side := 1.0
+## Time of day / weather (Ambience id): noon, morning, golden, overcast, snowfall.
+var ambience := "noon"
 ## Which choices the player fixed (the others are re-rolled for the next session).
 var lock_subject := false
 var lock_movement := false
@@ -62,4 +64,5 @@ func to_dict() -> Dictionary:
 	return {
 		"definition": subject.to_dict(), "subject": subject.id, "movement": movement, "level": level,
 		"seed": seed, "side": side, "lens": lens, "two_player": two_player, "fixed": fixed, "fixed_id": fixed_id, "fixed_title": fixed_title,
+		"ambience": ambience,
 	}

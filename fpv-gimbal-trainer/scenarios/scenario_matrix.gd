@@ -103,6 +103,7 @@ static func generate(subject_id := "", movement := "", level := 0, rng: RandomNu
 		cfg.movement = DroneDifficulty.pick_movement(allowed, cfg.level, rng)
 	cfg.seed = rng.randi() % 100000
 	cfg.side = -1.0 if rng.randf() < 0.5 else 1.0
+	cfg.ambience = Ambience.pick(rng, Ambience.is_snowy(def.environment))
 	return cfg
 
 
@@ -148,6 +149,7 @@ static func config_from_dict(d: Dictionary) -> SessionConfig:
 	cfg.side = float(d.get("side", 1.0))
 	cfg.lens = int(d.get("lens", 24))
 	cfg.two_player = bool(d.get("two_player", false))
+	cfg.ambience = str(d.get("ambience", "noon"))  # (sessions recorded before the ambiences: a bright day)
 	return cfg
 
 

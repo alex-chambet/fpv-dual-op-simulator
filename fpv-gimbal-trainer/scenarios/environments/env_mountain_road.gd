@@ -61,7 +61,8 @@ func far_scenery() -> Dictionary:
 		"hills": {"height": 1900.0, "r0": 1800.0, "r1": 6500.0, "frequency": 0.0009, "snow_line": 1500.0,
 			"tree_line": 1000.0, "forest": Color(0.08, 0.17, 0.08), "grass": Color(0.34, 0.38, 0.18)},
 		"trees": {"kind": "conifer", "count": 1300, "r0": 160.0, "r1": 1000.0, "colour": Color(0.1, 0.28, 0.14),
-			"grove": 0.0}}
+			"grove": 0.0},
+		"canopy": {"r0": 140.0, "height": 16.0, "colour": Color(0.07, 0.19, 0.09), "grove": 0.15}}
 
 
 ## Outside the playing area the valley walls stop steepening: a U-shaped glacial valley whose sides ease to about
@@ -94,7 +95,7 @@ func build_terrain(path: PackedVector3Array, _plan: Dictionary) -> void:
 	mi.mesh = TerrainBuilder.build(Callable(self, "ground"), 140.0, z0, z1, 3.0)
 	# alpine pasture, rock on the steep valley walls
 	_ground_params = {"grass_a": Color(0.2, 0.3, 0.1), "grass_b": Color(0.38, 0.44, 0.17),
-			"dry": Color(0.55, 0.5, 0.3), "dry_amount": 0.5, "dirt_amount": 0.2, "rock_start": 0.2, "rock_end": 0.34,
+			"dry": Color(0.55, 0.5, 0.3), "dry_amount": 0.5, "dirt_amount": 0.2, "rock_start": 0.26, "rock_end": 0.44,
 			"rock_a": Color(0.5, 0.48, 0.45), "rock_b": Color(0.27, 0.26, 0.25), "fringe_color": Color(0.45, 0.42, 0.36)}
 	var mat := GroundMaterials.terrain(_ground_params)
 	mi.material_override = mat

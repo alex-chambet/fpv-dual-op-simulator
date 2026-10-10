@@ -26,19 +26,37 @@ void vertex() {
 	wnrm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 }
 
+// relief of the mountains at a scale the mesh cannot hold: ridges and gullies (ridged noise, bumps the normal)
+float ridges(vec2 p) {
+	float a = 1.0 - abs(texture(detail_tex, p * 0.0016).r * 2.0 - 1.0);
+	float b = 1.0 - abs(texture(detail_tex, p * 0.0047 + 0.31).r * 2.0 - 1.0);
+	return a * a * 0.65 + b * b * 0.35;
+}
+
 void fragment() {
 	float m = texture(macro_tex, wpos.xz * 0.00045).r;
 	float d = texture(detail_tex, wpos.xz * 0.004).r;
-	float slope = 1.0 - wnrm.y;
+	// bumped normal: the ridges run down the slopes (stretched along the fall line)
+	float e = 6.0;
+	float r0 = ridges(wpos.xz);
+	vec3 bump = vec3(r0 - ridges(wpos.xz + vec2(e, 0.0)), 0.0, r0 - ridges(wpos.xz + vec2(0.0, e))) * 55.0;
+	float steep0 = 1.0 - wnrm.y;
+	vec3 n = normalize(wnrm + bump * smoothstep(0.05, 0.35, steep0));
+	float slope = 1.0 - n.y;
 	float h = wpos.y + (m - 0.5) * 160.0 + (d - 0.5) * 60.0;
 	vec3 col = mix(forest * (0.7 + 0.6 * d), grass * (0.8 + 0.4 * d), smoothstep(0.45, 0.65, m));
 	col = mix(col, grass * 0.9, smoothstep(tree_line - 80.0, tree_line + 80.0, h));
-	col = mix(col, rock * (0.75 + 0.5 * d), smoothstep(0.28, 0.45, slope + (d - 0.5) * 0.2));
-	float snow = smoothstep(snow_line - 60.0, snow_line + 60.0, h) * (1.0 - smoothstep(0.55, 0.75, slope));
-	col = mix(col, vec3(0.92, 0.94, 0.98), snow);
+	// bare rock on the steep faces and the crests of the ridges, with strata
+	float strata = 0.85 + 0.3 * texture(detail_tex, vec2(wpos.y * 0.02, wpos.x * 0.0007)).r;
+	float rock_w = smoothstep(0.3, 0.5, slope + (d - 0.5) * 0.25 + r0 * 0.12);
+	col = mix(col, rock * (0.7 + 0.45 * d) * strata, rock_w);
+	// snow above the snow line, kept in the gullies and off the steepest faces
+	float snow = smoothstep(snow_line - 60.0, snow_line + 60.0, h) * (1.0 - smoothstep(0.5, 0.7, slope - (1.0 - r0) * 0.15));
+	col = mix(col, vec3(0.92, 0.94, 0.98) * (0.92 + 0.08 * d), snow);
 	ALBEDO = col;
-	ROUGHNESS = mix(0.95, 0.7, snow);
+	ROUGHNESS = mix(0.95, 0.65, snow);
 	SPECULAR = 0.3;
+	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
 }
 """
 
@@ -72,6 +90,14 @@ static func build_into(host: Node3D, height: Callable, world_seed: int, inner: R
 		mi.material_override = _mountain_material(hills)
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		host.add_child(mi)
+	if cfg.has("canopy"):
+		var cp: Dictionary = cfg.canopy
+		var cm := MeshInstance3D.new()
+		cm.name = "FarCanopy"
+		cm.mesh = _canopy_mesh(height, inner, center, ring_r, cp)
+		cm.material_override = _canopy_material(cp)
+		cm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		host.add_child(cm)
 	if cfg.has("trees"):
 		var t: Dictionary = cfg.trees
 		var rng := RandomNumberGenerator.new()
@@ -89,11 +115,113 @@ static func build_into(host: Node3D, height: Callable, world_seed: int, inner: R
 			if grown.has_point(Vector2(x, z)):
 				continue
 			# trees in groves: keep those where a low-frequency pattern is high
-			if sin(x * 0.011 + 1.3) * sin(z * 0.009 - 0.7) + 0.3 * sin(x * 0.037 + z * 0.029) < float(t.get("grove", -1.0)):
+			if grove_at(x, z) < float(t.get("grove", -1.0)):
 				continue
 			grounds.append(Vector3(x, float(height.call(x, z)) - 0.3, z))
 			scales.append(rng.randf_range(1.0, 1.8))
 		Vegetation.plant(host, str(t.kind), grounds, scales, t.colour, 971 + world_seed)
+
+
+## Grove pattern of the far scenery (the same for the scattered trees and the canopy): high where trees grow.
+static func grove_at(x: float, z: float) -> float:
+	return sin(x * 0.011 + 1.3) * sin(z * 0.009 - 0.7) + 0.3 * sin(x * 0.037 + z * 0.029)
+
+
+## Far forest: a "blanket" of tree crowns raised `height` m over the ground where the groves are, from `r0` m around
+## the playing area to the edge of the outer terrain. It continues the real trees much further than they can be
+## drawn (cfg: r0, height, colour, grove (threshold of grove_at, -9 = everywhere), snow (0..1)).
+static func _canopy_mesh(height: Callable, inner: Rect2, center: Vector2, radius: float, cp: Dictionary) -> ArrayMesh:
+	var cell := float(cp.get("cell", 18.0))
+	var n := ceili(radius * 2.0 / cell)
+	var x0 := center.x - n * cell * 0.5
+	var z0 := center.y - n * cell * 0.5
+	var h := float(cp.get("height", 16.0))
+	var r0 := float(cp.get("r0", 300.0))
+	var thr := float(cp.get("grove", -9.0))
+	var keep := inner.grow(r0)
+	var ys := PackedFloat32Array()
+	ys.resize((n + 1) * (n + 1))
+	var on := PackedByteArray()
+	on.resize((n + 1) * (n + 1))
+	for iz in n + 1:
+		for ix in n + 1:
+			var x := x0 + ix * cell
+			var z := z0 + iz * cell
+			# distance outside the kept-free rectangle around the playing area
+			var dx := maxf(maxf(keep.position.x - x, x - keep.end.x), 0.0)
+			var dz := maxf(maxf(keep.position.y - z, z - keep.end.y), 0.0)
+			var out := Vector2(dx, dz).length()
+			var edge := 8.0 * sin(x * 0.05 + z * 0.031) + 6.0 * sin(z * 0.07 - x * 0.023)
+			# (the ragged edge never reaches into the kept-free area: out - 20 + edge < 0 there)
+			var m := smoothstep(0.0, 40.0, out - 20.0 + edge) * smoothstep(-0.12, 0.12, grove_at(x, z) - thr)
+			m *= 1.0 - smoothstep(radius * 0.92, radius, Vector2(x, z).distance_to(center))
+			var g := float(height.call(x, z))
+			var top := h * (0.75 + 0.25 * sin(x * 0.13 + z * 0.07) * sin(z * 0.11 - x * 0.05))  # uneven crowns
+			ys[iz * (n + 1) + ix] = g - 2.0 + (top + 2.0) * m
+			on[iz * (n + 1) + ix] = 1 if m > 0.02 else 0
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for iz in n:
+		for ix in n:
+			var i00 := iz * (n + 1) + ix
+			if on[i00] + on[i00 + 1] + on[i00 + n + 1] + on[i00 + n + 2] == 0:
+				continue  # under the ground everywhere: no triangle
+			for corner in [[0, 0], [1, 0], [0, 1], [1, 0], [1, 1], [0, 1]]:
+				var gx: int = ix + corner[0]
+				var gz: int = iz + corner[1]
+				st.add_vertex(Vector3(x0 + gx * cell, ys[gz * (n + 1) + gx], z0 + gz * cell))
+	st.index()
+	st.generate_normals()
+	return st.commit()
+
+
+const CANOPY_SHADER := """
+shader_type spatial;
+uniform sampler2D cell_tex : filter_linear_mipmap, repeat_enable;
+uniform sampler2D detail_tex : filter_linear_mipmap, repeat_enable;
+uniform vec3 colour : source_color = vec3(0.08, 0.22, 0.1);
+uniform float snow = 0.0;
+varying vec3 wpos;
+varying vec3 wnrm;
+void vertex() {
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	wnrm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+}
+void fragment() {
+	// tree crowns: cells of about 5 m, bright tops and dark gaps between them
+	vec2 uv = wpos.xz * 0.011;
+	float c = texture(cell_tex, uv).r;
+	float c2 = texture(cell_tex, uv * 2.3 + 0.37).r;
+	float crown = 1.0 - smoothstep(0.1, 0.6, c * 0.7 + c2 * 0.3);
+	float d = texture(detail_tex, wpos.xz * 0.004).r;
+	vec3 col = colour * (0.3 + 0.8 * crown) * (0.8 + 0.4 * d);
+	// snow on the crowns (snowy forests)
+	col = mix(col, vec3(0.86, 0.89, 0.95) * (0.7 + 0.3 * crown), snow * smoothstep(0.55, 0.95, crown + (d - 0.5) * 0.5) * smoothstep(0.6, 0.9, wnrm.y));
+	// bumps of the crowns on the normal
+	float e = 0.6;
+	float c_x = texture(cell_tex, (wpos.xz + vec2(e, 0.0)) * 0.011).r;
+	float c_z = texture(cell_tex, (wpos.xz + vec2(0.0, e)) * 0.011).r;
+	vec3 n = normalize(wnrm + vec3(c_x - c, 0.0, c_z - c) * 9.0);
+	ALBEDO = col;
+	ROUGHNESS = 0.95;
+	SPECULAR = 0.2;
+	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
+}
+"""
+static var _canopy_shader: Shader
+
+
+static func _canopy_material(cp: Dictionary) -> ShaderMaterial:
+	if _canopy_shader == null:
+		_canopy_shader = Shader.new()
+		_canopy_shader.code = CANOPY_SHADER
+	var m := ShaderMaterial.new()
+	m.shader = _canopy_shader
+	m.set_shader_parameter("cell_tex", GroundMaterials.noise("cell"))
+	m.set_shader_parameter("detail_tex", GroundMaterials.noise("detail"))
+	m.set_shader_parameter("colour", cp.get("colour", Color(0.08, 0.22, 0.1)))
+	m.set_shader_parameter("snow", float(cp.get("snow", 0.0)))
+	return m
 
 
 static func _mountain_material(hills: Dictionary) -> ShaderMaterial:
@@ -142,25 +270,34 @@ static func _ring_mesh(height: Callable, inner: Rect2, center: Vector2, radius: 
 				var gx: int = ix + corner[0]
 				var gz: int = iz + corner[1]
 				st.add_vertex(Vector3(x0 + gx * cell, heights[gz * (n + 1) + gx], z0 + gz * cell))
+	st.index()  # shared vertices: smooth normals (no facets)
 	st.generate_normals()
 	return st.commit()
 
 
 ## Polar ring of hills / mountains from r0 to r1 (beyond the outer terrain), rising from the far terrain.
 static func _hills_mesh(height: Callable, world_seed: int, center: Vector2, hills: Dictionary, ring_r: float) -> ArrayMesh:
+	# broad massifs (smooth noise, low frequency) carrying ridges (ridged noise): mountains, not a row of needles
 	var noise := FastNoiseLite.new()
 	noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
 	noise.fractal_type = FastNoiseLite.FRACTAL_RIDGED
-	noise.frequency = float(hills.get("frequency", 0.0008))
-	noise.fractal_octaves = 5
+	noise.frequency = float(hills.get("frequency", 0.0008)) * 0.8
+	noise.fractal_octaves = 4
+	noise.fractal_gain = 0.42
 	noise.seed = 31 + world_seed
+	var massif := FastNoiseLite.new()
+	massif.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	massif.fractal_type = FastNoiseLite.FRACTAL_FBM
+	massif.frequency = float(hills.get("frequency", 0.0008)) * 0.3
+	massif.fractal_octaves = 3
+	massif.seed = 77 + world_seed
 	# the hills start under the edge of the outer terrain (no gap), then rise towards r0 and beyond
 	var r0 := ring_r * 0.9
 	var rise_r := maxf(float(hills.get("r0", 2000.0)), ring_r)
 	var r1 := float(hills.get("r1", 5000.0))
 	var amp := float(hills.get("height", 500.0))
-	var segs := 220
-	var rings := 22
+	var segs := 360
+	var rings := 34
 	var pts := []
 	for k in rings + 1:
 		var t := float(k) / rings
@@ -172,8 +309,10 @@ static func _hills_mesh(height: Callable, world_seed: int, center: Vector2, hill
 			var z := center.y + sin(a) * r
 			var base := float(height.call(x, z)) if k == 0 else float(height.call(center.x + cos(a) * r0, center.y + sin(a) * r0))
 			var rise := smoothstep(ring_r, rise_r + (r1 - rise_r) * 0.25, r)
-			var nn := 0.5 + 0.5 * noise.get_noise_2d(x, z)
-			row.append(Vector3(x, base - 4.0 + amp * rise * pow(nn, 1.6) * (0.6 + 0.4 * t), z))
+			var big := clampf(0.5 + 0.7 * massif.get_noise_2d(x, z), 0.0, 1.0)
+			var ridge := 0.5 + 0.5 * noise.get_noise_2d(x, z)
+			var hgt := big * (0.55 + 0.45 * pow(ridge, 1.3))
+			row.append(Vector3(x, base - 4.0 + amp * rise * hgt * (0.6 + 0.4 * t), z))
 		pts.append(row)
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -184,5 +323,6 @@ static func _hills_mesh(height: Callable, world_seed: int, center: Vector2, hill
 			var s1 := (s + 1) % segs
 			for v in [a[s], b[s], a[s1], a[s1], b[s], b[s1]]:  # front faces up (clockwise seen from above)
 				st.add_vertex(v)
+	st.index()  # shared vertices: smooth normals (no facets)
 	st.generate_normals()
 	return st.commit()

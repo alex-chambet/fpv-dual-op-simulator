@@ -362,7 +362,7 @@ func _build_village() -> void:
 				c.y = ground(c.x, c.z)
 				var to_road: Vector3 = -right * side
 				var yaw := atan2(-to_road.z, to_road.x)
-				var house := Buildings.farmhouse(drng, w, l, 6.0)
+				var house := Buildings.farmhouse(drng, w, l, 6.0, false, true)
 				house.position = c
 				house.rotation.y = yaw
 				_host.add_child(house)
@@ -460,7 +460,7 @@ func _build_farms() -> void:
 		h.y = ground(h.x, h.z)
 		var w := frng.randf_range(8.0, 10.0)
 		var l := frng.randf_range(13.0, 17.0)
-		var house := Buildings.farmhouse(frng, w, l, 5.0)
+		var house := Buildings.farmhouse(frng, w, l, 5.0, true, true)
 		house.position = h
 		house.rotation.y = atan2(-dir.z, dir.x) + PI * 0.5
 		_host.add_child(house)

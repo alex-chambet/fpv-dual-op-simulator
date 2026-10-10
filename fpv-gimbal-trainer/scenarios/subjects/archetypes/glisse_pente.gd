@@ -69,6 +69,10 @@ func on_ready(s: ArchetypeSubject) -> void:
 
 func animate(s: ArchetypeSubject, delta: float) -> void:
 	super.animate(s, delta)
+	if s.parts.has("athlete"):
+		# a slalom skier crouches a little more when going fast (the downhill archetype sets its own tuck)
+		var a: AthleteModel = s.parts["athlete"]
+		a.tuck = lerpf(a.tuck, 0.3 * smoothstep(11.0, 17.0, s.speed_now), 1.0 - exp(-delta / 0.5))
 	if s.state.has("trail"):
 		_update_trail(s)
 	if s.state.has("spray"):

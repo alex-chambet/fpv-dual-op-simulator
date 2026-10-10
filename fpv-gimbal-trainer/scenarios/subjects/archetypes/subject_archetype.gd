@@ -254,7 +254,10 @@ func on_ready(_s: ArchetypeSubject) -> void:
 func animate(s: ArchetypeSubject, delta: float) -> void:
 	animate_jump(s, delta)
 	animate_wheels(s, delta)
-	animate_cycle(s, delta)
+	if s.parts.has("athlete"):
+		s.parts["athlete"].update(s, delta)  # the rigged athlete animates itself (no swinging limbs, no bob)
+	else:
+		animate_cycle(s, delta)
 
 
 ## Wheels spin with the speed.

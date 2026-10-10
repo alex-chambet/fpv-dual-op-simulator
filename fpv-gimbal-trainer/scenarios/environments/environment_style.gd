@@ -37,6 +37,8 @@ extends Resource
 @export var glow_hdr_threshold := 1.1
 @export var adjustment_contrast := 1.05
 @export var adjustment_saturation := 1.08
+## Exposure of the camera (snow: below 1, so the white keeps its relief).
+@export var exposure := 1.0
 
 @export_group("Fog")
 @export var fog_enabled := true
@@ -45,6 +47,8 @@ extends Resource
 @export var fog_sun_scatter := 0.2
 @export var fog_sky_affect := 0.6
 @export var fog_aerial_perspective := 0.0
+## Density of the volumetric fog that shows light shafts between the trees (Ultra quality only; 0 = none).
+@export var light_shafts := 0.0
 
 @export_group("Ground (generic builder)")
 ## flat / rolling / slope (downhill along +Z) / wall (steep climb along +Z) / ridge / river /
