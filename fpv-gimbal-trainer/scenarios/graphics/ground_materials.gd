@@ -241,10 +241,35 @@ uniform float rock_end = 0.58;
 uniform float groom_spacing = 0.06;
 // strength of the wind ripples (a grazing sun makes them stand out a lot: lower at dawn / dusk)
 uniform float ripple = 1.0;
+// tracks of the riders who skied the slope before (freeride face): 0 = none
+uniform float old_tracks = 0.0;
+// rock painted by the ground mask (red channel) where the environment says the rock shows: 0 = none
+uniform float rock_paint = 0.0;
+// beyond |x| > far_rock_x (the mountain side around a freeride face), outcrops streaking down the fall line
+uniform float far_rock_x = 1.0e6;
 
 void vertex() {
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	wnrm = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+}
+
+// Old ski tracks: in lanes down the fall line, a rider's line on some of them (two grooves 24 cm apart, swinging
+// in turns of 18 to 30 m), over some stretches only. Two families of lanes so the lines cross.
+float old_track(vec2 xz, float dist) {
+	float trk = 0.0;
+	for (int f = 0; f < 2; f++) {
+		float lw = f == 0 ? 37.0 : 53.0;
+		float sh = float(f) * 17.0;
+		float lane = floor((xz.x + sh) / lw);
+		float h = hash12(vec2(lane, float(f) * 7.1 + 1.0));
+		float wl = 18.0 + 12.0 * h;
+		float cx = (lane + 0.5) * lw - sh + (3.0 + 4.0 * hash12(vec2(lane, 3.3 + float(f)))) * sin(xz.y * 6.2832 / wl + h * 40.0);
+		float on = step(0.4, h) * smoothstep(0.38, 0.52, texture(macro_tex, vec2(lane * 0.37 + float(f) * 0.5, xz.y * 0.003)).r);
+		float d = abs(abs(xz.x - cx) - 0.12);
+		float w = 0.05 + fwidth(xz.x) * 0.6;
+		trk = max(trk, on * (1.0 - smoothstep(w, w + 0.05, d)));
+	}
+	return trk * (1.0 - smoothstep(70.0, 260.0, dist));
 }
 
 void fragment() {
@@ -258,6 +283,9 @@ void fragment() {
 	float piste = mk.g;
 	vec3 col = mix(snow_a, snow_b, smoothstep(0.2, 0.8, m_mid * 0.6 + d1 * 0.4));
 	col *= mix(0.96 + 0.04 * m_big, 1.0, piste * 0.5);
+	if (old_tracks > 0.0) {
+		col *= 1.0 - 0.16 * old_tracks * old_track(xz, dist) * (1.0 - piste);
+	}
 	// passes of the groomer: lanes of about 5.5 m along the fall line, each a little different
 	float lane_x = xz.x / 5.5 + (texture(macro_tex, xz * vec2(0.004, 0.0015)).r - 0.5) * 1.5;
 	float lane = floor(lane_x);
@@ -276,12 +304,39 @@ void fragment() {
 
 	float slope = 1.0 - wnrm.y;
 	float rock_w = smoothstep(rock_start, rock_end, slope + (d1 - 0.5) * 0.2);
+	// exposed rock painted by the environment (cliffs, outcrops: red of the ground mask), broken by snow
+	if (rock_paint > 0.0) {
+		rock_w = max(rock_w, rock_paint * mk.r * smoothstep(0.32, 0.5, texture(detail_tex, xz * 0.19).r + slope * 0.5));
+		float beyond = smoothstep(far_rock_x, far_rock_x + 60.0, abs(xz.x));
+		{
+			// rocky sectors (snowfields between them), rock streaking down the fall line in them, more on the steep parts;
+			// sparser on the face itself, never on the subject's line (blue of the ground mask)
+			float lo = mix(0.6, 0.5, beyond);
+			float sector = smoothstep(lo, lo + 0.12, texture(macro_tex, xz * 0.0007 + 0.37).r) * (1.0 - mk.b);
+			float streak = texture(macro_tex, vec2(xz.x * 0.004, xz.y * 0.0012)).r * 0.7 + texture(detail_tex, xz * 0.015).r * 0.3;
+			rock_w = max(rock_w, sector * smoothstep(0.6, 0.68, streak + slope * 0.35)
+					* smoothstep(0.3, 0.5, texture(detail_tex, xz * 0.19).r + slope * 0.5));
+		}
+	}
 	if (rock_w > 0.001) {
-		float r = texture(detail_tex, (wpos.xz + wpos.yy) * 0.11).r;
-		vec3 rock = mix(rock_b, rock_a, smoothstep(0.25, 0.75, r));
-		// snow stays in the hollows of the rock
+		// seen from every side (triplanar), with strata and cracks, so a cliff is not a smear
+		vec3 bw = pow(abs(wnrm), vec3(4.0));
+		bw /= bw.x + bw.y + bw.z;
+		vec3 pp = wpos * 0.11;
+		float r = texture(detail_tex, pp.zy * vec2(1.0, 2.0)).r * bw.x + texture(detail_tex, pp.xz).r * bw.y
+				+ texture(detail_tex, pp.xy * vec2(1.0, 2.0)).r * bw.z;
+		float cr = texture(cell_tex, pp.zy * 2.3).r * bw.x + texture(cell_tex, pp.xz * 2.3).r * bw.y
+				+ texture(cell_tex, pp.xy * 2.3).r * bw.z;
+		float strata = 0.82 + 0.3 * texture(detail_tex, vec2(wpos.y * 0.09, (wpos.x + wpos.z) * 0.004)).r;
+		vec3 rock = mix(rock_b, rock_a, smoothstep(0.25, 0.75, r)) * (0.75 + 0.35 * smoothstep(0.05, 0.4, cr)) * strata;
+		// snow stays on the ledges and in the hollows of the rock
 		rock_w *= smoothstep(0.35, 0.6, r + (1.0 - slope) * 0.3);
 		col = mix(col, rock, rock_w);
+		vec2 nx = texture(normal_tex, wpos.zy * vec2(0.12, 0.25)).rg * 2.0 - 1.0;
+		vec2 nz = texture(normal_tex, wpos.xy * vec2(0.12, 0.25)).rg * 2.0 - 1.0;
+		vec2 ny = texture(normal_tex, xz * 0.12).rg * 2.0 - 1.0;
+		n = normalize(n + (vec3(0.0, nx.y, nx.x) * bw.x + vec3(nz.x, nz.y, 0.0) * bw.z + vec3(ny.x, 0.0, ny.y) * bw.y)
+				* 0.6 * rock_w * (1.0 - far_fade * 0.5));
 	}
 	// sparkles: tiny facets catching the sun
 	float sp = texture(cell_tex, xz * 7.3).r;

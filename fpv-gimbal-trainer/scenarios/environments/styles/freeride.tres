@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="EnvironmentStyle" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/environments/environment_style.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+tag = "freeride"
+display_name = "Freeride face"
+builder = "freeride"
+sky_top_color = Color(0.1, 0.3, 0.74, 1)
+sky_horizon_color = Color(0.62, 0.74, 0.9, 1)
+sky_curve = 0.12
+ground_horizon_color = Color(0.7, 0.78, 0.89, 1)
+ground_bottom_color = Color(0.78, 0.84, 0.92, 1)
+ground_curve = 0.05
+sun_angle_max = 25.0
+sun_curve = 0.1
+sun_color = Color(1, 0.95, 0.86, 1)
+sun_energy = 1.75
+sun_angular_distance = 0.55
+sun_elevation = 30.0
+sun_azimuth = 70.0
+shadow_max_distance = 380.0
+cloud_coverage = 0.3
+ambient_energy = 0.85
+ssao_radius = 2.2
+ssao_intensity = 2.5
+glow_intensity = 0.5
+glow_bloom = 0.04
+glow_hdr_threshold = 1.1
+adjustment_contrast = 1.07
+adjustment_saturation = 1.08
+exposure = 0.84
+fog_color = Color(0.72, 0.8, 0.92, 1)
+fog_density = 0.00012
+fog_sun_scatter = 0.25
+fog_sky_affect = 0.25
+fog_aerial_perspective = 0.5
+occluder_kind = "rocks"

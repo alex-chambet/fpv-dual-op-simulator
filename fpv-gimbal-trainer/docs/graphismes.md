@@ -58,7 +58,8 @@ dépendent aussi du niveau.
   au sprint selon la vitesse, avec casquette et dossard ; pédalage sur un VTT détaillé (roue libre au-delà de
   30 km/h). Le mannequin vient de la « Universal Animation Library » de **Quaternius**, sous licence **CC0** (domaine
   public) : `assets/characters/LICENSE_Quaternius_CC0.txt`.
-- **Public** (`crowd.gd`) : sur la descente, des spectateurs (veste de ski, bonnet à pompon) se massent aux sauts, dans
+- **Face de freeride** (`env_freeride.gd`) : roche vue de tous les côtés (strates, fissures, relief) sur les falaises et les parois de couloir, roche apparente peinte par l'environnement le long des barres rocheuses, sur les îlots et sur les crêtes des arêtes de neige, affleurements qui strient le versant au-delà de la face (jamais sur la ligne du skieur), vieilles traces de skieurs dans la poudreuse, nuage de poudreuse dans les virages et à chaque réception.
+- **Public** (`crowd.gd`) : sur la descente et à l'arrivée du freeride, des spectateurs (veste de ski, bonnet à pompon) se massent aux sauts, dans
   quelques virages et à l'arrivée, derrière les filets, avec des drapeaux nationaux qui flottent et des banderoles
   publicitaires (marques inventées). Ils lèvent les bras et sautent quand le skieur arrive. Ils restent en dehors du vol
   du drone et des lignes de vue.

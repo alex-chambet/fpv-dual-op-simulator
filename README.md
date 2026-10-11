@@ -22,7 +22,7 @@ Le drone vole tout seul autour du sujet. **Vous gérez uniquement la gimbal** : 
 
 Votre meilleur score est enregistré pour chaque sport. Vous pouvez revoir et rejouer vos sessions dans « Historique et replays ».
 
-**Les sports** : ski alpin (slalom), ski de descente (une piste de 2 km et plus façon Streif ou Bellevarde, à plus de 110 km/h, avec des sauts), trail, VTT de descente, voiture sur la Départementale, voiture sur route de montagne. Chaque session est générée avec un trajet différent.
+**Les sports** : ski alpin (slalom), ski de descente (une piste de 2 km et plus façon Streif ou Bellevarde, à plus de 110 km/h, avec des sauts), ski freeride (une grande face raide façon Freeride World Tour : barres rocheuses à sauter ou à passer par un couloir, tout-droit, virages serrés, vitesse qui change sans cesse : le plus dur à filmer), trail, VTT de descente, voiture sur la Départementale, voiture sur route de montagne. Chaque session est générée avec un trajet différent.
 
 **Les mouvements du drone** (au choix, ou au hasard) :
 
@@ -70,7 +70,7 @@ Un monde ouvert, sans chrono ni score : 1,6 × 1,6 km de campagne avec un villag
 ## Premiers pas
 
 1. Sur l'accueil, cliquez sur **JOUER**.
-2. Choisissez **Entraînement** (ou **Bac à sable** pour le vol libre), puis un **terrain** (touches 1 à 6).
+2. Choisissez **Entraînement** (ou **Bac à sable** pour le vol libre), puis un **terrain** (touches 1 à 7).
 3. Réglez le **mouvement du drone**, le **niveau** et l'**optique**. Au début : suivi latéral, niveau 1 ou 2, 24 mm.
 4. **LANCER** (ou Entrée). Un compte à rebours de quelques secondes laisse le temps de s'installer.
 5. Gardez le sujet dans le rectangle vert. À la fin, regardez votre note, et rejouez pour la battre.

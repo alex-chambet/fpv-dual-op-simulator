@@ -16,7 +16,7 @@ const LABELS := {"auto": "Aléatoire", "noon": "Plein jour", "morning": "Matin",
 		"overcast": "Couvert", "snowfall": "Chute de neige"}
 ## Chance of each ambience when drawn at random (snowfall only where there is snow).
 const WEIGHTS := {"noon": 0.32, "morning": 0.22, "golden": 0.24, "overcast": 0.14, "snowfall": 0.08}
-const SNOWY := ["neige", "descente", "glace"]
+const SNOWY := ["neige", "descente", "freeride", "glace"]
 
 ## Choice of the menu (an id of MENU), kept in the menu preferences.
 static var choice := "auto"

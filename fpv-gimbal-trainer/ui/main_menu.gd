@@ -153,12 +153,11 @@ func _show(page: Control) -> void:
 		_home:
 			_focus_later(_play_tile)
 		_play:
-			if not _cards.is_empty():
-				var focus: MenuTile = _cards[0]
-				for c in _cards:
-					if c.selected:
-						focus = c
-				_focus_later(focus)
+			# no card is highlighted when the page opens; the keyboard / controller gives the focus to the first one
+			# (see _unhandled_input)
+			var owner := get_viewport().gui_get_focus_owner()
+			if owner != null:
+				owner.release_focus()
 		_setup:
 			_focus_later(_launch)
 
@@ -634,6 +633,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			_play:
 				_show(_home)
 		return
+	if _page == _play and not _cards.is_empty() and get_viewport().gui_get_focus_owner() == null:
+		for a in ["ui_up", "ui_down", "ui_left", "ui_right", "ui_focus_next", "ui_focus_prev"]:
+			if event.is_action_pressed(a):
+				get_viewport().set_input_as_handled()
+				(_cards[0] as Control).grab_focus()
+				return
 	if not (event is InputEventKey and event.pressed and not event.echo):
 		return
 	match _page:

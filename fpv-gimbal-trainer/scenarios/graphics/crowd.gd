@@ -142,7 +142,37 @@ void fragment() {
 }
 """
 
+const FEATHER_SHADER := """
+shader_type spatial;
+render_mode cull_disabled;
+// feather flag: INSTANCE_CUSTOM.rgb = colour of the sail (linear), .a = random; vertex alpha 1 on the sail
+varying flat vec4 custom;
+
+void vertex() {
+	custom = INSTANCE_CUSTOM;
+	if (COLOR.a > 0.5) {
+		float phase = INSTANCE_CUSTOM.a * 6.2832;
+		VERTEX.z += sin(UV.x * 3.0 + UV.y * 2.0 - TIME * 3.2 + phase) * 0.09 * UV.x;
+	}
+}
+
+void fragment() {
+	vec3 c = vec3(0.12);
+	if (COLOR.a > 0.5) {
+		c = custom.rgb;
+		// a white stripe across, a darker sleeve along the pole
+		float stripe = 1.0 - smoothstep(0.035, 0.05, abs(UV.y - 0.3 - 0.25 * UV.x));
+		c = mix(c, vec3(0.9), stripe);
+		c = mix(c, c * 0.35, step(UV.x, 0.12));
+	}
+	ALBEDO = c;
+	ROUGHNESS = 0.7;
+}
+"""
+
 static var _people_mat: ShaderMaterial
+static var _feather_mat: ShaderMaterial
+static var _feather: ArrayMesh
 static var _flag_mat: ShaderMaterial
 static var _banner_mat: ShaderMaterial
 static var _person: ArrayMesh
@@ -156,6 +186,8 @@ var _flags: Array[Transform3D] = []
 var _flag_data := PackedColorArray()
 var _banners: Array[Transform3D] = []
 var _banner_data := PackedColorArray()
+var _feathers: Array[Transform3D] = []
+var _feather_data := PackedColorArray()
 
 
 ## Fraction of the places of a crowd that get someone, by graphics quality.
@@ -190,8 +222,19 @@ func add_banner(a: Vector3, b: Vector3, face: Vector3, rng: RandomNumberGenerato
 	_banner_data.append(Color(f.r, f.g, f.b, rng.randf()))
 
 
+## A feather flag (a tall curved sail on a pole, 4.6 m) standing at `pos`, its sail on the side away from `face`
+## (seen from there). Random colour among bright ones unless `colour` is given.
+func add_feather(pos: Vector3, face: Vector3, rng: RandomNumberGenerator, colour := Color(0, 0, 0, 0)) -> void:
+	_feathers.append(Transform3D(Basis(Vector3.UP, atan2(face.x, face.z) + rng.randf_range(-0.3, 0.3)), pos))
+	var palette := [Color(0.95, 0.35, 0.05), Color(0.05, 0.2, 0.6), Color(0.02, 0.02, 0.05), Color(0.85, 0.06, 0.08),
+			Color(0.95, 0.8, 0.05), Color(0.0, 0.55, 0.45)]
+	var c: Color = colour if colour.a > 0.0 else palette[rng.randi() % palette.size()]
+	c = c.srgb_to_linear()
+	_feather_data.append(Color(c.r, c.g, c.b, rng.randf()))
+
+
 func is_empty() -> bool:
-	return _people.is_empty() and _banners.is_empty()
+	return _people.is_empty() and _banners.is_empty() and _feathers.is_empty()
 
 
 ## Makes the MultiMeshes (call once, after the adds). Far groups fade out beyond `range_end` metres.
@@ -200,6 +243,7 @@ func build(range_end := 900.0) -> void:
 	_make(_person_mesh(), _people_mat_get(), _people, _people_data, shadows, range_end)
 	_make(_flag_mesh(), _flag_mat_get(), _flags, _flag_data, false, range_end * 0.7)
 	_make(_banner_mesh(), _banner_mat_get(), _banners, _banner_data, shadows, range_end)
+	_make(_feather_mesh(), _feather_mat_get(), _feathers, _feather_data, shadows, range_end)
 
 
 func _make(mesh: Mesh, mat: Material, xforms: Array[Transform3D], data: PackedColorArray, shadows: bool,
@@ -244,6 +288,12 @@ static func _flag_mat_get() -> ShaderMaterial:
 	if _flag_mat == null:
 		_flag_mat = _shader(FLAG_SHADER)
 	return _flag_mat
+
+
+static func _feather_mat_get() -> ShaderMaterial:
+	if _feather_mat == null:
+		_feather_mat = _shader(FEATHER_SHADER)
+	return _feather_mat
 
 
 static func _banner_mat_get() -> ShaderMaterial:
@@ -360,3 +410,36 @@ static func _banner_mesh() -> ArrayMesh:
 		st.add_vertex(Vector3((q[0] - 0.5) * 2.8, 0.15 + q[1] * 0.9, 0.0))
 	_banner = st.commit()
 	return _banner
+
+
+## Feather flag: a pole of 4.6 m and a sail from 0.8 to 4.5 m, 0.85 m wide, its outer edge rounded at the top
+## (UV.x 0 at the pole, UV.y 0 at the bottom). The sail is on +x.
+static func _feather_mesh() -> ArrayMesh:
+	if _feather != null:
+		return _feather
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var cyl := CylinderMesh.new()
+	cyl.top_radius = 0.02
+	cyl.bottom_radius = 0.025
+	cyl.height = 4.6
+	cyl.radial_segments = 5
+	cyl.rings = 1
+	_part(st, cyl, Transform3D(Basis(), Vector3(0, 2.3, 0)), Color(0.12, 0.12, 0.12, 0.0))
+	var rows := 8
+	var cols := 3
+	for j in rows:
+		for i in cols:
+			var quad := [[i, j], [i, j + 1], [i + 1, j + 1], [i, j], [i + 1, j + 1], [i + 1, j]]
+			for q in quad:
+				var u := float(q[0]) / cols
+				var v := float(q[1]) / rows
+				# the outer edge curves in towards the top of the pole
+				var width := 0.85 * sqrt(maxf(1.0 - pow(maxf(v - 0.55, 0.0) / 0.45, 2.0), 0.0))
+				var y := 0.8 + v * 3.7 - u * 0.25 * v
+				st.set_color(Color(1, 1, 1, 1))
+				st.set_normal(Vector3.BACK)
+				st.set_uv(Vector2(u, v))
+				st.add_vertex(Vector3(u * width, y, 0.0))
+	_feather = st.commit()
+	return _feather

@@ -40,6 +40,8 @@ const PARAM_DOCS := {
 	"tight_turns": "Share of tight turns (radius 34-52 m, often two in an S) among the turns (the others are wide sweeps).",
 	"air_drag": "Air drag of the skier, 1/m (the higher, the lower the top speed on a given slope).",
 	"snow_friction": "Friction coefficient of the skis on the snow.",
+	# FREERIDE
+	"drop_share": "Share of the rock bands the rider drops off a cliff (the others: through a couloir, or round the rock).",
 	# COURSE_SOL_CYCLIQUE
 	"wiggle_ratio": "Amplitude of the short wiggles relative to lateral_amplitude.",
 	"wiggle_period_ratio": "Period of the wiggles relative to the main turns.",

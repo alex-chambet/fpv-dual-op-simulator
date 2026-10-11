@@ -94,19 +94,25 @@ static func build(height: Callable, x_half: float, z_min: float, z_max: float, c
 
 ## Height of the last terrain built at (x, z), bilinear between its vertices (NAN outside it).
 static func last_height(x: float, z: float) -> float:
-	if last_info.is_empty():
+	return height_in(last_info, x, z)
+
+
+## Height at (x, z) of a terrain described by `info` (a copy of last_info), bilinear between its vertices
+## (NAN outside it).
+static func height_in(info: Dictionary, x: float, z: float) -> float:
+	if info.is_empty():
 		return NAN
-	var fx := (x - float(last_info.x0)) / float(last_info.cell)
-	var fz := (z - float(last_info.z0)) / float(last_info.cell)
-	var w := int(last_info.w)
-	var h := int(last_info.h)
+	var fx := (x - float(info.x0)) / float(info.cell)
+	var fz := (z - float(info.z0)) / float(info.cell)
+	var w := int(info.w)
+	var h := int(info.h)
 	if fx < 0.0 or fz < 0.0 or fx > w - 1 or fz > h - 1:
 		return NAN
 	var ix := mini(int(fx), w - 2)
 	var iz := mini(int(fz), h - 2)
 	var tx := fx - ix
 	var tz := fz - iz
-	var hs: PackedFloat32Array = last_info.heights
+	var hs: PackedFloat32Array = info.heights
 	var a := lerpf(hs[iz * w + ix], hs[iz * w + ix + 1], tx)
 	var b := lerpf(hs[(iz + 1) * w + ix], hs[(iz + 1) * w + ix + 1], tx)
 	return lerpf(a, b, tz)
