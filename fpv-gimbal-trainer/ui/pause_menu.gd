@@ -68,7 +68,7 @@ func _build() -> void:
 	_button(_main_page, "Quitter vers le menu", func(): quit_requested.emit())
 
 	_graphics_page = VBoxContainer.new()
-	_graphics_page.custom_minimum_size.x = 380
+	_graphics_page.custom_minimum_size.x = 660
 	_graphics_page.add_theme_constant_override("separation", 12)
 	_graphics_page.visible = false
 	stack.add_child(_graphics_page)
@@ -77,48 +77,26 @@ func _build() -> void:
 	gtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	Neon.title(gtitle, 44)
 	_graphics_page.add_child(gtitle)
-	var qrow := HBoxContainer.new()
-	_graphics_page.add_child(qrow)
-	var ql := Label.new()
-	ql.text = "Qualité graphique"
-	ql.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	qrow.add_child(ql)
-	var qopt := OptionButton.new()
-	for t in GraphicsSettings.LABELS:
-		qopt.add_item(t)
-	qopt.select(GraphicsSettings.quality)
-	qopt.item_selected.connect(func(i):
-		GraphicsSettings.quality = i
-		GraphicsSettings.save()
-		GraphicsSettings.apply_live(get_tree()))
-	qrow.add_child(qopt)
-	var row := HBoxContainer.new()
-	_graphics_page.add_child(row)
-	var l := Label.new()
-	l.text = "Flou de mouvement"
-	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(l)
-	var opt := OptionButton.new()
-	for t in MotionBlur.LABELS:
-		opt.add_item(t)
-	opt.select(MotionBlur.level)
-	opt.item_selected.connect(func(i):
-		MotionBlur.level = i
-		MotionBlur.save_level())
-	row.add_child(opt)
+	# ambience of this session, then every graphics setting (shared with Paramètres), in a scrolling list
 	var arow := HBoxContainer.new()
 	_graphics_page.add_child(arow)
 	var al := Label.new()
 	al.text = "Ambiance"
-	al.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	al.custom_minimum_size.x = GraphicsPanel.LABEL_WIDTH
 	arow.add_child(al)
 	_ambience_opt = OptionButton.new()
+	_ambience_opt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_ambience_opt.item_selected.connect(func(i):
 		var scn := get_tree().current_scene
 		if scn != null and scn.has_method("set_ambience") and i < _ambience_ids.size():
 			scn.set_ambience(_ambience_ids[i]))
 	arow.add_child(_ambience_opt)
 	visibility_changed.connect(_refresh_ambience)
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(640, 560)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_graphics_page.add_child(scroll)
+	scroll.add_child(GraphicsPanel.new())
 	_button(_graphics_page, "Retour (Échap)", func(): _show_page(null))
 
 	_gameplay_page = VBoxContainer.new()

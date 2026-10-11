@@ -192,7 +192,7 @@ var _feather_data := PackedColorArray()
 
 ## Fraction of the places of a crowd that get someone, by graphics quality.
 static func density() -> float:
-	return [0.4, 0.6, 0.8, 0.92][clampi(GraphicsSettings.quality, 0, 3)]
+	return GraphicsSettings.crowd_density()
 
 
 ## A person standing at `pos` (ground), facing the direction `face` (horizontal).
@@ -239,7 +239,7 @@ func is_empty() -> bool:
 
 ## Makes the MultiMeshes (call once, after the adds). Far groups fade out beyond `range_end` metres.
 func build(range_end := 900.0) -> void:
-	var shadows := GraphicsSettings.quality >= 2
+	var shadows := GraphicsSettings.shadows >= 3
 	_make(_person_mesh(), _people_mat_get(), _people, _people_data, shadows, range_end)
 	_make(_flag_mesh(), _flag_mat_get(), _flags, _flag_data, false, range_end * 0.7)
 	_make(_banner_mesh(), _banner_mat_get(), _banners, _banner_data, shadows, range_end)

@@ -77,7 +77,7 @@ Un monde ouvert, sans chrono ni score : 1,6 × 1,6 km de campagne avec un villag
 
 Le menu se pilote aussi au clavier ou à la manette (flèches, Entrée, Échap pour revenir en arrière). Après une session, il rouvre directement la page de réglages de cette session, pour rejouer en un clic.
 
-Pour changer les réglages de manette, la qualité graphique et le flou de mouvement : tuile **Paramètres** de l'accueil.
+Pour changer les réglages de manette et de graphismes : tuile **Paramètres** de l'accueil (ou Échap > Graphismes en jeu).
 
 ## Commandes
 
@@ -103,7 +103,7 @@ Dans le bac à sable : **M** change de mode de vol (auto, clavier, acro), **Reto
 
 ## Graphismes
 
-Quatre niveaux de qualité (Basse, Moyenne, Haute, Ultra) et un **flou de mouvement** réaliste, par objet : le décor file derrière un sujet net, comme sur une vraie caméra. Si le jeu est lent sur votre machine, baissez la qualité dans « Paramètres » ou pendant la partie (Échap → Graphismes).
+Quatre niveaux de qualité (Basse, Moyenne, Haute, Ultra) et un **flou de mouvement** réaliste, par objet : le décor file derrière un sujet net, comme sur une vraie caméra. Si le jeu est lent sur votre machine, baissez la qualité ou l'**échelle de rendu** (agrandissement AMD FSR) dans « Paramètres » ou pendant la partie (Échap → Graphismes). Chaque détail se règle aussi à part (ombres, anticrénelage, herbe, spectateurs…), comme la synchro verticale, la limite d'images/s, le mode plein écran, la luminosité, le contraste, la saturation, les effets de caméra (vignettage, aberration, grain), et l'affichage en jeu (opacité et taille des infos, couleurs du cadre, dont une palette pour daltoniens).
 
 - **Ambiances** : plein jour, matin, fin de journée, temps couvert, chute de neige (sur la neige), ou au hasard. Elles se choisissent sur la page de réglages de la session (ligne « Ambiance »).
 - **Athlètes animés** : le skieur prend la position de recherche de vitesse, le coureur passe de la marche au sprint, le vététiste pédale sur un vrai VTT.

@@ -112,7 +112,8 @@ func _load_prefs() -> Dictionary:
 func _apply_prefs(prefs: Dictionary) -> void:
 	MotionBlur.level = clampi(int(prefs.get("blur", MotionBlur.level)), 0, MotionBlur.LABELS.size() - 1)
 	FrameGuide.blackout = bool(prefs.get("blackout", FrameGuide.blackout))
-	GraphicsSettings.quality = clampi(int(prefs.get("quality", GraphicsSettings.quality)), 0, GraphicsSettings.LABELS.size() - 1)
+	GraphicsSettings.load_prefs(prefs)
+	GraphicsSettings.apply_display()
 	for pair in [[_mode_opt, "mode"], [_movement_opt, "movement"], [_level_opt, "level"], [_lens_opt, "lens"], [_screens_opt, "screens"], [_ambience_opt, "ambience"]]:
 		var o: OptionButton = pair[0]
 		var i := int(prefs.get(pair[1], 0))
@@ -157,7 +158,10 @@ func _show(page: Control) -> void:
 	_backdrop.material.set_shader_parameter("dim", 0.0 if page == _home else 0.5)
 	match page:
 		_home:
-			_focus_later(_play_tile)
+			# no tile is highlighted when the page opens (JOUER would stay pink while another tile is clicked); the first arrow key of the keyboard / controller gives the focus to JOUER (see _unhandled_input)
+			var owner_home := get_viewport().gui_get_focus_owner()
+			if owner_home != null:
+				owner_home.release_focus()
 		_play:
 			# no card is highlighted when the page opens; the keyboard / controller gives the focus to the first one
 			# (see _unhandled_input)
@@ -644,11 +648,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			_play:
 				_show(_home)
 		return
-	if _page == _play and not _cards.is_empty() and get_viewport().gui_get_focus_owner() == null:
+	if (_page == _home or (_page == _play and not _cards.is_empty())) and get_viewport().gui_get_focus_owner() == null:
 		for a in ["ui_up", "ui_down", "ui_left", "ui_right", "ui_focus_next", "ui_focus_prev"]:
 			if event.is_action_pressed(a):
 				get_viewport().set_input_as_handled()
-				(_cards[0] as Control).grab_focus()
+				(_play_tile if _page == _home else _cards[0] as Control).grab_focus()
 				return
 	if not (event is InputEventKey and event.pressed and not event.echo):
 		return

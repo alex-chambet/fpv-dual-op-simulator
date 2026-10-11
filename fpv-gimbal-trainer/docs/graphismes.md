@@ -22,6 +22,18 @@ En Ultra seulement, la forêt a des **rayons de lumière** entre les arbres (bro
 soleil, `light_shafts` dans le style, environ +2 ms par image). Le nombre de spectateurs et la neige qui tombe
 dépendent aussi du niveau.
 
+## Tous les réglages (Paramètres > Graphismes, ou Échap > Graphismes en jeu)
+
+Enregistrés dans `user://menu_prefs.json` (clé `graphics`), appliqués tout de suite (`scenarios/graphics/graphics_settings.gd`,
+panneau commun `ui/graphics_panel.gd`).
+
+| Groupe | Réglages |
+|---|---|
+| Affichage | mode (plein écran, fenêtre sans bordure, fenêtre), synchro verticale, limite d'images/s (30 à 240 ou aucune), échelle de rendu de 50 à 100 % (agrandissement AMD FSR 1 : le texte et le cadre restent nets) |
+| Qualité | préréglage Basse / Moyenne / Haute / Ultra, puis chaque détail à part (le préréglage affiche alors « Personnalisé ») : anticrénelage (aucun, FXAA, SMAA, TAA), filtrage des textures, ombres (désactivées à ultra), occlusion ambiante, lumière indirecte, rayons de lumière en forêt, distance des arbres détaillés, herbe et petits détails, spectateurs (ces deux derniers à la session suivante) |
+| Image | luminosité (±1 IL), contraste, saturation, vignettage, aberration chromatique, grain, flou de mouvement |
+| Interface en jeu | opacité et taille des infos, opacité du cadre, couleurs du cadre (néon, daltonisme bleu / jaune / vermillon, contraste élevé) |
+
 ## Ce qui compose une scène
 
 - **Ambiance** (`ambience.gd`) : chaque session tire une ambiance (ou prend celle choisie dans le menu, ligne

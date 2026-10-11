@@ -19,6 +19,7 @@ static var lens_mm := 24
 ## Time of day / weather of this sandbox (Ambience; the menu choice, or drawn at random).
 var ambience := "noon"
 var _looks: EnvironmentBuilder
+var _hud_base_size := 0
 
 var world: SandboxWorld
 var traffic: SandboxTraffic
@@ -126,6 +127,13 @@ func set_ambience(id: String) -> void:
 ## Applies the graphics quality (GraphicsSettings); called again when it changes in the pause menu.
 func apply_graphics() -> void:
 	GraphicsSettings.apply(_env.environment, _sun, get_viewport())
+	if _hud != null:
+		if _hud_base_size == 0:
+			_hud_base_size = _hud.get_theme_font_size("font_size")
+		_hud.add_theme_font_size_override("font_size", roundi(_hud_base_size * float(GraphicsSettings.HUD_SCALES[GraphicsSettings.hud_size])))
+		_hud.modulate.a = GraphicsSettings.hud_opacity
+	if _guide != null:
+		_guide.queue_redraw()
 	Vegetation.update_ranges(get_tree())
 	if grass != null:
 		grass.apply_quality()

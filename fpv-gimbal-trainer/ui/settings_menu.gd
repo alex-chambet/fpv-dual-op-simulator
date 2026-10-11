@@ -1,5 +1,5 @@
 extends Control
-## Settings: controller configuration (sub-menu), graphics quality and motion blur. The choices are saved at once
+## Settings: controller configuration (sub-menu) and every graphics setting (GraphicsPanel). The choices are saved at once
 ## in user://menu_prefs.json (read back by the main menu and the sessions).
 
 const MENU_SCENE := "res://scenes/main_menu.tscn"
@@ -14,7 +14,7 @@ func _ready() -> void:
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
 	var box := VBoxContainer.new()
-	box.custom_minimum_size.x = 640
+	box.custom_minimum_size.x = 680
 	box.add_theme_constant_override("separation", 12)
 	center.add_child(box)
 
@@ -34,14 +34,11 @@ func _ready() -> void:
 	box.add_child(HSeparator.new())
 
 	box.add_child(_heading("Graphismes"))
-	var q := _option_row(box, "Qualité graphique", GraphicsSettings.LABELS, GraphicsSettings.quality)
-	q.item_selected.connect(func(i):
-		GraphicsSettings.quality = i
-		GraphicsSettings.save())
-	var b := _option_row(box, "Flou de mouvement", MotionBlur.LABELS, MotionBlur.level)
-	b.item_selected.connect(func(i):
-		MotionBlur.level = i
-		MotionBlur.save_level())
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(640, 520)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	box.add_child(scroll)
+	scroll.add_child(GraphicsPanel.new())
 	var hint := Label.new()
 	hint.text = "Ces réglages sont aussi accessibles en jeu (Échap > Graphismes)."
 	hint.add_theme_color_override("font_color", Neon.TEXT_DIM)

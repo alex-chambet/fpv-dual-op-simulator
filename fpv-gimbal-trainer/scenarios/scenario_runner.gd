@@ -24,6 +24,7 @@ var grass: GrassField
 ## Applies the graphics quality (GraphicsSettings) to the scene; called again when it changes in the pause menu.
 func apply_graphics() -> void:
 	GraphicsSettings.apply(world_env.environment, sun, get_viewport())
+	apply_hud_style()
 	if is_inside_tree():
 		Vegetation.update_ranges(get_tree())
 	if grass != null:

@@ -515,6 +515,21 @@ func _goto_menu() -> void:
 	get_tree().change_scene_to_file(MENU_SCENE)
 
 
+var _hud_base_size := 0
+
+
+## Opacity and size of the HUD text, colours of the frame (Graphismes > Interface en jeu).
+func apply_hud_style() -> void:
+	if hud == null:
+		return
+	if _hud_base_size == 0:
+		_hud_base_size = hud.get_theme_font_size("font_size")
+	hud.add_theme_font_size_override("font_size", roundi(_hud_base_size * float(GraphicsSettings.HUD_SCALES[GraphicsSettings.hud_size])))
+	hud.modulate.a = GraphicsSettings.hud_opacity
+	if guide != null:
+		guide.queue_redraw()
+
+
 ## Gimbal speed profile (0 slow, 1 medium, 2 fast), set from the pause menu (Gameplay) or the main menu.
 func current_gimbal_profile() -> int:
 	return flight.rig.pan_profile
