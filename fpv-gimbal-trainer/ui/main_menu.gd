@@ -71,6 +71,11 @@ func _ready() -> void:
 	ScenarioMatrix.current = null
 	SubjectCatalogue.reload()
 	_sports = SubjectCatalogue.menu_sports()
+	# easiest first (the number keys follow this order); same difficulty: alphabetical
+	_sports.sort_custom(func(a: SubjectDefinition, b: SubjectDefinition):
+		if a.base_difficulty != b.base_difficulty:
+			return a.base_difficulty < b.base_difficulty
+		return a.display_name.naturalnocasecmp_to(b.display_name) < 0)
 	_build_ui()
 	var prefs := _load_prefs()
 	_sport = _sports[0] if not _sports.is_empty() else null
@@ -252,7 +257,7 @@ func _build_home() -> Control:
 	var row1 := HBoxContainer.new()
 	row1.alignment = BoxContainer.ALIGNMENT_CENTER
 	tiles.add_child(row1)
-	_play_tile = _tile("Jouer", "Entraînement noté sur 6 sports, ou bac à sable en vol libre", Vector2(1180, 380), 52)
+	_play_tile = _tile("Jouer", "", Vector2(1180, 380), 52)
 	_play_tile.picture = _thumb("ski_descente")
 	_play_tile.icon_kind = ""
 	_play_tile.pressed.connect(func(): _open_play(false))
@@ -265,7 +270,7 @@ func _build_home() -> Control:
 		["Session aléatoire", "Sport, mouvement et niveau au hasard", "dice", _start_random],
 		["Historique et replays", "Tes scores, revoir tes sessions", "history",
 			func(): get_tree().change_scene_to_file("res://scenes/history.tscn")],
-		["Paramètres", "Manettes, graphismes, flou", "gear",
+		["Paramètres", "Réglage manette et graphismes", "gear",
 			func(): get_tree().change_scene_to_file("res://scenes/settings.tscn")],
 	]
 	for s in small:

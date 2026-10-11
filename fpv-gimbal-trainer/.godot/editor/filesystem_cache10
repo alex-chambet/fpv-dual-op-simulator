@@ -1,11 +1,5 @@
 78098b89c88a74ebe8c20117b8754620
-::res://::1791671061
-_xg.gd::GDScript::4434827914009735899::1791670832::0::1::::<>SceneTree<><>0<>0<><>::
-_xm.gd::GDScript::443749533787127567::1791671061::0::1::::<>SceneTree<><>0<>0<><>::
-_xr.gd::GDScript::3582797152997837485::1791669716::0::1::::<>SceneTree<><>0<>0<><>::
-_xs.gd::GDScript::4447746954815929252::1791670786::0::1::::<>SceneTree<><>0<>0<><>::
-_xt.gd::GDScript::1775099778286560302::1791670902::0::1::::<>SceneTree<><>0<>0<><>::
-_xv.gd::GDScript::4782069792774537719::1791670390::0::1::::<>SceneTree<><>0<>0<><>::
+::res://::1791707133
 export_presets.cfg::TextFile::-1::1791445902::0::1::::<><><>0<>0<><>::
 ski_slope.tscn::PackedScene::1215708909317113592::1791212617::0::1::::<><><>0<>0<><>::res://scenarios/ski_slope/ski_slope.gd<>res://flight/flight_path.tscn<>uid://bl20o0do6rxhw::::res://ui/camera_look.gd<>res://scenarios/ski_slope/frame_guide.gd
 ::res://assets/::1791644312
@@ -13,10 +7,10 @@ ski_slope.tscn::PackedScene::1215708909317113592::1791212617::0::1::::<><><>0<>0
 LICENSE_Quaternius_CC0.txt::TextFile::-1::1742378072::0::1::::<><><>0<>0<><>::
 mannequin.glb::PackedScene::2464249259254135364::1742925316::1791644314::1::::<><><>0<>0<>6b3d0233f89b0fa5b2827508d44aba08<>res://.godot/imported/mannequin.glb-eda41e4d973ed7d8b974e6117dade21e.scn::
 ::res://docs/::1791629895
-ajouter_un_sport.md::TextFile::-1::1791629894::0::1::::<><><>0<>0<><>::
+ajouter_un_sport.md::TextFile::-1::1791671280::0::1::::<><><>0<>0<><>::
 bac_a_sable.md::TextFile::-1::1791471829::0::1::::<><><>0<>0<><>::
 departementale.md::TextFile::-1::1791314992::0::1::::<><><>0<>0<><>::
-graphismes.md::TextFile::-1::1791646940::0::1::::<><><>0<>0<><>::
+graphismes.md::TextFile::-1::1791671382::0::1::::<><><>0<>0<><>::
 mode_2_joueurs.md::TextFile::-1::1791280005::0::1::::<><><>0<>0<><>::
 ::res://flight/::1791384787
 flight_editor.gd::GDScript::6209343535837446025::1791196278::0::1::::<>Node3D<><>0<>0<><>::
@@ -183,7 +177,7 @@ camera_look.gd::GDScript::3215780407401285592::1791641070::0::1::::<>CanvasLayer
 frame_guide.gd::GDScript::415957592359135735::1791639167::0::1::::FrameGuide<>Control<><>0<>0<><>::
 history.gd::GDScript::8418260819222450521::1791639448::0::1::::<>Control<><>0<>0<><>::
 input_debug.gd::GDScript::7134020735990727792::1791639504::0::1::::<>Control<><>0<>0<><>::
-main_menu.gd::GDScript::7503341678304918823::1791667950::0::1::::<>Control<><>0<>0<><>::
+main_menu.gd::GDScript::7503341678304918823::1791671244::0::1::::<>Control<><>0<>0<><>::
 menu_tile.gd::GDScript::3727245298801473414::1791640375::0::1::::MenuTile<>Button<><>0<>0<><>::
 motion_blur.gd::GDScript::6322564729586463453::1791379471::0::1::::MotionBlur<>Node<><>0<>0<><>::
 motion_blur_effect.gd::GDScript::620231655174907160::1791379973::0::1::::MotionBlurEffect<>CompositorEffect<><>0<>0<><>::
@@ -191,7 +185,7 @@ neon.gd::GDScript::5773909566473638272::1791640709::0::1::::Neon<>RefCounted<><>
 pause_menu.gd::GDScript::4519792065291527789::1791668385::0::1::::PauseMenu<>CanvasLayer<><>0<>0<><>::
 score_chart.gd::GDScript::7734774441004083762::1791639185::0::1::::<>Control<><>0<>0<><>::
 settings_menu.gd::GDScript::3885102026044428879::1791639185::0::1::::<>Control<><>0<>0<><>::
-::res://ui/thumbs/::1791671046
+::res://ui/thumbs/::1791671063
 departementale.png::CompressedTexture2D::5302759140976442207::1791631789::1791632084::1::::<><><>0<>0<>3a8ca4c8a4337c92760965b9f331378a<>res://.godot/imported/departementale.png-1dfce7a3d7188b203572db33151b5419.ctex::
 sandbox.png::CompressedTexture2D::4097688239243647561::1791631825::1791632084::1::::<><><>0<>0<>dd8ccb41c7032d4625424e50d3d9c4d5<>res://.godot/imported/sandbox.png-3532766aeb7af78151bec6c5de161f08.ctex::
 ski_alpin.png::CompressedTexture2D::7350899093887423340::1791631691::1791632084::1::::<><><>0<>0<>617e6ac21281f2c6f2f1dca34742919e<>res://.godot/imported/ski_alpin.png-df85ef4bef2c71a94413113b128db738.ctex::
