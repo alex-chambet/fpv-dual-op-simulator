@@ -15,6 +15,8 @@ const HEIGHT := 1.83          # m, the mannequin standing
 var kind := "run"
 ## Skier: 0 = athletic stance, 1 = downhill tuck (set by the archetype every frame).
 var tuck := 0.0
+## Pole plant (skier): +1 the left pole planted, -1 the right one, 0 none (set by the archetype).
+var plant := 0.0
 ## Mountain bike: pedals turn below this speed (m/s), freewheel above.
 const PEDAL_UNTIL := 8.5
 
@@ -138,13 +140,19 @@ func _pose_ski(_delta: float) -> void:
 		var sd := "L" if side > 0.0 else "R"
 		_t["foot" + sd].position = Vector3(side * 0.11, 0.1, 0.02)
 		_t["knee" + sd].position = Vector3(side * 0.16, 0.6, 1.6)
-		_t["hand" + sd].position = Vector3(side * lerpf(0.3, 0.16, t), lerpf(0.8, 0.72, t), lerpf(0.4, 0.42, t))
+		# the planting hand reaches forward
+		var reach := absf(plant) if signf(plant) == side else 0.0
+		_t["hand" + sd].position = Vector3(side * lerpf(0.3, 0.16, t), lerpf(0.8, 0.72, t) + 0.06 * reach,
+				lerpf(0.4, 0.42, t) + 0.3 * reach)
 		_t["elbow" + sd].position = Vector3(side * lerpf(0.8, 0.45, t), lerpf(0.75, 0.35, t), lerpf(-0.2, 0.2, t))
-	# poles: from the grip, down and back to the snow (tucked under the arms in a tuck)
+	# poles: from the grip, down and back to the snow (tucked under the arms in a tuck); the planted one ahead, its tip
+	# in the snow beside the feet
 	for i in 2:
 		var side := 1.0 if i == 0 else -1.0
 		var grip: Vector3 = _t["hand" + ("L" if side > 0.0 else "R")].position
 		var tip := Vector3(side * lerpf(0.42, 0.3, t), lerpf(0.04, 0.55, t), lerpf(-0.35, -0.85, t))
+		if signf(plant) == side:
+			tip = tip.lerp(Vector3(side * 0.45, 0.02, 0.45), absf(plant))
 		_place_rod(_poles[i], grip + Vector3(0, 0.05, 0), tip)
 
 
