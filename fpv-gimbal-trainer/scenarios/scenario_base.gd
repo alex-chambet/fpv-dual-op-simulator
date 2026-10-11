@@ -515,6 +515,15 @@ func _goto_menu() -> void:
 	get_tree().change_scene_to_file(MENU_SCENE)
 
 
+## Gimbal speed profile (0 slow, 1 medium, 2 fast), set from the pause menu (Gameplay) or the main menu.
+func current_gimbal_profile() -> int:
+	return flight.rig.pan_profile
+
+
+func set_gimbal_profile(p: int) -> void:
+	_set_profile(p)
+
+
 func _set_profile(p: GimbalRig.SpeedProfile) -> void:
 	flight.rig.pan_profile = p
 	flight.rig.tilt_profile = p
@@ -734,8 +743,8 @@ func _update_hud() -> void:
 			head = "RUN  %.1fs   %.0f%%" % [_run_time, subject.progress_ratio * 100.0]
 		State.FINISHED:
 			head = "FINISHED   (Enter: restart - Esc: menu)"
-	hud.text = "%s - %s\nSubject %.1f m/s   drone %.1f m/s   [%s]\nFraming: %s   %s   score %.0f%%\nGimbal pan %+.0f°  tilt %+.0f°  roll %+.0f°\n%s\nArrows/WASD: pan+tilt   Q/E: roll   1/2/3: gimbal profile   G: thirds grid   Enter: restart   Esc: pause   F1: hide" % [
-		scenario_title, head, subject.speed_now, (duo.drone.velocity.length() if duo else flight.speed_now), PROFILE_NAMES[rig.pan_profile],
+	hud.text = "%s - %s\nSubject %.1f m/s   drone %.1f m/s\nFraming: %s   %s   score %.0f%%\nGimbal pan %+.0f°  tilt %+.0f°  roll %+.0f°\n%s" % [
+		scenario_title, head, subject.speed_now, (duo.drone.velocity.length() if duo else flight.speed_now),
 		("IN FRAME" if _in_frame_now else ("TOO CLOSE TO THE EDGE" if _edge_now else "OUT OF FRAME")),
 		"(HIDDEN)" if _occluded_now else "",
 		SessionScorer.live_framing_score(), rig.angles[0], rig.angles[1], rig.angles[2],

@@ -17,7 +17,10 @@ const DZ := 1.0               # m of z between path points (the line is a functi
 const GRAVITY := 9.81
 const BRAKE := 7.0            # m/s², skidding to check the speed
 const STOP_BRAKE := 6.0       # m/s², the skid to a stop after the finish
-const START_SPEED := 2.0      # m/s, pushing off the start
+const START_SPEED := 7.5      # m/s, after the push-off (poles) and the first strides
+const FIG_POP := 3.2          # m/s: the pop at the lip of a cliff where the rider does a figure
+const SPIN_MIN_AIR := 0.7     # s of flight needed for the 360
+const FLIP_MIN_AIR := 0.95    # s of flight needed for the backflip
 const POP_TIME := 0.12        # s, how fast the pop at the lip builds up
 const LIP_CARRY := 6.0        # m: on a rounded lip the snow carries the rider this long before the flight
 const MIN_AIR := 1.8          # m: a smaller air (a roll, a spine) is absorbed: the rider stays on the snow
@@ -84,11 +87,19 @@ func generate(ctx: ArchetypeContext) -> Dictionary:
 	var pts := ground_pts
 	var events: Array = []
 	# where the rider means to jump: the lips of the cliffs of the line
-	var lips := PackedVector2Array()
-	for w in wps:
-		if str(w.kind) == "drop":
-			lips.append(Vector2(float(w.x), float(w.z) - float(env.band_width(int(w.k), float(w.x))) * 0.5))
+	# two of them (the biggest cliffs) carry a figure: a 360 on the first, a backflip on the second (a lone one: the flip)
+	var drops: Array = wps.filter(func(w): return str(w.kind) == "drop")
+	var by_size := drops.duplicate()
+	by_size.sort_custom(func(a, b): return float(env.band_drop(int(a.k))) > float(env.band_drop(int(b.k))))
+	var figs: Array = by_size.slice(0, 2)
+	figs.sort_custom(func(a, b): return float(a.z) < float(b.z))
+	for fi in figs.size():
+		figs[fi]["fig"] = ("spin" if fi == 0 else "flip") if figs.size() == 2 else "flip"
+	var lips := PackedVector3Array()   # x, z of the lip, pop (m/s)
 	var pop0 := float(p.get("jump_height", 0.8))
+	for w in drops:
+		lips.append(Vector3(float(w.x), float(w.z) - float(env.band_width(int(w.k), float(w.x))) * 0.5,
+				FIG_POP if w.has("fig") else pop0))
 	for _pass in 6:
 		pts = ground_pts.duplicate()
 		var too_long: Array = []
@@ -109,6 +120,31 @@ func generate(ctx: ArchetypeContext) -> Dictionary:
 		var landing := {}
 		events = _airs(pts, speeds, pop0, lips, air, landing, [])
 		speeds = _speeds(pts, cap, p, air, landing)
+	# the figures, where the flight is long enough for them
+	for w in figs:
+		var lip_z := float(w.z) - float(env.band_width(int(w.k), float(w.x))) * 0.5
+		for ev in events:
+			if absf(float(ev.p0.x) - float(w.x)) < 10.0 and float(ev.p0.z) > lip_z - 12.0 and float(ev.p0.z) < lip_z + 6.0:
+				if str(w.fig) == "spin" and float(ev.air_time) >= SPIN_MIN_AIR:
+					ev["spin_deg"] = 360.0
+				elif str(w.fig) == "flip" and float(ev.air_time) >= FLIP_MIN_AIR:
+					ev["flips"] = 1
+	# a figure missing (too few cliffs on the line): done on the longest other air that is long enough
+	for want in ["spin_deg", "flips"]:
+		var have := false
+		for ev in events:
+			have = have or ev.has(want)
+		if have:
+			continue
+		var best = null
+		for ev in events:
+			if ev.has("spin_deg") or ev.has("flips"):
+				continue
+			if float(ev.air_time) >= (SPIN_MIN_AIR if want == "spin_deg" else FLIP_MIN_AIR) + 0.3 \
+					and (best == null or float(ev.air_time) > float(best.air_time)):
+				best = ev
+		if best != null:
+			best[want] = 360.0 if want == "spin_deg" else 1
 	var cum := PathUtil.cumulative(pts)
 	var profile := PathUtil.profile_from_samples(speeds, cum, maxi(200, int(cum[cum.size() - 1] / 1.5)))
 	return {"points": pts, "profile": profile, "events": events, "zone": Rect2()}
@@ -120,6 +156,7 @@ func _plan_line(env, p: Dictionary, rng: RandomNumberGenerator, s0: Vector3, z_f
 	var wps := [{"z": s0.z, "x": s0.x, "kind": "start", "k": -1}]
 	var x := s0.x
 	var z := s0.z
+	var drops_made := 0
 	var drop_share := float(p.get("drop_share", 0.65))
 	for k in int(env.band_count()):
 		var dz: float = float(env.band_z(k, x)) - z
@@ -142,9 +179,12 @@ func _plan_line(env, p: Dictionary, rng: RandomNumberGenerator, s0: Vector3, z_f
 			cx += 2.0
 		var kind := ""
 		var pick := []
-		if not cliffs.is_empty() and (rng.randf() < drop_share or (couloirs.is_empty() and rolls.is_empty())):
+		# two drops at least (the figures are done over cliffs): forced when the bands left are just enough for them
+		var forced := drops_made < 2 and int(env.band_count()) - k <= 2 - drops_made
+		if not cliffs.is_empty() and (forced or rng.randf() < drop_share or (couloirs.is_empty() and rolls.is_empty())):
 			kind = "drop"
 			pick = cliffs
+			drops_made += 1
 		elif not couloirs.is_empty():
 			kind = "couloir"
 			pick = couloirs
@@ -154,6 +194,7 @@ func _plan_line(env, p: Dictionary, rng: RandomNumberGenerator, s0: Vector3, z_f
 		elif not cliffs.is_empty():
 			kind = "drop"
 			pick = cliffs
+			drops_made += 1
 		else:
 			continue
 		var nx: float = pick[rng.randi() % pick.size()]
@@ -181,7 +222,10 @@ func _line(ctx: ArchetypeContext, env, wps: Array, rng: RandomNumberGenerator, s
 		if r >= 0.43 and r < 0.6 and float(wps[j + 1].z) - float(wps[j].z) > 90.0:
 			r = 0.1  # no long technical stretch: medium turns instead
 		if j == 0 or (not last and r < 0.25):
-			styles.append([rng.randf_range(4.0, 6.0), rng.randf_range(40.0, 55.0), 15.0])      # medium turns
+			if j == 0:
+				styles.append([rng.randf_range(1.5, 2.5), rng.randf_range(60.0, 80.0), 24.0])  # a quick first stretch, nearly straight
+			else:
+				styles.append([rng.randf_range(4.0, 6.0), rng.randf_range(40.0, 55.0), 15.0])      # medium turns
 		elif last and r < 0.5 or (not last and r < 0.43):
 			styles.append([rng.randf_range(0.6, 1.4), rng.randf_range(60.0, 80.0), 29.0])      # straight-line
 		elif not last and r < 0.6:
@@ -233,7 +277,7 @@ func _line(ctx: ArchetypeContext, env, wps: Array, rng: RandomNumberGenerator, s
 				"start":
 					if dz < 18.0:
 						a *= smoothstep(8.0, 18.0, dz)
-						c = minf(c, 12.0)
+						c = minf(c, 17.0)
 		if z > z_fin - 80.0:
 			a *= 1.0 - smoothstep(z_fin - 80.0, z_fin - 55.0, z)  # straight into the finish (the spectators line it)
 		if z > z_fin:
@@ -284,7 +328,7 @@ static func _box(a: PackedFloat32Array, r: int) -> PackedFloat32Array:
 ## snow where its arc, launched along the slope, is already 12 cm above it 3 m further; the arc (with a pop built up
 ## over POP_TIME) is followed until it meets the snow. Airs under MIN_AIR are absorbed. Fills `air` (indices in
 ## the air) and `landing` (index of each landing -> share of the speed kept). Returns the jump events.
-func _airs(pts: PackedVector3Array, speeds: PackedFloat32Array, pop0: float, lips: PackedVector2Array, air: Dictionary,
+func _airs(pts: PackedVector3Array, speeds: PackedFloat32Array, pop0: float, lips: PackedVector3Array, air: Dictionary,
 		landing: Dictionary, too_long: Array) -> Array:
 	var events: Array = []
 	var n := pts.size()
@@ -303,7 +347,7 @@ func _airs(pts: PackedVector3Array, speeds: PackedFloat32Array, pop0: float, lip
 		var pop := -ABSORB
 		for lp in lips:
 			if absf(lp.x - b.x) < 8.0 and b.z > lp.y - 10.0 and b.z < lp.y + 4.0:
-				pop = pop0
+				pop = lp.z
 		var d := 0.0
 		for k in range(i + 1, i + 4):
 			d += Vector2(pts[k].x - pts[k - 1].x, pts[k].z - pts[k - 1].z).length()
@@ -346,7 +390,7 @@ func _airs(pts: PackedVector3Array, speeds: PackedFloat32Array, pop0: float, lip
 		var slope := (pts[mini(i1 + 2, n - 1)] - pts[i1]).normalized()
 		landing[i1] = clampf(vel.normalized().dot(slope), 0.3, 1.0) * 0.85
 		events.append({"type": "jump", "i0": i, "i1": i1, "p0": pts[i], "p1": pts[i1], "height": peak,
-				"ramp_i": i, "ramp_h": 0.0, "length": d})
+				"ramp_i": i, "ramp_h": 0.0, "length": d, "air_time": t})
 		i = i1 + 6
 	return events
 
@@ -398,6 +442,26 @@ func on_ready(s: ArchetypeSubject) -> void:
 		_build_powder(s)
 
 
+## The figures of the jump events: a backflip (event "flips") or a 360 (event "spin_deg"), done between the pop and
+## the landing and turning about the rider's centre (the model's origin is at his feet).
+func animate_jump(s: ArchetypeSubject, delta: float) -> void:
+	var ev := s.current_jump()
+	if ev.is_empty() or not (ev.has("flips") or ev.has("spin_deg")):
+		super.animate_jump(s, delta)
+		s.model.position.x = 0.0
+		s.model.position.z = 0.0
+		return
+	var u := clampf((s.progress_ratio - float(ev.r0)) / maxf(float(ev.r1) - float(ev.r0), 0.0001), 0.0, 1.0)
+	var k := smoothstep(0.12, 0.85, u)
+	s.model.rotation.x = TAU * float(ev.get("flips", 0)) * k      # backwards (the rider faces -z)
+	s.model.rotation.y = deg_to_rad(float(ev.get("spin_deg", 0.0))) * k
+	var c := Vector3(0.0, 0.95, 0.0)
+	var off := c - Basis.from_euler(s.model.rotation, EULER_ORDER_YXZ) * c
+	s.model.position.x = off.x
+	s.model.position.z = off.z
+	s.model.position.y += off.y
+
+
 ## A freerider stands fairly tall in the powder, sinks a little when fast, opens up in the air and absorbs every
 ## landing; a cloud of powder at each landing.
 func animate(s: ArchetypeSubject, delta: float) -> void:
@@ -415,7 +479,8 @@ func animate(s: ArchetypeSubject, delta: float) -> void:
 		return
 	var target := 0.12 + 0.25 * smoothstep(14.0, 26.0, s.speed_now)
 	if in_air:
-		target = 0.35
+		var ev := s.current_jump()
+		target = 1.0 if (ev.has("flips") or ev.has("spin_deg")) else 0.35  # tucked for a figure
 	target = maxf(target, 0.95 * (1.0 - smoothstep(0.08, 0.5, since)))
 	var a: AthleteModel = s.parts["athlete"]
 	a.tuck = lerpf(a.tuck, target, 1.0 - exp(-delta / 0.08))

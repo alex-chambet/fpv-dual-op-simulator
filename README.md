@@ -85,7 +85,7 @@ Pour changer les réglages de manette, la qualité graphique et le flou de mouve
 |---|---|---|
 | Pan / tilt | Sticks de la gimbal | Flèches ou WASD |
 | Roll | Selon votre configuration | Q / E |
-| Profil de vitesse de la gimbal | – | 1 / 2 / 3 |
+| Sensibilité gimbal (lent / moyen / rapide) | – | 1 / 2 / 3 (ou menu Échap > Gameplay) |
 | Grille des tiers | – | G |
 | Masquer l'affichage | – | F1 |
 | Pause | – | Échap |
@@ -97,7 +97,7 @@ Dans le bac à sable : **M** change de mode de vol (auto, clavier, acro), **Reto
 
 **Option « Noir hors du cadre »** : dans la pause (Échap → Gameplay), elle assombrit complètement tout ce qui est hors du rectangle vert. Vous ne voyez alors que ce que montrerait le cadre, sans l'environnement autour. Elle est désactivée par défaut et mémorisée d'une partie à l'autre.
 
-**Conseil pour le niveau Expert** : prenez un profil de gimbal rapide (touche 2 ou 3). Les croisements demandent des pointes de plus de 100 °/s.
+**Conseil pour le niveau Expert** : réglez la sensibilité gimbal sur Rapide (menu de la session, ou Échap > Gameplay). Les croisements demandent des pointes de plus de 100 °/s.
 
 ---
 

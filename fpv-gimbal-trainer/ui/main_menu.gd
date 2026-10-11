@@ -33,6 +33,7 @@ static var return_sandbox := false
 
 var _sports: Array[SubjectDefinition] = []
 var _sport: SubjectDefinition
+var _profile_opt: OptionButton
 var _sandbox := false   ## the play / setup pages are for the sandbox (else a training session)
 
 var _home: Control
@@ -472,6 +473,11 @@ func _build_setup() -> Control:
 	_lens_opt = _option_row(v, "lens", "Optique")
 	for mm in SessionConfig.LENSES:
 		_lens_opt.add_item("%d mm%s" % [mm, LENS_HELP[mm]])
+	_profile_opt = _option_row(v, "gimbal_profile", "Sensibilité gimbal")
+	for t in ["Lent  -  mouvements doux", "Moyen", "Rapide  -  gimbal très réactive"]:
+		_profile_opt.add_item(t)
+	_profile_opt.select(GimbalRig.load_default_profile())
+	_profile_opt.item_selected.connect(func(i): GimbalRig.save_default_profile(i))
 	_ambience_opt = _option_row(v, "ambience", "Ambiance")
 	for id in Ambience.MENU:
 		_ambience_opt.add_item(str(Ambience.LABELS[id]) + ("  (sports de neige)" if id == "snowfall" else ""))

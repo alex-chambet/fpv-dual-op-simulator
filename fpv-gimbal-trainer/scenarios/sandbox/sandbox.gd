@@ -301,12 +301,20 @@ func _update_hud() -> void:
 	var label := "AUTO : décollage puis vol aléatoire fluide" if mode == "auto" else ("ASSISTÉ (clavier : I/K J/L avancer / côtés, U/O tourner, Y/H monter / descendre, Maj rapide)" if mode == "assisted" \
 			else "ACRO (manette pilote)" + ("" if drone.armed else " - DÉSARMÉ : gaz au minimum pour armer"))
 	var t := int(_time)
-	_hud.text = "BAC À SABLE - Départementale   temps libre %02d:%02d   %d véhicules\nDrone %s\nAlt %.0f m   %.0f km/h   %d mm   gimbal [%s]  pan %+.0f°  tilt %+.0f°  roll %+.0f°\nFlèches/WASD : gimbal   Q/E : roll   1/2/3 : profil   G : grille   M : mode drone   Retour : drone au départ   Échap : pause   F1 : masquer" % [
+	_hud.text = "BAC À SABLE - Départementale   temps libre %02d:%02d   %d véhicules\nDrone %s\nAlt %.0f m   %.0f km/h   %d mm   gimbal pan %+.0f°  tilt %+.0f°  roll %+.0f°" % [
 			t / 60, t % 60, traffic.count(), label, drone.position.y - gy, drone.speed_kmh(), lens_mm,
-			PROFILE_NAMES[rig.pan_profile], rig.angles[0], rig.angles[1], rig.angles[2]]
+			rig.angles[0], rig.angles[1], rig.angles[2]]
 	if _view.osd != null:
 		_view.osd.text = "PILOTE   ALT %.0f m   %.0f km/h   %s" % [drone.position.y - gy, drone.speed_kmh(),
 				mode if mode != "acro" else ("acro, %d crash" % drone.crash_count)]
+
+
+func current_gimbal_profile() -> int:
+	return rig.pan_profile
+
+
+func set_gimbal_profile(p: int) -> void:
+	_set_profile(p)
 
 
 func _set_profile(p: GimbalRig.SpeedProfile) -> void:

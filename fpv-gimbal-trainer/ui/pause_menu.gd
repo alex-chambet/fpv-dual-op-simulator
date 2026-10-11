@@ -21,6 +21,8 @@ var _graphics_page: Control
 var _gameplay_page: Control
 var _lens_opt: OptionButton
 var _lens_note: Label
+var _profile_opt: OptionButton
+var _thirds_check: CheckButton
 var _resume_button: Button
 var _ambience_opt: OptionButton
 var _ambience_ids: Array = []
@@ -142,6 +144,33 @@ func _build() -> void:
 		lens_mm = SessionConfig.LENSES[i]
 		lens_changed.emit(lens_mm))
 	lrow.add_child(_lens_opt)
+	var grow := HBoxContainer.new()
+	_gameplay_page.add_child(grow)
+	var gl := Label.new()
+	gl.text = "Sensibilité gimbal"
+	gl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grow.add_child(gl)
+	_profile_opt = OptionButton.new()
+	for t in ["Lent", "Moyen", "Rapide"]:
+		_profile_opt.add_item(t)
+	_profile_opt.item_selected.connect(func(i):
+		var scn := get_tree().current_scene
+		if scn != null and scn.has_method("set_gimbal_profile"):
+			scn.set_gimbal_profile(i))
+	grow.add_child(_profile_opt)
+	var trow := HBoxContainer.new()
+	_gameplay_page.add_child(trow)
+	var tl := Label.new()
+	tl.text = "Grille des tiers"
+	tl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	trow.add_child(tl)
+	var tcheck := CheckButton.new()
+	tcheck.button_pressed = FrameGuide.show_thirds
+	tcheck.toggled.connect(func(on: bool):
+		FrameGuide.show_thirds = on
+		blackout_changed.emit())  # (the frame guide redraws)
+	trow.add_child(tcheck)
+	_thirds_check = tcheck
 	var brow := HBoxContainer.new()
 	_gameplay_page.add_child(brow)
 	var bl := Label.new()
@@ -184,6 +213,10 @@ func _show_page(page: Control) -> void:
 		var i := SessionConfig.LENSES.find(lens_mm)
 		_lens_opt.select(maxi(i, 0))
 		_lens_opt.disabled = not lens_editable
+		_thirds_check.set_pressed_no_signal(FrameGuide.show_thirds)  # (the G key may have changed it)
+		var scn := get_tree().current_scene
+		if scn != null and scn.has_method("current_gimbal_profile"):
+			_profile_opt.select(clampi(int(scn.current_gimbal_profile()), 0, 2))
 		_lens_note.text = "" if lens_editable else "L'optique est figée pendant une session notée (le score en dépend) : change-la dans le menu d'accueil."
 	if page == null:
 		_resume_button.grab_focus()

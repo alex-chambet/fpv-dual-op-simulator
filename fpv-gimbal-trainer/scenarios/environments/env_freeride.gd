@@ -113,8 +113,8 @@ func configure() -> void:
 			_isl.append(Vector3(ix, iz, rng.randf_range(6.0, 12.0)))
 
 	# Fall line: sections [start z, grade, length of the transition from the previous grade]
-	var sections := [[Z_BACK, -0.5, 0.0], [Z_RIDGE - 16.0, 0.06, 14.0], [-2.0, 0.6, 10.0],
-			[16.0, rng.randf_range(0.95, 1.1), 16.0]]
+	var sections := [[Z_BACK, -0.5, 0.0], [Z_RIDGE - 16.0, 0.22, 14.0], [-22.0, 0.7, 6.0],
+			[-8.0, rng.randf_range(0.95, 1.1), 8.0]]
 	var z := 60.0
 	var steep := false
 	while z < face_end:
