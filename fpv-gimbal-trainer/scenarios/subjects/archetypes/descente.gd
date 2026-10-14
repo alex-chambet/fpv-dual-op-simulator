@@ -37,7 +37,7 @@ func defaults() -> Dictionary:
 		"duration": 98.0,
 		"gates": false, "leaves_tracks": true, "spray": true,
 		"jump_visual": "none", "jump_height": 1.2,
-		"turn_frequency": 0.55, "tight_turns": 0.4, "air_drag": 0.0042, "snow_friction": 0.035,
+		"turn_frequency": 0.55, "tight_turns": 0.4, "turn_tightness": 0.0, "air_drag": 0.0042, "snow_friction": 0.035,
 	}, true)
 	return d
 
@@ -93,6 +93,8 @@ func _course(ctx: ArchetypeContext, length: float, crests: PackedFloat32Array) -
 	_straight(st, ctx, 60.0)
 	var tight_share := float(p.get("tight_turns", 0.4))
 	var straight_share := clampf(1.0 - float(p.turn_frequency) * 1.3, 0.1, 0.5)
+	# turn_tightness (0..1): tighter radii, shorter straights and longer chains of tight turns (a more twisting course)
+	var tight := clampf(float(p.get("turn_tightness", 0.0)), 0.0, 1.0)
 	var last_dir := 1.0 if rng.randf() < 0.5 else -1.0
 	var guard := 0
 	while float(st.s) < length - FINISH_STRAIGHT and guard < 5000:
@@ -120,7 +122,8 @@ func _course(ctx: ArchetypeContext, length: float, crests: PackedFloat32Array) -
 			kind = "sweep"
 			dir = -signf(th) if not far_out else -signf(x)
 		var angle := rng.randf_range(0.5, 0.85) if kind == "sweep" else rng.randf_range(0.8, 1.25)
-		var radius := rng.randf_range(110.0, 190.0) if kind == "sweep" else rng.randf_range(34.0, 52.0)
+		var radius := rng.randf_range(lerpf(110.0, 70.0, tight), lerpf(190.0, 120.0, tight)) if kind == "sweep" \
+				else rng.randf_range(lerpf(34.0, 18.0, tight), lerpf(52.0, 32.0, tight))
 		var target := clampf(th + dir * angle, -MAX_HEADING, MAX_HEADING)
 		if kind != "straight" and absf(target - th) < 0.05:
 			kind = "straight"  # already turned as far as this turn would go (heading at its limit): go on straight
@@ -137,15 +140,19 @@ func _course(ctx: ArchetypeContext, length: float, crests: PackedFloat32Array) -
 			continue
 		match kind:
 			"straight":
-				_straight(st, ctx, rng.randf_range(50.0, 120.0))
+				_straight(st, ctx, rng.randf_range(lerpf(50.0, 20.0, tight), lerpf(120.0, 45.0, tight)))
 			"sweep":
 				_turn(st, ctx, target, radius)
 			_:
 				_turn(st, ctx, target, radius)
-				# often a second tight turn the other way, straight after the first one (an S)
-				if rng.randf() < 0.55 and float(st.s) < length - FINISH_STRAIGHT - 80.0:
-					var back := clampf(float(st.th) - dir * rng.randf_range(0.9, 1.3), -MAX_HEADING, MAX_HEADING)
-					_turn(st, ctx, back, rng.randf_range(34.0, 52.0))
+				# often a second tight turn the other way, straight after the first one (an S), sometimes a third, a fourth...
+				var chain := 0
+				while chain < 3 and rng.randf() < lerpf(0.55, 0.85, tight) - 0.25 * chain \
+						and float(st.s) < length - FINISH_STRAIGHT - 80.0:
+					chain += 1
+					dir = -dir
+					var back := clampf(float(st.th) + dir * rng.randf_range(0.9, 1.3), -MAX_HEADING, MAX_HEADING)
+					_turn(st, ctx, back, rng.randf_range(lerpf(34.0, 18.0, tight), lerpf(52.0, 32.0, tight)))
 		last_dir = dir
 	# into the finish: back towards the fall line, then straight
 	if absf(float(st.th)) > 0.15:

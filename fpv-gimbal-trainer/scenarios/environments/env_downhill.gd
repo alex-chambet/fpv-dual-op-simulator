@@ -40,22 +40,27 @@ func configure() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 5150 + host.world_seed
 	_phase = rng.randf() * TAU
+	# relief (0..1, env_overrides): a more varied slope: shorter sections, and rolls (the grade swells and eases every
+	# 40 - 70 m) between them; the jumps still come from the crests of the sections
+	var rel := clampf(float(opt("relief", 0.0)), 0.0, 1.0)
+	var roll_p1 := rng.randf() * TAU
+	var roll_p2 := rng.randf() * TAU
 	# Sections of the slope: [start z, grade, length of the transition from the previous grade]
 	var sections := [[Z_MIN, 0.3, 0.0], [-70.0, 0.5, 30.0]]  # above the start, then the steep start ramp
 	var z := 45.0
 	var g := 0.5
 	var since := 0.0
-	var next_crest := rng.randf_range(250.0, 340.0)
+	var next_crest := rng.randf_range(250.0, 340.0) * lerpf(1.0, 0.75, rel)
 	while z < Z_MAX:
-		var length := rng.randf_range(110.0, 230.0)
-		var tr := rng.randf_range(25.0, 45.0)
+		var length := rng.randf_range(110.0, 230.0) * lerpf(1.0, 0.6, rel)
+		var tr := rng.randf_range(25.0, 45.0) * lerpf(1.0, 0.7, rel)
 		var ng := 0.0
 		if since >= next_crest and g <= 0.3:
 			ng = rng.randf_range(0.52, 0.62)  # a glide ends on a steep wall: a crest
 			tr = 4.0
 			crests.append(z)
 			since = 0.0
-			next_crest = rng.randf_range(380.0, 540.0)
+			next_crest = rng.randf_range(380.0, 540.0) * lerpf(1.0, 0.75, rel)
 		elif since >= next_crest - 160.0 and g > 0.3:
 			ng = rng.randf_range(0.17, 0.25)  # the glide before the next crest
 			length = rng.randf_range(80.0, 120.0)
@@ -82,6 +87,8 @@ func configure() -> void:
 			prev_g = float(sections[si][1])
 			si += 1
 		grade[k] = _grade_at_section(sections[si], prev_g, zk)
+		if rel > 0.0:
+			grade[k] *= 1.0 + rel * (0.17 * sin(zk * TAU / 63.0 + roll_p1) + 0.09 * sin(zk * TAU / 29.0 + roll_p2))
 	_h.resize(n)
 	_h[0] = 0.0
 	for k in range(1, n):

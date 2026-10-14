@@ -39,6 +39,7 @@ const PARAM_DOCS := {
 	"rhythm": "0..1: irregular rhythm of the turns (they come quicker and slower, wider and tighter along the run). 0 = regular.",
 	"grade_speed": "0..1: how much the slope sets the speed (faster on the steep parts, slower where it flattens). 0 = not at all.",
 	# DESCENTE
+	"turn_tightness": "0..1: a more twisting course: tighter radii, shorter straights, longer chains of tight turns (0 = the classic downhill).",
 	"tight_turns": "Share of tight turns (radius 34-52 m, often two in an S) among the turns (the others are wide sweeps).",
 	"air_drag": "Air drag of the skier, 1/m (the higher, the lower the top speed on a given slope).",
 	"snow_friction": "Friction coefficient of the skis on the snow.",
