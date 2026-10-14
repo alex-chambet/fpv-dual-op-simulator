@@ -1,5 +1,6 @@
 78098b89c88a74ebe8c20117b8754620
-::res://::1792010490
+::res://::1792011402
+_xi.gd::GDScript::8121953373099501018::1792011402::0::1::::<>SceneTree<><>0<>0<><>::
 export_presets.cfg::TextFile::-1::1791445902::0::1::::<><><>0<>0<><>::
 ski_slope.tscn::PackedScene::1215708909317113592::1791212617::0::1::::<><><>0<>0<><>::res://scenarios/ski_slope/ski_slope.gd<>res://flight/flight_path.tscn<>uid://bl20o0do6rxhw::::res://ui/camera_look.gd<>res://scenarios/ski_slope/frame_guide.gd
 ::res://assets/::1791644312
@@ -25,7 +26,8 @@ gimbal_rig.tscn::PackedScene::-1::1791192596::0::1::::<><><>0<>0<><>::res://gimb
 gimbal_test.gd::GDScript::8523783861893655639::1791196278::0::1::::<>Node3D<><>0<>0<><>::
 ::res://input/::1791191933
 controller_input.gd::GDScript::5939800643888044837::1791278774::0::1::::<>Node<><>0<>0<><>::
-::res://scenarios/::1792010419
+::res://scenarios/::1792011378
+course_intro.gd::GDScript::744363773240453610::1792011402::0::1::::CourseIntro<>Node<><>0<>0<><>::
 drone_difficulty.gd::GDScript::1066476875964187709::1791444857::0::1::::DroneDifficulty<>RefCounted<><>0<>0<><>::
 drone_pip.gd::GDScript::5095405180208771843::1792010456::0::1::::DronePip<>Node<><>0<>0<><>::
 duo_session.gd::GDScript::4239967031643978812::1792010125::0::1::::DuoSession<>Node<><>0<>0<><>::
@@ -37,7 +39,7 @@ prop_factory.gd::GDScript::6626833062579876871::1791628198::0::1::::PropFactory<
 road_builder.gd::GDScript::4370521114991598853::1791195823::0::1::::RoadBuilder<>RefCounted<><>0<>0<><>::
 road_traffic.gd::GDScript::5634851037265711770::1791314665::0::1::::RoadTraffic<>Node3D<><>0<>0<><>::
 scenario.tscn::PackedScene::-1::1791639448::0::1::::<><><>0<>0<><>::res://scenarios/scenario_runner.gd<>res://flight/flight_path.tscn<>res://ui/frame_guide.gd<>res://ui/camera_look.gd
-scenario_base.gd::GDScript::1989407025253165802::1792010407::0::1::::ScenarioBase<>Node3D<><>0<>0<><>::
+scenario_base.gd::GDScript::1989407025253165802::1792011387::0::1::::ScenarioBase<>Node3D<><>0<>0<><>::
 scenario_matrix.gd::GDScript::5328420510429964615::1791641027::0::1::::ScenarioMatrix<>RefCounted<><>0<>0<><>::
 scenario_registry.gd::GDScript::7631385424727444337::1791220647::0::1::::ScenarioRegistry<>RefCounted<><>0<>0<><>::
 scenario_runner.gd::GDScript::7058891244819785115::1791709095::0::1::::ScenarioRunner<>ScenarioBase<><>0<>0<><>::

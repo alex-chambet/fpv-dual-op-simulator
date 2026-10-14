@@ -7,20 +7,25 @@ script = ExtResource("1")
 id = "ski_alpin"
 display_name = "Ski alpin"
 category = "Neige / glace"
-description = "Descente à ski avec virages en S entre des portes de slalom."
+description = "Descente à ski entre des portes de slalom : virages serrés au rythme irrégulier, sur une pente qui change (raides, replats, cassures)."
 archetype = "GLISSE_PENTE"
 overrides = {
+"cornering_accel": 11.0,
 "duration": 60.0,
 "gates": true,
-"lateral_amplitude": 9.0,
+"grade_speed": 0.6,
+"lateral_amplitude": 6.5,
 "lean_gain": 0.8,
 "lean_max_deg": 30.0,
 "leaves_tracks": true,
-"speed_max": 16.0,
+"rhythm": 0.8,
+"sample_step": 2.0,
+"speed_max": 15.5,
 "speed_min": 6.0,
 "speed_variability": 1.0,
 "spray": true,
-"turn_frequency": 2.85714285714286
+"turn_frequency": 4.4,
+"weave_ratio": 0.3
 }
 subject_size = 1.8
 placeholder_shape = "person"
@@ -28,6 +33,8 @@ placeholder_gear = "skis"
 placeholder_color = Color(0.95, 0.35, 0.1, 1)
 placeholder_accent = Color(0.1, 0.35, 0.9, 1)
 environment = "neige"
-env_overrides = {}
+env_overrides = {
+"relief": 0.6
+}
 recommended_movements = PackedStringArray("pursuit", "lateral", "frontal", "orbit", "reveal", "flyby", "approach_orbit", "dive", "choreo")
 base_difficulty = 3

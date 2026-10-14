@@ -96,6 +96,8 @@ Dans le bac à sable : **M** change de mode de vol (auto, clavier, acro), **Reto
 
 **Configurer ses manettes** : menu « Paramètres » → « Configuration manette ». Vous pouvez y choisir la manette de la gimbal et celle du pilote, affecter chaque axe, inverser, régler la zone morte et l'expo.
 
+**Vue d'ensemble avant chaque niveau** (1 ou 2 joueurs) : une caméra vole juste au-dessus du terrain, derrière la tête d'un trait animé qui se dessine le long du chemin que va suivre le sujet (départ, arrivée, sauts ; le reste de la ligne apparaît en transparence), pour comprendre la ligne à filmer. Elle dure de 10 à 20 secondes selon la longueur du parcours ; **Entrée** la passe. Elle n'est pas rejouée quand on recommence le même niveau.
+
 **Vue du drone** : en 1 joueur, une petite incrustation en bas à droite montre ce que voit la caméra FPV du drone (dans l'axe du nez, inclinée de 25°), pour savoir dans quelle direction il regarde. Elle se désactive dans Échap > Gameplay (« Vue du drone »).
 
 **Option « Noir hors du cadre »** : dans la pause (Échap → Gameplay), elle assombrit complètement tout ce qui est hors du rectangle vert. Vous ne voyez alors que ce que montrerait le cadre, sans l'environnement autour. Elle est désactivée par défaut et mémorisée d'une partie à l'autre.

@@ -88,7 +88,7 @@ règle avec `speed_min` / `speed_max`.
 
 | Archétype | Paramètres spécifiques |
 |---|---|
-| `GLISSE_PENTE` | `weave_ratio` 0,25 et `weave_period` 314 (modulation lente de l'amplitude), `gates` vrai (portes de slalom), `leaves_tracks` vrai (traces), `spray` vrai (poudreuse) |
+| `GLISSE_PENTE` | `weave_ratio` 0,25 et `weave_period` 314 (modulation lente de l'amplitude), `gates` vrai (portes de slalom), `leaves_tracks` vrai (traces), `spray` vrai (poudreuse), `rhythm` 0 (0 à 1 : rythme irrégulier des virages, qui se resserrent et s'espacent, avec une amplitude qui varie ; utilisé par le ski alpin), `grade_speed` 0 (0 à 1 : la pente règle la vitesse, plus vite sur les raides, plus lent sur les replats) |
 | `COURSE_SOL_CYCLIQUE` | `wiggle_ratio` 0,57 et `wiggle_period_ratio` 0,41 (petites ondulations), `bob` 0,05 m (rebond), `limb_swing` 0,8 rad (balancement des membres) |
 | `VEHICULE_ROUTE` | `layout` : `switchback` (lacets : nombre de jambes = `turn_frequency` × `path_length` / 100, demi-longueur d'une jambe = `lateral_amplitude`) ou `winding` (route sinueuse) ; `turn_radius` 12,5 m (rayon des lacets) |
 | `TOUT_TERRAIN_ERRATIQUE` | `irregularity` 0,6 (0 à 1), `bump` 0,07 rad (secousses du corps) |
@@ -195,7 +195,7 @@ tous les autres utilisent le constructeur générique configuré par un fichier 
 
 | Tag | Décor |
 |---|---|
-| `neige` | pente neigeuse, arbres, rochers, portes de slalom (`env_overrides` : `slope`, pente de 0,3 par défaut) |
+| `neige` | pente neigeuse, arbres, rochers, portes de slalom (`env_overrides` : `slope`, pente de 0,3 par défaut ; `relief`, de 0 à 1, fait varier la pente le long de la descente : raides, replats et cassures, 0 par défaut, 0,6 pour le ski alpin) |
 | `descente` | piste de descente façon Streif / Bellevarde : versant de 2 à 2,5 km dont la pente change par sections (replats 16 - 26 %, parties rapides 30 - 40 %, murs 45 - 62 %), cassures de pente pour les sauts, piste damée de 36 à 60 m de large taillée dans la forêt, portes rouges, filets A rouges (4 m) à l'extérieur des virages et le long des réceptions, filets B orange, lignes bleues avant les sauts, un télésiège le long de la piste et un autre qui la survole, cabane de départ, arrivée (ligne, arche, tribune avec spectateurs, panneaux). Rien n'est construit sur le trajet du drone (un télésiège est déplacé, ou retiré, si le drone passe près de ses câbles) |
 | `freeride` | grande face raide façon Freeride World Tour : départ sur l'arête sommitale (portique, drapeaux, officiels), face de 600 m environ à 38 - 50° avec bosses, arêtes et couloirs dans la ligne de pente, 3 à 5 barres rocheuses (falaises de 7 à 13 m, couloirs dans leurs brèches), îlots rocheux, arêtes latérales, vieilles traces dans la neige ; en bas, cône de déjection puis cuvette d'arrivée (ligne, arche gonflable, public derrière des banderoles, drapeaux), sapins. Le relief qui cache le sujet compte comme obstacle |
 | `route_montagne` | route de montagne posée sur le trajet, bornes, pins, rochers, **tunnel** si le trajet a une partie droite de 66 m ou plus |

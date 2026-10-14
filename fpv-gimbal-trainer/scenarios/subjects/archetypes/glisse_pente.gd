@@ -25,12 +25,16 @@ func defaults() -> Dictionary:
 		"sample_step": 6.0,
 		"weave_ratio": 0.25, "weave_period": 314.1592653589793,
 		"gates": true, "leaves_tracks": true, "spray": true,
+		"rhythm": 0.0, "grade_speed": 0.0,
 	}, true)
 	return d
 
 
 func generate(ctx: ArchetypeContext) -> Dictionary:
 	var p := ctx.params
+	if float(p.get("rhythm", 0.0)) > 0.0:
+		# the phases of the irregular rhythm (kept in the parameters: the path is a function of z and of them)
+		p["rhythm_phi"] = [ctx.rng.randf() * TAU, ctx.rng.randf() * TAU, ctx.rng.randf() * TAU]
 	var length := path_length(p)
 	var step := float(p.sample_step)
 	if float(p.jump_frequency) > 0.0:
@@ -45,13 +49,43 @@ func generate(ctx: ArchetypeContext) -> Dictionary:
 	var speeds := PackedFloat32Array()
 	if float(p.cornering_accel) > 0.0:
 		speeds = PathUtil.speeds_from_curvature(pts, float(p.cornering_accel), float(p.speed_min), float(p.speed_max))
+		if float(p.get("grade_speed", 0.0)) > 0.0:
+			_scale_by_grade(pts, speeds, float(p.grade_speed), float(p.speed_max))
 	return finish_plan(pts, speeds, events)
+
+
+## Faster where the slope is steeper, slower where it flattens (a skier holds his speed in the turns, but the slope
+## sets the pace between them): the speed of each point times 1 + k (grade / mean grade - 1), within 0.65 .. 1.35,
+## and never over 1.15 x vmax.
+static func _scale_by_grade(pts: PackedVector3Array, speeds: PackedFloat32Array, k: float, vmax: float) -> void:
+	var n := pts.size()
+	var grade := PackedFloat32Array()
+	grade.resize(n)
+	var sum := 0.0
+	for i in n:
+		var a := pts[maxi(i - 3, 0)]
+		var b := pts[mini(i + 3, n - 1)]
+		grade[i] = maxf(a.y - b.y, 0.0) / maxf(Vector2(b.x - a.x, b.z - a.z).length(), 0.1)
+		sum += grade[i]
+	var mean := maxf(sum / n, 0.01)
+	for i in n:
+		speeds[i] = minf(speeds[i] * clampf(1.0 + k * (grade[i] / mean - 1.0), 0.65, 1.35), vmax * 1.15)
 
 
 func _x(z: float, p: Dictionary) -> float:
 	var period := 200.0 / maxf(float(p.turn_frequency), 0.01)
-	return float(p.lateral_amplitude) * (1.0 + float(p.weave_ratio) * sin(z * TAU / float(p.weave_period))) \
-			* sin(z * TAU / period)
+	var rhythm := float(p.get("rhythm", 0.0))
+	if rhythm <= 0.0:
+		return float(p.lateral_amplitude) * (1.0 + float(p.weave_ratio) * sin(z * TAU / float(p.weave_period))) \
+				* sin(z * TAU / period)
+	# an irregular rhythm: the turns come quicker and slower (phase modulation, +/- 45 % x rhythm of the frequency, about
+	# every 300 m), their size swells and shrinks, and a second, slower wave of the amplitude makes some turns wide
+	var phi: Array = p.get("rhythm_phi", [0.0, 1.7, 3.1])
+	var k := 0.02
+	var phase := z * TAU / period + rhythm * 0.45 * TAU / (period * k) * sin(z * k + float(phi[0]))
+	var amp := float(p.lateral_amplitude) * (1.0 + float(p.weave_ratio) * sin(z * TAU / float(p.weave_period) + float(phi[1])) \
+			+ 0.3 * rhythm * sin(z * 0.043 + float(phi[2])))
+	return amp * sin(phase)
 
 
 func lateral_fn(p: Dictionary, _pts: PackedVector3Array) -> Callable:

@@ -4,6 +4,7 @@ Un pilote vole le drone (mode **acro**, manette FPV), un cadreur tient la gimbal
 scripté (il suit son chemin à sa vitesse).
 
 ## Lancer
+Comme en 1 joueur, chaque niveau commence par une vue d'ensemble du parcours avec le trait animé de la ligne du sujet (Entrée pour passer) ; le compte à rebours démarre ensuite.
 Menu > « Mode de jeu » : *2 joueurs*, puis choisir le sport et l'optique, puis Entrée.
 Mouvement et niveau sont ignorés (le drone n'est plus automatique).
 

@@ -2,13 +2,16 @@ class_name EnvSnow
 extends EnvironmentBuilder
 ## Snow slope (tag "neige"): an inclined plane going down along +Z with fine bumps, snow texture,
 ## trees on both sides, rocks, slalom gates along the path, obstacles on the line of sight.
-## Environment parameters (env_overrides): "slope" (grade, default 0.3).
+## Environment parameters (env_overrides): "slope" (grade, default 0.3), "relief" (0..1: how much the grade changes along the run,
 
 const LEGACY_LATERAL_OFFSET := 18.0
 const LEGACY_DRONE_HEIGHT := 5.0
 const LEGACY_EVENTS: Array[float] = [0.30, 0.58, 0.86]
 
 var slope := 0.3
+var relief := 0.0
+var _rp1 := 0.0
+var _rp2 := 0.0
 
 var _tree_pos := PackedVector3Array()
 var _tree_scale := PackedFloat32Array()
@@ -16,11 +19,24 @@ var _tree_scale := PackedFloat32Array()
 
 func configure() -> void:
 	slope = float(opt("slope", 0.3))
+	relief = float(opt("relief", 0.0))
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 4410 + host.world_seed
+	_rp1 = rng.randf() * TAU
+	_rp2 = rng.randf() * TAU
 	Vegetation.snow_cover = 0.8
 
 
 func base_height(x: float, z: float) -> float:
-	return -z * slope + 0.7 * sin(x * 0.09 + 0.5) * sin(z * 0.06) + 0.4 * sin(x * 0.21) * cos(z * 0.13)
+	return -slope * (z + relief * _grade_wave(z)) + 0.7 * sin(x * 0.09 + 0.5) * sin(z * 0.06) + 0.4 * sin(x * 0.21) * cos(z * 0.13)
+
+
+## Integral of the changes of the grade along z (two waves, about 390 m and 170 m): the grade is slope x (1 + relief x
+## (0.6 sin(a z + p1) + 0.4 sin(b z + p2))), from about half to one and a half times the base slope.
+func _grade_wave(z: float) -> float:
+	if relief <= 0.0:
+		return 0.0
+	return -0.6 / 0.016 * cos(z * 0.016 + _rp1) - 0.4 / 0.037 * cos(z * 0.037 + _rp2)
 
 
 ## The ski area: the slope goes on, snowy forests, high mountains all around.

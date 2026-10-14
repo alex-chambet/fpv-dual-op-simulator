@@ -56,6 +56,8 @@ var _barriers: Array[Dictionary] = []
 ## 2-player mode (a pilot flies the drone): the helper that owns the drone, null in the other modes.
 var duo: DuoSession
 var drone_pip: DronePip
+## The overview of the course before the countdown (CourseIntro): the session waits while it is on.
+var intro_active := false
 var _pause: PauseMenu
 var _recorder: SessionRecorder
 
@@ -229,6 +231,9 @@ func _ready() -> void:
 	flight.rig.aim_at(subject.torso_position())
 	if replay_active:
 		_begin_replay()
+	elif CourseIntro.wanted(self):
+		add_child(CourseIntro.new())
+		get_child(get_child_count() - 1).setup(self)
 
 
 # --- Helpers for scenarios -------------------------------------------------------------
@@ -552,8 +557,16 @@ func _set_profile(p: GimbalRig.SpeedProfile) -> void:
 	GimbalRig.save_default_profile(p)
 
 
+## The overview is over: the countdown starts.
+func end_intro() -> void:
+	intro_active = false
+	_time = 0.0
+
+
 func _process(delta: float) -> void:
 	if subject == null or not subject.is_node_ready():
+		return
+	if intro_active:
 		return
 	if replay_active:
 		_replay_process(delta)
