@@ -55,6 +55,7 @@ var occ_kind := PackedByteArray()
 var _barriers: Array[Dictionary] = []
 ## 2-player mode (a pilot flies the drone): the helper that owns the drone, null in the other modes.
 var duo: DuoSession
+var drone_pip: DronePip
 var _pause: PauseMenu
 var _recorder: SessionRecorder
 
@@ -211,6 +212,11 @@ func _ready() -> void:
 	if matrix_active and matrix.two_player:
 		duo = DuoSession.new()
 		duo.setup(self)
+	else:
+		# 1 player: the drone's own view, small, bottom right
+		drone_pip = DronePip.new()
+		add_child(drone_pip)
+		drone_pip.setup(flight.body, $HUD)
 
 	# Start with the subject framed (the rig aligns itself on the first frames). The scene may be left
 	# (Esc, Enter) before these frames have passed.

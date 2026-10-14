@@ -162,6 +162,18 @@ func _build() -> void:
 		FrameGuide.save_blackout()
 		blackout_changed.emit())
 	brow.add_child(bcheck)
+	var prow := HBoxContainer.new()
+	_gameplay_page.add_child(prow)
+	var pl := Label.new()
+	pl.text = "Vue du drone (1 joueur)"
+	pl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	prow.add_child(pl)
+	var pcheck := CheckButton.new()
+	pcheck.button_pressed = DronePip.enabled
+	pcheck.toggled.connect(func(on: bool):
+		DronePip.enabled = on
+		DronePip.save_enabled())
+	prow.add_child(pcheck)
 	var bnote := Label.new()
 	bnote.text = "Assombrit tout ce qui est hors du rectangle vert : on ne voit pas l'environnement autour du cadre, comme avec une vraie caméra."
 	bnote.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

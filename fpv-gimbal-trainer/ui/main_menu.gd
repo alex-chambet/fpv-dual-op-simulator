@@ -112,6 +112,7 @@ func _load_prefs() -> Dictionary:
 func _apply_prefs(prefs: Dictionary) -> void:
 	MotionBlur.level = clampi(int(prefs.get("blur", MotionBlur.level)), 0, MotionBlur.LABELS.size() - 1)
 	FrameGuide.blackout = bool(prefs.get("blackout", FrameGuide.blackout))
+	DronePip.enabled = bool(prefs.get("drone_pip", DronePip.enabled))
 	GraphicsSettings.load_prefs(prefs)
 	GraphicsSettings.apply_display()
 	for pair in [[_mode_opt, "mode"], [_movement_opt, "movement"], [_level_opt, "level"], [_lens_opt, "lens"], [_screens_opt, "screens"], [_ambience_opt, "ambience"]]:

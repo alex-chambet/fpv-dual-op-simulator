@@ -96,6 +96,8 @@ Dans le bac à sable : **M** change de mode de vol (auto, clavier, acro), **Reto
 
 **Configurer ses manettes** : menu « Paramètres » → « Configuration manette ». Vous pouvez y choisir la manette de la gimbal et celle du pilote, affecter chaque axe, inverser, régler la zone morte et l'expo.
 
+**Vue du drone** : en 1 joueur, une petite incrustation en bas à droite montre ce que voit la caméra FPV du drone (dans l'axe du nez, inclinée de 25°), pour savoir dans quelle direction il regarde. Elle se désactive dans Échap > Gameplay (« Vue du drone »).
+
 **Option « Noir hors du cadre »** : dans la pause (Échap → Gameplay), elle assombrit complètement tout ce qui est hors du rectangle vert. Vous ne voyez alors que ce que montrerait le cadre, sans l'environnement autour. Elle est désactivée par défaut et mémorisée d'une partie à l'autre.
 
 **Conseil pour le niveau Expert** : réglez la sensibilité gimbal sur Rapide (menu de la session, ou Échap > Gameplay). Les croisements demandent des pointes de plus de 100 °/s.
