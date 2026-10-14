@@ -8,7 +8,8 @@ Menu principal > panneau « Bac à sable » > *Lancer le bac à sable* (ou touch
 « Écrans » de la session d'entraînement s'appliquent aussi au bac à sable.
 
 ## Commandes
-- **Gimbal** : comme partout (manette gimbal, ou flèches / WASD + Q / E), profils 1 / 2 / 3, G = grille des tiers.
+- **Gimbal** : manette gimbal, ou WASD + Q / E (les flèches ne servent plus à la gimbal), profils 1 / 2 / 3, G = grille des tiers.
+- **Tilt de la caméra du drone** : flèche haut / bas (relève / baisse la caméra FPV du pilote, de 0° à 75°, 25° au départ ; une jauge s'affiche un instant au milieu de l'écran), comme en mode 2 joueurs.
 - **Drone** (**M** passe d'un mode à l'autre, **Retour arrière** ramène le drone sur la place du village) :
   - **auto** (par défaut sans manette, ou avec une seule manette, celle de la gimbal) : le drone décolle tout seul
     puis vole de façon aléatoire mais toujours fluide dans toute la carte, pour que le cadreur règle sa gimbal seul ;

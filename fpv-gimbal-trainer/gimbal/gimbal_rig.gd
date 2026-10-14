@@ -106,6 +106,9 @@ var yaw_follow := false
 ## Callable() -> heading (rad) of the drone; when valid it replaces the heading of the parent node.
 var heading_provider := Callable()
 
+## false in 2-player mode: the arrow keys then tilt the pilot's camera instead; the gimbal keeps WASD + Q / E.
+var arrows_enabled := true
+
 var _heading0 := 0.0
 var _aligned := false
 
@@ -178,8 +181,12 @@ func _read_inputs() -> Array:
 		v[TILT] = ControllerInput.tilt_input
 		v[ROLL] = ControllerInput.roll_input
 	if use_keyboard and keyboard_enabled_keys:
-		v[PAN] += _key_axis([KEY_LEFT, KEY_A], [KEY_RIGHT, KEY_D])
-		v[TILT] += _key_axis([KEY_DOWN, KEY_S], [KEY_UP, KEY_W])
+		var left := [KEY_LEFT, KEY_A] if arrows_enabled else [KEY_A]
+		var right := [KEY_RIGHT, KEY_D] if arrows_enabled else [KEY_D]
+		var down := [KEY_DOWN, KEY_S] if arrows_enabled else [KEY_S]
+		var up := [KEY_UP, KEY_W] if arrows_enabled else [KEY_W]
+		v[PAN] += _key_axis(left, right)
+		v[TILT] += _key_axis(down, up)
 		v[ROLL] += _key_axis([KEY_Q], [KEY_E])
 	for i in 3:
 		v[i] = clampf(v[i], -1.0, 1.0)

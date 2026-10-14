@@ -204,11 +204,19 @@ func _sync() -> void:
 		return
 	global_transform = Transform3D(Basis(orientation), position)
 	if _fpv_cam != null and is_instance_valid(_fpv_cam) and _fpv_cam.is_inside_tree():
-		var b := Basis(orientation) * Basis(Vector3.RIGHT, deg_to_rad(25.0))
+		var b := Basis(orientation) * Basis(Vector3.RIGHT, deg_to_rad(cam_tilt_deg))
 		_fpv_cam.global_transform = Transform3D(b, position + Basis(orientation) * Vector3(0.0, 0.03, -0.12))
 
 
-## Creates the pilot's FPV camera (wide, tilted up 25°) rendering into `viewport`.
+## Tilt of the FPV camera above the drone's nose, degrees (2-player mode: set from the gimbal operator's up / down keys).
+const CAM_TILT_DEFAULT := 25.0
+var cam_tilt_deg := CAM_TILT_DEFAULT:
+	set(v):
+		cam_tilt_deg = v
+		_sync()
+
+
+## Creates the pilot's FPV camera (wide, tilted up 25° at first) rendering into `viewport`.
 func attach_fpv_camera(viewport: SubViewport) -> void:
 	_fpv_cam = Camera3D.new()
 	_fpv_cam.fov = 105.0

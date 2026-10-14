@@ -26,8 +26,11 @@ Tous les réglages sont des variables exportées de `FpvDrone`.
 La gimbal est **indépendante du drone** : pan, tilt et roll sont stabilisés dans le monde ; seule la position
 de la caméra suit le drone. Quand le pilote vire ou s'incline, l'image ne tourne pas.
 
+## Tilt de la caméra du drone
+En 2 joueurs, les **flèches** ne commandent plus la gimbal (qui garde WASD + Q / E et la manette) : **flèche haut** relève le tilt de la caméra FPV du drone, **flèche bas** le baisse (35 °/s tant que la touche est tenue, de 0° à 75° au-dessus de l'axe du drone, 25° au départ). À chaque changement, une jauge s'affiche un instant au milieu de l'écran (ui/tilt_indicator.gd) avec la valeur en degrés. Le tilt est un réglage de la vue seulement : il n'est pas enregistré dans le rejeu. Même règle dans le bac à sable.
+
 ## Affichage
-Image principale = caméra gimbal (cadreur). Incrustation en bas à droite = caméra FPV du pilote (105°, inclinée de 25°)
+Image principale = caméra gimbal (cadreur). Incrustation en bas à droite = caméra FPV du pilote (105°, inclinée de 25° par défaut)
 + OSD (altitude, vitesse, distance au sujet, throttle, crashs).
 
 ## Scores

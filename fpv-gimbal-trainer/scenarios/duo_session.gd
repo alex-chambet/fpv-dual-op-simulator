@@ -17,6 +17,7 @@ static var dual_screen := false
 
 var _view: PilotView
 var _osd: Label
+var _tilt_hud: TiltIndicator
 var _grid: Dictionary = {}
 var _grid_built := false
 
@@ -43,9 +44,18 @@ func setup(s: ScenarioBase) -> void:
 	# The gimbal stays independent of the drone: its pan is fixed in the world (only the position follows the drone)
 	s.flight.rig.yaw_follow = false
 	s.flight.rig.heading_provider = func(): return drone.heading
+	# the arrow keys are the pilot camera's tilt now (up: tilts up), no longer the gimbal's
+	s.flight.rig.arrows_enabled = false
+	_tilt_hud = TiltIndicator.new()
+	s.get_node("HUD").add_child(_tilt_hud)
 	_apply_body()
 	scorer.ideal_distance = 14.0 * pow(float(s.matrix.lens) / 24.0, 0.7)
 	_build_pip()
+
+
+func _process(delta: float) -> void:
+	if drone != null:
+		_tilt_hud.step_keys(drone, delta)
 
 
 func _build_pip() -> void:

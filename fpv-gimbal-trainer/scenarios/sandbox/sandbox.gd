@@ -9,7 +9,7 @@ extends Node3D
 ##  - "acro" (default when a second controller is the pilot's, menu > Paramètres > Configuration manette > Drone):
 ##    flown by the pilot as in the 2-player mode;
 ##  - "assisted": flown with the keyboard: I/K forward/back, J/L left/right, U/O turn, Y/H up/down, Shift = fast.
-## Gimbal as everywhere (controller, or arrows/WASD + Q/E). Esc: pause, Backspace: drone back to the take-off spot.
+## Gimbal as in 2-player mode (controller, or WASD + Q/E); the up / down arrows tilt the pilot's FPV camera. Esc: pause, Backspace: drone back to the take-off spot.
 
 const MENU_SCENE := "res://scenes/main_menu.tscn"
 const PROFILE_NAMES := ["Slow", "Medium", "Fast"]
@@ -36,6 +36,7 @@ var _env: WorldEnvironment
 var _sun: DirectionalLight3D
 var _body: Node3D
 var _view: PilotView
+var _tilt_hud: TiltIndicator
 var _hud: Label
 var _guide: FrameGuide
 var _hud_layer: CanvasLayer
@@ -187,6 +188,10 @@ func _build_hud() -> void:
 	_view = PilotView.new()
 	add_child(_view)
 	_view.build(_hud_layer, drone, DuoSession.dual_screen)
+	# as in the 2-player mode: the arrow keys tilt the pilot's camera (up raises it), the gimbal keeps WASD + Q / E
+	rig.arrows_enabled = false
+	_tilt_hud = TiltIndicator.new()
+	_hud_layer.add_child(_tilt_hud)
 	_pause = PauseMenu.new()
 	_pause.lens_mm = lens_mm
 	_pause.lens_editable = true  # nothing is scored in the sandbox
@@ -222,6 +227,7 @@ func _process(delta: float) -> void:
 			drone.armed = true
 		drone.step(delta, inp)
 	_body.global_position = drone.position
+	_tilt_hud.step_keys(drone, delta)
 	_view.set_shown(mode == "acro")
 	_guide.visible = FrameGuide.show_thirds
 	_update_hud()

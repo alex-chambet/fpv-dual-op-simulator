@@ -5,15 +5,15 @@ res://scenarios/environments/styles/ciel.tres::7a78f7fbb98fb22d5337bd3799b9aa2d:
 res://scenarios/environments/styles/court.tres::a3d13eb5f2cd71f46ca5b1f77afe3dd6::1791206531::res://.godot/exported/133200997/export-0dd8d4995f5b263b75d1fe672fd1809c-court.res
 res://scenarios/environments/styles/eau_vive.tres::23c994080bb67706033a4488c5be31ee::1791206531::res://.godot/exported/133200997/export-e32277963036a3fa0a7aa62910231a6f-eau_vive.res
 res://scenarios/environments/styles/falaise.tres::44ee9e5a4b1af98310eb6746dd533147::1791210699::res://.godot/exported/133200997/export-0302a55b1fb70ce17433f0231d696f29-falaise.res
-res://scenarios/environments/styles/foret.tres::e2e95471ec357436bad7d46bf934abdc::1791382877::res://.godot/exported/133200997/export-dfdccd2d3702e3e2ac0790b77f6fee42-foret.res
+res://scenarios/environments/styles/foret.tres::2d14a55837b2689b009d9797d8a8c2c6::1791646727::res://.godot/exported/133200997/export-dfdccd2d3702e3e2ac0790b77f6fee42-foret.res
 res://scenarios/environments/styles/generic.tres::119db75109a7d22f2226ca6d21cb68b7::1791205438::res://.godot/exported/133200997/export-183edc7981c85821926afa878b385763-generic.res
 res://scenarios/environments/styles/glace.tres::04e77ff45404126c3cd3b8eb75134cab::1791206531::res://.godot/exported/133200997/export-a7b2dda5e5f48866842f6cf6a85fa631-glace.res
 res://scenarios/environments/styles/lac.tres::9d683ac305418afe28411a18f2570d14::1791206328::res://.godot/exported/133200997/export-de4769f37b5651a06cf34a1b0e5841b4-lac.res
 res://scenarios/environments/styles/mer.tres::b9c2e98cbc706ffab29f9f8cccc96175::1791206328::res://.godot/exported/133200997/export-ce5d1a64ca603df54d064ab293c1a5f1-mer.res
-res://scenarios/environments/styles/neige.tres::c911b4c83d5c65de2749d329c761debc::1791384777::res://.godot/exported/133200997/export-9c8b192f121b1d88dca53733ae42ca82-neige.res
+res://scenarios/environments/styles/neige.tres::7db729931a51a649fca323d8e0a1524b::1791645069::res://.godot/exported/133200997/export-9c8b192f121b1d88dca53733ae42ca82-neige.res
 res://scenarios/environments/styles/piste_urbaine.tres::1caf9f76d7ac7c1bb603cc8c64b8b54f::1791206531::res://.godot/exported/133200997/export-e3b4bedc15fba306de13af1f69488968-piste_urbaine.res
 res://scenarios/environments/styles/prairie.tres::7e3b4563ed5dd18f1bffc562a5a1be2e::1791206531::res://.godot/exported/133200997/export-58a10f7489a7af2cca5eea3617f53ba2-prairie.res
-res://scenarios/environments/styles/route_montagne.tres::c95c04c227ab3205b9ab97aff6d32113::1791384777::res://.godot/exported/133200997/export-dc1c8b817b2212a71abcfe69463a4522-route_montagne.res
+res://scenarios/environments/styles/route_montagne.tres::965926591c110ae25164b3d88fd0febf::1791645069::res://.godot/exported/133200997/export-dc1c8b817b2212a71abcfe69463a4522-route_montagne.res
 res://scenarios/environments/styles/salle.tres::19ced5238f3ac09fe218502ba53c1c72::1791206531::res://.godot/exported/133200997/export-df7fbdbb97c584f3754b50e7daa4ad10-salle.res
 res://scenarios/environments/styles/stade.tres::078f872b621740ca2abf2a603601394f::1791206531::res://.godot/exported/133200997/export-ba671ea448d4fd6a905b082bdcd1b797-stade.res
 res://scenarios/environments/styles/terrain_vague.tres::23b4e0939dff7f7d7e4272e451204251::1791209928::res://.godot/exported/133200997/export-a21f9522b33681a3ad0a0d9b98e1c63c-terrain_vague.res
@@ -55,7 +55,7 @@ res://scenarios/subjects/catalogue/vtt_cross_country.tres::c7e8f243058438a74176d
 res://scenarios/subjects/catalogue/vtt_descente.tres::a3cbff7489256fe099185ee390b5b022::1791443950::res://.godot/exported/133200997/export-30b42dbfba9a50b1b0049cd08b663634-vtt_descente.res
 res://scenarios/subjects/catalogue/wakeboard.tres::965271085d44ec04f13bc255e7abad04::1791220608::res://.godot/exported/133200997/export-1085b5a5e41c5bc0702adf9ac5264b11-wakeboard.res
 res://scenarios/subjects/catalogue/wingsuit.tres::3e005ace991c498238f0f83ce0ebcd1b::1791220608::res://.godot/exported/133200997/export-0fd096bf3baa49cc0d3c6d2298b557da-wingsuit.res
-res://scenarios/scenario.tscn::ca2c234a6a45653b6d6b73cf90cf5cb0::1791205404::res://.godot/exported/133200997/export-164b676e0df78dce56fa0c0ad8f7c57b-scenario.scn
+res://scenarios/scenario.tscn::88ef40197b9f7509db2c5ee83018c656::1791639448::res://.godot/exported/133200997/export-164b676e0df78dce56fa0c0ad8f7c57b-scenario.scn
 res://scenes/flight_editor.tscn::6aaf4f8917c8268fb37d430e717176b4::1791193094::res://.godot/exported/133200997/export-7bd5adda737c33bd27a3a1339b526176-flight_editor.scn
 res://scenes/flight_test.tscn::028b7c16e9d4f677db15cf3df9c6fea6::1791193064::res://.godot/exported/133200997/export-82148f914d78cfbf542ab09f66c261bd-flight_test.scn
 res://scenes/gimbal_test.tscn::611bc4718d629e36ff91834768a3008e::1791192596::res://.godot/exported/133200997/export-b4f9099cef6f76ce3cc1c7aaefae21c3-gimbal_test.scn
@@ -67,3 +67,7 @@ res://scenarios/environments/styles/departementale.tres::0e5fc12e0867f90b22fea08
 res://scenarios/subjects/catalogue/departementale.tres::a85eeb7013b29389da5a8bfee362eda5::1791443950::res://.godot/exported/133200997/export-1dc05ef3fd1cc67d4c8726dff4373077-departementale.res
 res://scenarios/sandbox/sandbox.tscn::eee6f0b760f23d50b19c0f73353cb034::1791393188::res://.godot/exported/133200997/export-6ef635fe98b8a85bc151c7d85f066b92-sandbox.scn
 res://scenes/settings.tscn::cceb7b4cc3313e58c6895b9842de6450::1791400036::res://.godot/exported/133200997/export-7416c78d345eded4b396246a6c8adbe0-settings.scn
+res://scenarios/environments/styles/descente.tres::1dd19f0923868e2e7d70ed41c157e193::1791645069::res://.godot/exported/133200997/export-643c58ada3f39974cf648966338625d8-descente.res
+res://scenarios/environments/styles/freeride.tres::b60f7449be08df387178656a802f4c10::1791669697::res://.godot/exported/133200997/export-f474124186cc1f89600599c561d81f55-freeride.res
+res://scenarios/subjects/catalogue/ski_descente.tres::370f84945373cdd963cc3dfc1bca13a3::1791628538::res://.godot/exported/133200997/export-8b2f57ea44c40a65706647b6500aa5f6-ski_descente.res
+res://scenarios/subjects/catalogue/ski_freeride.tres::b3c4d1622cd3963644cf8fe5e26b1ef0::1791713094::res://.godot/exported/133200997/export-e01cd099881a54f187723c33b1a59253-ski_freeride.res

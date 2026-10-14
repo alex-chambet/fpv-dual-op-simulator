@@ -83,7 +83,8 @@ Pour changer les réglages de manette et de graphismes : tuile **Paramètres** d
 
 | Action | Manette | Clavier |
 |---|---|---|
-| Pan / tilt | Sticks de la gimbal | Flèches ou WASD |
+| Pan / tilt | Sticks de la gimbal | Flèches ou WASD (en 2 joueurs et au bac à sable : WASD seulement) |
+| Tilt de la caméra du drone (2 joueurs, bac à sable) | – | Flèche haut / bas |
 | Roll | Selon votre configuration | Q / E |
 | Sensibilité gimbal (lent / moyen / rapide) | – | 1 / 2 / 3 (ou menu Échap > Gameplay) |
 | Grille des tiers | – | G |
