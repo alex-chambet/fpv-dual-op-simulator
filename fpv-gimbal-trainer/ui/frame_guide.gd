@@ -22,6 +22,20 @@ static func save_blackout() -> void:
 	var f := FileAccess.open(path, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(prefs, "\t"))
+
+
+## Remembers the thirds grid choice (key G) the same way.
+static func save_thirds() -> void:
+	var path := "user://menu_prefs.json"
+	var prefs := {}
+	if FileAccess.file_exists(path):
+		var parsed = JSON.parse_string(FileAccess.get_file_as_string(path))
+		if typeof(parsed) == TYPE_DICTIONARY:
+			prefs = parsed
+	prefs["show_thirds"] = show_thirds
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	if f:
+		f.store_string(JSON.stringify(prefs, "\t"))
 ## Share of the frame (half-size) that counts as safe: the subject beyond it is too close to the edge.
 var safe_margin := 0.15
 ## true: the subject is inside the frame but beyond the safe zone.

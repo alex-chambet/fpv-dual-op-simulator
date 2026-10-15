@@ -146,6 +146,7 @@ func _build() -> void:
 	tcheck.button_pressed = FrameGuide.show_thirds
 	tcheck.toggled.connect(func(on: bool):
 		FrameGuide.show_thirds = on
+		FrameGuide.save_thirds()
 		blackout_changed.emit())  # (the frame guide redraws)
 	trow.add_child(tcheck)
 	_thirds_check = tcheck

@@ -472,6 +472,7 @@ func add_cylinder_occluder(ground: Vector3, radius: float, height: float) -> voi
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_G:
 		FrameGuide.show_thirds = not FrameGuide.show_thirds
+		FrameGuide.save_thirds()
 		guide.queue_redraw()
 		return
 	if replay_active:

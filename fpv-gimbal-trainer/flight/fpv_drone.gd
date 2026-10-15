@@ -70,6 +70,7 @@ var _fpv_cam: Camera3D
 
 func _ready() -> void:
 	_update_exponent()
+	cam_tilt_deg = load_default_cam_tilt()
 
 
 func _update_exponent() -> void:
@@ -216,12 +217,39 @@ func _sync() -> void:
 		_fpv_cam.global_transform = Transform3D(b, position + Basis(orientation) * Vector3(0.0, 0.03, -0.12))
 
 
-## Tilt of the FPV camera above the drone's nose, degrees (2-player mode: set from the gimbal operator's up / down keys).
+## Tilt of the FPV camera above the drone's nose, degrees (2-player mode and sandbox: set from the gimbal
+## operator's up / down keys). Starts at the tilt the player last left it at, kept in the menu preferences.
 const CAM_TILT_DEFAULT := 25.0
+const PREFS_PATH := "user://menu_prefs.json"
+static var _default_cam_tilt := -1.0   # -1 = not read yet
 var cam_tilt_deg := CAM_TILT_DEFAULT:
 	set(v):
 		cam_tilt_deg = v
 		_sync()
+
+
+static func load_default_cam_tilt() -> float:
+	if _default_cam_tilt < 0.0:
+		_default_cam_tilt = CAM_TILT_DEFAULT
+		if FileAccess.file_exists(PREFS_PATH):
+			var parsed = JSON.parse_string(FileAccess.get_file_as_string(PREFS_PATH))
+			if typeof(parsed) == TYPE_DICTIONARY and parsed.has("cam_tilt"):
+				_default_cam_tilt = clampf(float(parsed["cam_tilt"]), 0.0, 75.0)
+	return _default_cam_tilt
+
+
+## Remembers the tilt the player left the camera at, for the next sessions.
+static func save_default_cam_tilt(v: float) -> void:
+	_default_cam_tilt = v
+	var prefs := {}
+	if FileAccess.file_exists(PREFS_PATH):
+		var parsed = JSON.parse_string(FileAccess.get_file_as_string(PREFS_PATH))
+		if typeof(parsed) == TYPE_DICTIONARY:
+			prefs = parsed
+	prefs["cam_tilt"] = v
+	var f := FileAccess.open(PREFS_PATH, FileAccess.WRITE)
+	if f:
+		f.store_string(JSON.stringify(prefs, "\t"))
 
 
 ## Creates the pilot's FPV camera (wide, tilted up 25° at first) rendering into `viewport`.

@@ -361,6 +361,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			_set_profile(GimbalRig.SpeedProfile.FAST)
 		KEY_G:
 			FrameGuide.show_thirds = not FrameGuide.show_thirds
+			FrameGuide.save_thirds()
 			_guide.queue_redraw()
 		KEY_M:
 			_next_mode()

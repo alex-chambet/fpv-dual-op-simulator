@@ -15,6 +15,7 @@ var min_deg := TILT_MIN
 var max_deg := TILT_MAX
 var _deg := 25.0
 var _left := 0.0
+var _was_adjusting := false
 
 
 func _init() -> void:
@@ -32,6 +33,7 @@ func show_tilt(deg: float) -> void:
 
 
 ## Up / down arrows tilt the drone's FPV camera (up raises it); shows the value while it moves. Call every frame.
+## Saved once the keys are released, kept for the next sessions (FpvDrone.load_default_cam_tilt).
 func step_keys(drone: FpvDrone, delta: float) -> void:
 	var dir := 0.0
 	if Input.is_physical_key_pressed(KEY_UP):
@@ -39,7 +41,11 @@ func step_keys(drone: FpvDrone, delta: float) -> void:
 	if Input.is_physical_key_pressed(KEY_DOWN):
 		dir -= 1.0
 	if dir == 0.0:
+		if _was_adjusting:
+			_was_adjusting = false
+			FpvDrone.save_default_cam_tilt(drone.cam_tilt_deg)
 		return
+	_was_adjusting = true
 	drone.cam_tilt_deg = clampf(drone.cam_tilt_deg + dir * TILT_SPEED * delta, TILT_MIN, TILT_MAX)
 	show_tilt(drone.cam_tilt_deg)   # also against an end stop, so the player sees he is at the limit
 
