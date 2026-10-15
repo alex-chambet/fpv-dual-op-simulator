@@ -203,7 +203,7 @@ func _build_hud() -> void:
 	_pause.resume_requested.connect(_close_pause)
 	_pause.restart_requested.connect(func():
 		get_tree().paused = false
-		get_tree().reload_current_scene())
+		LoadingScreen.run(func(): get_tree().reload_current_scene()))
 	_pause.quit_requested.connect(func():
 		get_tree().paused = false
 		get_tree().change_scene_to_file(MENU_SCENE))

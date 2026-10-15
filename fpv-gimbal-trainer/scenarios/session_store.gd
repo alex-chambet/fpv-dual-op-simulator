@@ -101,7 +101,7 @@ static func start_replay(tree: SceneTree, id: String) -> bool:
 		return false
 	ScenarioMatrix.current = cfg
 	replay_record = rec
-	tree.change_scene_to_file(ScenarioMatrix.RUNNER_SCENE)
+	LoadingScreen.run(func(): tree.change_scene_to_file(ScenarioMatrix.RUNNER_SCENE))
 	return true
 
 

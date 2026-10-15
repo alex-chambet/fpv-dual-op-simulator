@@ -22,6 +22,7 @@ config/features=PackedStringArray("4.7")
 
 ControllerInput="*res://input/controller_input.gd"
 SessionScorer="*res://scenarios/session_scorer.gd"
+LoadingScreen="*res://ui/loading_screen.gd"
 
 [display]
 

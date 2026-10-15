@@ -632,7 +632,7 @@ func _start_sandbox() -> void:
 	return_sandbox = true
 	DuoSession.dual_screen = _screens_opt.selected == 1
 	Sandbox.lens_mm = SessionConfig.LENSES[_lens_opt.selected]
-	get_tree().change_scene_to_file("res://scenarios/sandbox/sandbox.tscn")
+	LoadingScreen.run(func(): get_tree().change_scene_to_file("res://scenarios/sandbox/sandbox.tscn"))
 
 
 func _start_random() -> void:

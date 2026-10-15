@@ -155,7 +155,8 @@ static func config_from_dict(d: Dictionary) -> SessionConfig:
 
 static func launch(tree: SceneTree, cfg: SessionConfig) -> void:
 	current = cfg
-	tree.change_scene_to_file(RUNNER_SCENE)
+	# planning the path and building the terrain can take a moment: a loading screen instead of a frozen frame
+	LoadingScreen.run(func(): tree.change_scene_to_file(RUNNER_SCENE))
 
 
 static func launch_fixed(tree: SceneTree, entry: Dictionary) -> void:

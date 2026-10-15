@@ -515,7 +515,7 @@ func _close_pause() -> void:
 func _restart() -> void:
 	get_tree().paused = false
 	SessionScorer.reset()
-	get_tree().reload_current_scene()
+	LoadingScreen.run(func(): get_tree().reload_current_scene())
 
 
 func _next_session() -> void:
@@ -819,7 +819,7 @@ func _replay_input(event: InputEvent) -> void:
 		KEY_SPACE: _replay_paused = not _replay_paused
 		KEY_ENTER, KEY_KP_ENTER:
 			SessionStore.replay_record = replay
-			get_tree().reload_current_scene()
+			LoadingScreen.run(func(): get_tree().reload_current_scene())
 		KEY_ESCAPE:
 			get_tree().change_scene_to_file("res://scenes/history.tscn")
 		KEY_1: _replay_speed = 0.25
