@@ -80,6 +80,29 @@ static func truck(rng: RandomNumberGenerator) -> Dictionary:
 	return {"node": root, "half_len": 7.2, "half_width": 1.25, "height": 4.1}
 
 
+## Ambulance: white van body, red stripe and a light bar on the roof.
+static func ambulance(rng: RandomNumberGenerator) -> Dictionary:
+	var root := Node3D.new()
+	var white := Color(0.95, 0.95, 0.96)
+	_box(root, Vector3(1.95, 1.95, 5.0), Vector3(0, 1.22, 0), white, 0.35)
+	_box(root, Vector3(1.97, 0.4, 5.02), Vector3(0, 0.75, 0), Color(0.75, 0.08, 0.08), 0.35)
+	_box(root, Vector3(1.8, 0.62, 0.08), Vector3(0, 1.78, -2.5), Color(0.08, 0.1, 0.14), 0.15)
+	var bar := _box(root, Vector3(1.0, 0.16, 0.5), Vector3(0, 2.25, -1.3), Color(0.08, 0.08, 0.09), 0.4)
+	for side in [-0.26, 0.26]:
+		var light_col := Color(1.0, 0.05, 0.05) if side < 0.0 else Color(0.05, 0.3, 1.0)
+		var light_mat := StandardMaterial3D.new()
+		light_mat.albedo_color = light_col
+		light_mat.emission_enabled = true
+		light_mat.emission = light_col
+		light_mat.emission_energy_multiplier = 2.0
+		var light := _box(bar, Vector3(0.44, 0.1, 0.46), Vector3(side, 0.09, 0.0), light_col, 0.2)
+		light.material_override = light_mat
+	for wx in [-0.95, 0.95]:
+		for wz in [-1.6, 1.5]:
+			_wheel(root, Vector3(wx, 0.36, wz), 0.36, 0.24)
+	return {"node": root, "half_len": 2.5, "half_width": 0.97, "height": 2.25}
+
+
 static func cyclist(rng: RandomNumberGenerator) -> Dictionary:
 	var root := Node3D.new()
 	var jersey := Color.from_hsv(rng.randf(), 0.75, 0.9)

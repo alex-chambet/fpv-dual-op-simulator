@@ -2,13 +2,14 @@ class_name SandboxWorld
 extends RefCounted
 ## The sandbox map: a piece of French countryside of 1.6 x 1.6 km in the style of the "Départementale" scenario.
 ##  - roads: a ring road (about 4 km), two departmental roads crossing it (west-east "A", north-south "B") that meet
-##    in the village, a village street, gravel tracks to the farms;
+##    in the village, a village street, a loop road to a smaller hamlet elsewhere on the ring, gravel tracks to the
+##    farms (including one off the hamlet);
 ##  - a village at the crossroads: houses facing the streets, a church on the square, pavements, street lamps,
-##    parked cars;
+##    parked cars; a smaller hamlet (houses only, no church) on its own loop road;
 ##  - farms (farmhouse + barn) in the fields, plane trees along the roads, hedges, groves, a power line, kilometre
 ##    markers, farmland parcels, 3D grass and the far landscape.
 ## Moving things (traffic, cyclists, pedestrians) are added by SandboxTraffic and Pedestrians from `roads`.
-## Positions: x east, z south (north = -z). The village is at the origin.
+## Positions: x east, z south (north = -z). The village is at the origin; the hamlet is at `hamlet_center`.
 
 const HALF := 800.0
 const LANE := 3.6
@@ -16,6 +17,7 @@ const MAIN_HALF := 3.6        ## half width of the asphalt of the main roads
 const STREET_HALF := 3.0
 const SHOULDER := 1.2
 const VILLAGE_R := 230.0
+const HAMLET_R := 110.0
 const SEED := 2024
 
 ## Roads: {name, pts (every 2 m, y = road surface), half, closed, kind ("main" / "street" / "track")}
@@ -29,6 +31,8 @@ var square_spots := PackedVector3Array()
 ## Where the drone takes off and the direction it faces at start.
 var start_pos := Vector3.ZERO
 var start_look := Vector3.FORWARD
+## Centre (xz) of the small hamlet, set by `_make_roads()`.
+var hamlet_center := Vector2.ZERO
 
 # Static obstacles for the drone: houses / church / barns as oriented boxes, trees as round crowns.
 var _boxes: Array[Dictionary] = []   # {c: Vector3 (ground centre), yaw, hx, hz, h}
@@ -133,6 +137,24 @@ func _make_roads() -> void:
 	junctions.append(Vector2(south.x, south.z))
 	junctions.append(Vector2.ZERO)
 	junctions.append(Vector2(s0.x, s0.z))
+	# a small hamlet on its own loop off the ring, in the gap between the north junction and the farms, away from
+	# everything else on the map
+	var h0 := ring_point(deg_to_rad(280.0))
+	var h1 := ring_point(deg_to_rad(312.0))
+	var hmid := (h0 + h1) * 0.5
+	var hc := hmid - hmid.normalized() * 140.0  # pulled inward, away from the ring
+	hc.y = 0.0
+	hamlet_center = Vector2(hc.x, hc.z)
+	roads.append({"name": "hamlet", "pts": _smooth([h0, h0.lerp(hc, 0.4), hc, hc.lerp(h1, 0.4), h1]),
+			"half": STREET_HALF, "closed": false, "kind": "street"})
+	junctions.append(Vector2(h0.x, h0.z))
+	junctions.append(Vector2(h1.x, h1.z))
+	# a gravel track off the hamlet to an outlying farm, sideways so it does not run back into the ring
+	var perp := hc.normalized().cross(Vector3.UP) if hc.length() > 0.01 else Vector3(1, 0, 0)
+	var spur_mid := hc + perp * 90.0
+	var spur_end := hc + perp * 170.0
+	roads.append({"name": "track", "pts": _smooth([hc, spur_mid, spur_end]), "half": 1.6, "closed": false, "kind": "track"})
+	junctions.append(Vector2(hc.x, hc.z))
 	# gravel tracks from the main roads to the farms (farm at the end)
 	var farms := [[PI * 0.25, -1.0], [PI * 0.8, 1.0], [PI * 1.3, -1.0], [PI * 1.8, 1.0], [PI * 1.05, 1.0], [PI * 0.45, 1.0]]
 	for f in farms:
@@ -200,6 +222,7 @@ func _build_terrain() -> void:
 	mask = GroundMask.new()
 	mask.setup(Rect2(-HALF, -HALF, 2.0 * HALF, 2.0 * HALF), 0.45)
 	mask.add_disc(Vector2.ZERO, VILLAGE_R + 40.0, Color(0, 1, 0))  # no fields in the village
+	mask.add_disc(hamlet_center, HAMLET_R + 40.0, Color(0, 1, 0))  # no fields in the hamlet
 	for r in roads:
 		if r.kind != "track":
 			mask.add_band(_closed_pts(r), 24.0, Color(0, 1, 0))
@@ -221,15 +244,32 @@ func _ribbon(pts: PackedVector3Array, half: float, y: float, mat: Material) -> v
 	_host.add_child(mi)
 
 
+## The two settlement centres (the main village at the origin, the smaller hamlet) with their radius.
+func _settlements() -> Array:
+	return [[Vector2.ZERO, VILLAGE_R], [hamlet_center, HAMLET_R]]
+
+
+## Whether p and how far it is from its nearest settlement centre, and that settlement's radius.
+func _settlement_info(p: Vector3) -> Dictionary:
+	var best := {"inside": false, "dist": INF, "radius": VILLAGE_R}
+	for s in _settlements():
+		var center: Vector2 = s[0]
+		var radius: float = s[1]
+		var d := Vector2(p.x, p.z).distance_to(center)
+		if d < best.dist:
+			best = {"inside": d < radius, "dist": d, "radius": radius}
+	return best
+
+
 ## Parts of a polyline farther than r from every junction (and, if inside_village >= 0, only inside (1) or
-## outside (0) the village).
+## outside (0) a settlement: the village or the hamlet).
 func _split(pts: PackedVector3Array, r: float, inside_village := -1) -> Array[PackedVector3Array]:
 	var out: Array[PackedVector3Array] = []
 	var cur := PackedVector3Array()
 	for p in pts:
 		var ok := not _near_junction(p, r)
 		if inside_village >= 0:
-			ok = ok and ((Vector2(p.x, p.z).length() < VILLAGE_R) == (inside_village == 1))
+			ok = ok and (_settlement_info(p).inside == (inside_village == 1))
 		if ok:
 			cur.append(p)
 		elif cur.size() > 1:
@@ -342,14 +382,15 @@ func _build_village() -> void:
 			var s := 6.0
 			while s < total:
 				var p := PathUtil.polyline_at(pts, cum, s)
-				var inside := Vector2(p.x, p.z).length() < VILLAGE_R
+				var info := _settlement_info(p)
+				var inside: bool = info.inside
 				var step := drng.randf_range(13.0, 20.0) if inside else 60.0
 				s += step
 				if not inside or _near_junction(p, 18.0):
 					continue
-				# dense in the centre, gaps (gardens, fields) towards the edge of the village
-				var dc := Vector2(p.x, p.z).length()
-				if drng.randf() < smoothstep(90.0, VILLAGE_R, dc) * 0.65:
+				# dense in the centre, gaps (gardens, fields) towards the edge of the village / hamlet
+				var dc: float = info.dist
+				if drng.randf() < smoothstep(90.0, info.radius, dc) * 0.65:
 					continue
 				var t := PathUtil.polyline_at(pts, cum, minf(s - step + 2.0, total)) - PathUtil.polyline_at(pts, cum, maxf(s - step - 2.0, 0.0))
 				t.y = 0.0

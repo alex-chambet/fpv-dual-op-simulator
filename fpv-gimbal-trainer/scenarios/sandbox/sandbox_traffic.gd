@@ -5,6 +5,8 @@ extends Node3D
 ## Each vehicle keeps its distance to the one ahead and slows down in bends and in the village. Junctions follow the
 ## rules of the road: the ring road and road A have priority; a vehicle turning at a junction, or crossing road A on
 ## road B, gives way and only goes when the junction is clear. Vehicles are solid for the drone (push).
+## Ambulances drive their own line close to the centre of the road, faster than the rest of the traffic and blind to
+## it (same trick as the cyclists' lane), so they read as overtaking everyone rather than queuing behind them.
 
 const VILLAGE_SPEED := 13.0
 const ACCEL := 2.2
@@ -24,7 +26,7 @@ class Vehicle:
 	var s := 0.0
 	var v := 0.0
 	var cruise := 20.0
-	var cyclist := false
+	var lane_kind := "car"   ## "car", "cyclist" or "ambulance": each kind has its own lane and ignores the others
 	var half_len := 2.0
 	var half_width := 0.9
 	var height := 1.5
@@ -79,16 +81,21 @@ func setup(w: SandboxWorld) -> void:
 				m = TrafficModels.van(_rng)
 			else:
 				m = TrafficModels.truck(_rng)
-			_add(m, r, r.total * (k + _rng.randf_range(0.0, 0.5)) / count, _rng.randf_range(18.0, 23.0), false)
+			_add(m, r, r.total * (k + _rng.randf_range(0.0, 0.5)) / count, _rng.randf_range(18.0, 23.0), "car")
 	# cyclists on the edge of the road, both ways on the ring, and through the village
 	for idx in [0, 1, 2, 5]:
 		var cr := _make_route(_raw_of(idx, ring_fwd, ring_back, a, b, ring, i_e, i_w, i_n, i_s), SandboxWorld.MAIN_HALF - 0.55)
 		for k in 3:
-			_add(TrafficModels.cyclist(_rng), cr, cr.total * (k + _rng.randf()) / 3.0, _rng.randf_range(5.0, 7.5), true)
+			_add(TrafficModels.cyclist(_rng), cr, cr.total * (k + _rng.randf()) / 3.0, _rng.randf_range(5.0, 7.5), "cyclist")
+	# ambulances, close to the centre of the road so they read as overtaking everyone, driving fast
+	for idx in [0, 1, 2, 5]:
+		var ar := _make_route(_raw_of(idx, ring_fwd, ring_back, a, b, ring, i_e, i_w, i_n, i_s), AMBULANCE_OFFSET)
+		_add(TrafficModels.ambulance(_rng), ar, ar.total * _rng.randf(), _rng.randf_range(28.0, 33.0), "ambulance")
 	set_process(true)
 
 
 const LANE_OFFSET := SandboxWorld.LANE * 0.5
+const AMBULANCE_OFFSET := LANE_OFFSET * 0.35
 
 
 func _raw_of(idx: int, rf: PackedVector3Array, rb: PackedVector3Array, a: PackedVector3Array, b: PackedVector3Array,
@@ -169,14 +176,14 @@ func _make_route(centre: PackedVector3Array, lateral: float) -> Route:
 	return r
 
 
-func _add(m: Dictionary, r: Route, s: float, cruise: float, cyclist: bool) -> void:
+func _add(m: Dictionary, r: Route, s: float, cruise: float, lane_kind: String) -> void:
 	var v := Vehicle.new()
 	v.node = m.node
 	v.route = r
 	v.s = fposmod(s, r.total)
 	v.cruise = cruise
 	v.v = cruise * 0.6
-	v.cyclist = cyclist
+	v.lane_kind = lane_kind
 	v.half_len = m.half_len
 	v.half_width = m.half_width
 	v.height = m.height
@@ -185,7 +192,7 @@ func _add(m: Dictionary, r: Route, s: float, cruise: float, cyclist: bool) -> vo
 	for _try in 40:
 		var clash := world._near_junction(v.pos, 35.0)
 		for o in _vehicles:
-			if o.cyclist == cyclist and o.pos.distance_to(v.pos) < 14.0:
+			if o.lane_kind == lane_kind and o.pos.distance_to(v.pos) < 14.0:
 				clash = true
 				break
 		if not clash:
@@ -241,9 +248,9 @@ func _process(delta: float) -> void:
 		var target := minf(v.cruise, _limit_at(v.route, v.s))
 		var look := clampf(v.v * 0.6, 4.0, 20.0)
 		target = minf(target, _limit_at(v.route, v.s + look))
-		# keep the distance to the vehicle ahead (cars ignore the cyclists on the edge, and the other way)
+		# keep the distance to the vehicle ahead (each lane kind ignores the others: cars/cyclists/ambulances)
 		for o in _vehicles:
-			if o == v or o.cyclist != v.cyclist or absf(o.pos.x - v.pos.x) > 92.0 or absf(o.pos.z - v.pos.z) > 92.0:
+			if o == v or o.lane_kind != v.lane_kind or absf(o.pos.x - v.pos.x) > 92.0 or absf(o.pos.z - v.pos.z) > 92.0:
 				continue
 			var rel := o.pos - v.pos
 			rel.y = 0.0
@@ -262,7 +269,7 @@ func _process(delta: float) -> void:
 		# stuck anyway it goes on slowly.
 		var holds := _holds_junction(v)
 		for o in _vehicles:
-			if o == v or o.cyclist != v.cyclist or absf(o.pos.x - v.pos.x) > 14.0 or absf(o.pos.z - v.pos.z) > 14.0:
+			if o == v or o.lane_kind != v.lane_kind or absf(o.pos.x - v.pos.x) > 14.0 or absf(o.pos.z - v.pos.z) > 14.0:
 				continue
 			if holds and (o.fwd.dot(v.fwd) < 0.3 or v.stuck > 4.0):
 				continue

@@ -25,6 +25,7 @@ var world: SandboxWorld
 var traffic: SandboxTraffic
 var people: Pedestrians
 var sky: SkyTraffic
+var fauna: SandboxFauna
 var drone: FpvDrone
 var rig: GimbalRig
 var grass: GrassField
@@ -65,6 +66,10 @@ func _ready() -> void:
 	sky.name = "SkyTraffic"
 	add_child(sky)
 	sky.setup(world)
+	fauna = SandboxFauna.new()
+	fauna.name = "Fauna"
+	add_child(fauna)
+	fauna.setup(world)
 	_build_drone()
 	_build_hud()
 	grass = GrassField.new()
@@ -198,7 +203,7 @@ func _build_hud() -> void:
 	_pause.lens_changed.connect(func(mm: int):
 		lens_mm = mm
 		rig.camera.fov = SessionConfig.fov_for(mm))
-	_pause.blackout_changed.connect(_guide.queue_redraw)
+	_pause.guide_changed.connect(_guide.queue_redraw)
 	add_child(_pause)
 	_pause.resume_requested.connect(_close_pause)
 	_pause.restart_requested.connect(func():
@@ -212,7 +217,9 @@ func _build_hud() -> void:
 func _obstacle_push(pos: Vector3, r: float) -> Vector3:
 	var a := world.push(pos, r)
 	var b := traffic.push(pos, r)
-	return a if a.length() > b.length() else b
+	var c := fauna.push(pos, r)
+	var best := a if a.length() > b.length() else b
+	return best if best.length() > c.length() else c
 
 
 func _process(delta: float) -> void:

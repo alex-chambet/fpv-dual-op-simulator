@@ -111,7 +111,6 @@ func _load_prefs() -> Dictionary:
 
 func _apply_prefs(prefs: Dictionary) -> void:
 	MotionBlur.level = clampi(int(prefs.get("blur", MotionBlur.level)), 0, MotionBlur.LABELS.size() - 1)
-	FrameGuide.blackout = bool(prefs.get("blackout", FrameGuide.blackout))
 	FrameGuide.show_thirds = bool(prefs.get("show_thirds", FrameGuide.show_thirds))
 	DronePip.enabled = bool(prefs.get("drone_pip", DronePip.enabled))
 	GraphicsSettings.load_prefs(prefs)
@@ -129,11 +128,11 @@ func _save_prefs() -> void:
 	Ambience.choice = str(Ambience.MENU[_ambience_opt.selected])
 	if _sport == null:
 		return
-	# merged into the file: the other keys (gimbal profile, blackout...) are written by other screens
+	# merged into the file: the other keys (gimbal profile, thirds grid...) are written by other screens
 	var prefs := _load_prefs()
 	prefs.merge({"sport": _sport.id, "mode": _mode_opt.selected, "movement": _movement_opt.selected,
 			"level": _level_opt.selected, "lens": _lens_opt.selected, "screens": _screens_opt.selected, "ambience": _ambience_opt.selected, "blur": MotionBlur.level,
-			"quality": GraphicsSettings.quality, "blackout": FrameGuide.blackout}, true)
+			"quality": GraphicsSettings.quality}, true)
 	var f := FileAccess.open(PREFS_PATH, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(prefs, "\t"))

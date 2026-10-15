@@ -8,8 +8,8 @@ signal restart_requested
 signal quit_requested
 ## The player picked another lens (focal length in mm); only emitted when `lens_editable`.
 signal lens_changed(mm: int)
-## The player turned the "dark outside the frame" option on or off (FrameGuide.blackout was already updated).
-signal blackout_changed
+## The player changed a frame-guide display option (thirds grid): the frame guide should redraw.
+signal guide_changed
 
 ## Lens shown in the Gameplay page, and whether it can be changed here (not during a scored session: the score and
 ## the replay depend on it).
@@ -147,22 +147,9 @@ func _build() -> void:
 	tcheck.toggled.connect(func(on: bool):
 		FrameGuide.show_thirds = on
 		FrameGuide.save_thirds()
-		blackout_changed.emit())  # (the frame guide redraws)
+		guide_changed.emit())  # (the frame guide redraws)
 	trow.add_child(tcheck)
 	_thirds_check = tcheck
-	var brow := HBoxContainer.new()
-	_gameplay_page.add_child(brow)
-	var bl := Label.new()
-	bl.text = "Noir hors du cadre"
-	bl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	brow.add_child(bl)
-	var bcheck := CheckButton.new()
-	bcheck.button_pressed = FrameGuide.blackout
-	bcheck.toggled.connect(func(on: bool):
-		FrameGuide.blackout = on
-		FrameGuide.save_blackout()
-		blackout_changed.emit())
-	brow.add_child(bcheck)
 	var prow := HBoxContainer.new()
 	_gameplay_page.add_child(prow)
 	var pl := Label.new()
@@ -175,11 +162,6 @@ func _build() -> void:
 		DronePip.enabled = on
 		DronePip.save_enabled())
 	prow.add_child(pcheck)
-	var bnote := Label.new()
-	bnote.text = "Assombrit tout ce qui est hors du rectangle vert : on ne voit pas l'environnement autour du cadre, comme avec une vraie caméra."
-	bnote.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	bnote.add_theme_color_override("font_color", Neon.TEXT_DIM)
-	_gameplay_page.add_child(bnote)
 	_lens_note = Label.new()
 	_lens_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_lens_note.add_theme_color_override("font_color", Neon.TEXT_DIM)
