@@ -7,7 +7,7 @@ extends Control
 const SHOW_TIME := 1.4
 const FADE_TIME := 0.5
 const BAR_W := 300.0
-const TILT_MIN := 0.0       # degrees above the drone's nose
+const TILT_MIN := -20.0     # degrees above the drone's nose (can tilt a little below the horizon)
 const TILT_MAX := 75.0
 const TILT_SPEED := 35.0    # degrees per second while a key is held
 

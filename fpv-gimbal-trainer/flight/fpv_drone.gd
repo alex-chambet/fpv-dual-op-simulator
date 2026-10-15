@@ -234,7 +234,7 @@ static func load_default_cam_tilt() -> float:
 		if FileAccess.file_exists(PREFS_PATH):
 			var parsed = JSON.parse_string(FileAccess.get_file_as_string(PREFS_PATH))
 			if typeof(parsed) == TYPE_DICTIONARY and parsed.has("cam_tilt"):
-				_default_cam_tilt = clampf(float(parsed["cam_tilt"]), 0.0, 75.0)
+				_default_cam_tilt = clampf(float(parsed["cam_tilt"]), -20.0, 75.0)
 	return _default_cam_tilt
 
 
