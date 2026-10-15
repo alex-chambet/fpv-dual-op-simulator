@@ -39,7 +39,7 @@ res://scenarios/subjects/catalogue/rugby.tres::4d190338b909a13f834fb936218462f0:
 res://scenarios/subjects/catalogue/saut_a_ski.tres::d71fde10e7a6f9f3870c5c793aaec7d9::1791220608::res://.godot/exported/133200997/export-7ccf9e60e2673ba578ab62300a3bde5e-saut_a_ski.res
 res://scenarios/subjects/catalogue/saut_obstacles.tres::d4acb64d13eb74e2891178ff3eb80bb2::1791220608::res://.godot/exported/133200997/export-2bcd3e59465447f9e9e6f341d30c281a-saut_obstacles.res
 res://scenarios/subjects/catalogue/skate.tres::0e911564e8f3a6478610abd4228737c7::1791220608::res://.godot/exported/133200997/export-97feb768586cb1f82576521060ecb1df-skate.res
-res://scenarios/subjects/catalogue/ski_alpin.tres::849ec27505254db245b7adb3e3e9255a::1791443950::res://.godot/exported/133200997/export-9dcaf8a3ba84e1dfbff66848e4214da6-ski_alpin.res
+res://scenarios/subjects/catalogue/ski_alpin.tres::cdeccb5fdacba7bc1d0e5d604c3c2975::1792012260::res://.godot/exported/133200997/export-9dcaf8a3ba84e1dfbff66848e4214da6-ski_alpin.res
 res://scenarios/subjects/catalogue/ski_de_fond.tres::a5fe2cecd69d7c585aa5ebddf2d5f6d8::1791220608::res://.godot/exported/133200997/export-6e6c1db08eeb9d463ef365932d993730-ski_de_fond.res
 res://scenarios/subjects/catalogue/ski_freestyle.tres::cb108f255fca9d38cc02989002389138::1791220608::res://.godot/exported/133200997/export-67f91f19a5c3d84dd66475ff6fb23c97-ski_freestyle.res
 res://scenarios/subjects/catalogue/snowboard.tres::31a3c6cba63c4ad57c9d57515cba31f9::1791220608::res://.godot/exported/133200997/export-32634ece681c074eb96cf12904e3d79c-snowboard.res
@@ -69,5 +69,5 @@ res://scenarios/sandbox/sandbox.tscn::eee6f0b760f23d50b19c0f73353cb034::17913931
 res://scenes/settings.tscn::cceb7b4cc3313e58c6895b9842de6450::1791400036::res://.godot/exported/133200997/export-7416c78d345eded4b396246a6c8adbe0-settings.scn
 res://scenarios/environments/styles/descente.tres::1dd19f0923868e2e7d70ed41c157e193::1791645069::res://.godot/exported/133200997/export-643c58ada3f39974cf648966338625d8-descente.res
 res://scenarios/environments/styles/freeride.tres::b60f7449be08df387178656a802f4c10::1791669697::res://.godot/exported/133200997/export-f474124186cc1f89600599c561d81f55-freeride.res
-res://scenarios/subjects/catalogue/ski_descente.tres::370f84945373cdd963cc3dfc1bca13a3::1791628538::res://.godot/exported/133200997/export-8b2f57ea44c40a65706647b6500aa5f6-ski_descente.res
+res://scenarios/subjects/catalogue/ski_descente.tres::d41532d7d73577a1fe4193e4e4cd214e::1792012751::res://.godot/exported/133200997/export-8b2f57ea44c40a65706647b6500aa5f6-ski_descente.res
 res://scenarios/subjects/catalogue/ski_freeride.tres::b3c4d1622cd3963644cf8fe5e26b1ef0::1791713094::res://.godot/exported/133200997/export-e01cd099881a54f187723c33b1a59253-ski_freeride.res

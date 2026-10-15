@@ -58,6 +58,8 @@ var duo: DuoSession
 var drone_pip: DronePip
 ## The overview of the course before the countdown (CourseIntro): the session waits while it is on.
 var intro_active := false
+## The big 3 - 2 - 1 in the middle of the screen (CountdownBanner).
+var _banner: CountdownBanner
 var _pause: PauseMenu
 var _recorder: SessionRecorder
 
@@ -577,7 +579,12 @@ func _process(delta: float) -> void:
 		pilot_inputs = duo.current_inputs()
 	if state == State.COUNTDOWN:
 		_time += delta
+		if _banner == null:
+			_banner = CountdownBanner.new()
+			$HUD.add_child(_banner)
+		_banner.update_remaining(countdown_time - _time)
 		if _time >= countdown_time:
+			_banner.go()
 			# The run starts in this very frame (so the recording covers every simulated frame).
 			state = State.RUNNING
 			SessionScorer.start_run(flight.rig, subject.torso_position, scenario_id)
