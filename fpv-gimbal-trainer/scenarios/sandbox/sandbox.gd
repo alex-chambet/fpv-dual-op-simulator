@@ -178,7 +178,7 @@ func _build_hud() -> void:
 	_hud_layer.name = "HUD"
 	add_child(_hud_layer)
 	_guide = FrameGuide.new()
-	_guide.fraction = 0.6
+	_guide.fraction = 1.0  # the good-framing zone fills the whole screen, as in a real session
 	_hud_layer.add_child(_guide)
 	_hud = Label.new()
 	_hud.position = Vector2(12, 12)
@@ -229,7 +229,6 @@ func _process(delta: float) -> void:
 	_body.global_position = drone.position
 	_tilt_hud.step_keys(drone, delta)
 	_view.set_shown(mode == "acro")
-	_guide.visible = FrameGuide.show_thirds
 	_update_hud()
 
 

@@ -22,7 +22,9 @@ enum State { COUNTDOWN, RUNNING, FINISHED }
 
 @export_group("Scoring")
 ## Subject must stay inside this central fraction of the screen to count as framed.
-@export_range(0.2, 1.0, 0.05) var frame_fraction := 0.6
+## The good-framing zone fills the whole visible image (the camera's own FOV already matches the chosen lens):
+## in frame = visible at all, danger zone = the outer safe_margin share near the true screen edge.
+@export_range(0.2, 1.0, 0.05) var frame_fraction := 1.0
 
 const PROFILE_NAMES := ["Slow", "Medium", "Fast"]
 const MENU_SCENE := "res://scenes/main_menu.tscn"

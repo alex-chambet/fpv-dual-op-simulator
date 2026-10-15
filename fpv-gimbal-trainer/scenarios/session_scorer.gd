@@ -15,7 +15,7 @@ signal next_requested
 
 # --- Tunables ---------------------------------------------------------------------
 ## Half-size of the guide frame (0..1 of the half screen), set by the scenario (same as FrameGuide.fraction).
-var frame_fraction := 0.6
+var frame_fraction := 1.0
 ## Safety margin inside the frame (share of its half-size): beyond it the subject is "too close to the edge".
 var safe_margin := 0.15
 ## Within the safe zone the score falls only from 1 to this value (centre -> safe limit)...

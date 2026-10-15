@@ -39,7 +39,10 @@ var in_frame := true:
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# keep_offsets = true: a fresh Control (built by code, e.g. the sandbox) still has a zero-size rect at this
+	# point; with keep_offsets = false Godot would "preserve" that zero rect by making the offsets negative
+	# (offset_right = -parent_width), leaving the guide permanently invisible at size (0, 0).
+	set_anchors_preset(Control.PRESET_FULL_RECT, true)
 	resized.connect(queue_redraw)
 
 
@@ -62,13 +65,16 @@ func _draw() -> void:
 	draw_rect(rect.grow(2.0), Color(col, 0.18 * fk), false, 6.0)
 	draw_rect(rect, col, false, 2.0)
 	if show_thirds:
+		# the project renders the HUD at a design resolution then the window scales it down to the monitor, so a
+		# 1 px line here can land under one screen pixel and all but disappear; width 2 and a higher alpha keep
+		# the grid visible once it is scaled down.
 		var tc: Color = pal[3]
-		tc.a *= fk
+		tc.a = maxf(tc.a, 0.75) * fk
 		for k in 2:
 			var x: float = rect.position.x + rect.size.x * (k + 1.0) / 3.0
 			var y: float = rect.position.y + rect.size.y * (k + 1.0) / 3.0
-			draw_line(Vector2(x, rect.position.y), Vector2(x, rect.end.y), tc, 1.0)
-			draw_line(Vector2(rect.position.x, y), Vector2(rect.end.x, y), tc, 1.0)
+			draw_line(Vector2(x, rect.position.y), Vector2(x, rect.end.y), tc, 2.0)
+			draw_line(Vector2(rect.position.x, y), Vector2(rect.end.x, y), tc, 2.0)
 	var safe_px := size_px * (1.0 - safe_margin)
 	draw_rect(Rect2((size - safe_px) * 0.5, safe_px), Color(Neon.PURPLE.lightened(0.4), 0.35 * fk), false, 1.0)
 	var c := size * 0.5
