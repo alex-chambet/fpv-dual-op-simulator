@@ -48,7 +48,10 @@ static func save_default_profile(p: int) -> void:
 @export var use_controller := true
 @export var use_keyboard := true
 ## 0 = raw input, 1 = very heavy smoothing (SmoothTrack-like low-pass on the stick signal).
-@export_range(0.0, 1.0, 0.01) var input_smoothing := 0.25
+## 0.10 x smoothing_max_time = 0.08 s, the response measured on a real cinema gimbal
+## (data/20261015_FLIGHT, vol #2: stick -> camera gyro, first-order tau 0.08 s on both axes,
+## plus ~10 ms of transport delay, correlation 0.98 in pan).
+@export_range(0.0, 1.0, 0.01) var input_smoothing := 0.10
 ## Low-pass time constant (s) reached when input_smoothing = 1.
 @export_range(0.05, 3.0, 0.05, "suffix:s") var smoothing_max_time := 0.8
 

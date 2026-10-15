@@ -14,10 +14,12 @@ signal crashed(count: int)
 const GRAVITY := 9.81
 
 @export_group("Thrust")
-## Acceleration (m/s²) at full throttle: 36 = thrust-to-weight 3.7 (a cinewhoop / light freestyle quad).
-@export var max_thrust_accel := 36.0
-## Throttle stick position (0..1) at which the drone hovers.
-@export_range(0.2, 0.7, 0.01) var hover_throttle := 0.38
+## Acceleration (m/s²) at full throttle: 37 = thrust-to-weight 3.8. Measured on a real dual-operator
+## cinema quad (data/20261015_FLIGHT, vol #2): |specific force| = throttle^0.96 * 37.1 m/s².
+@export var max_thrust_accel := 37.0
+## Throttle stick position (0..1) at which the drone hovers. Measured: 0.252 (hover at 1 g, level).
+## Kept equal to GRAVITY / max_thrust_accel so the thrust curve stays linear, as measured (exponent 0.96).
+@export_range(0.2, 0.7, 0.01) var hover_throttle := 0.265
 @export var thrust_lag := 0.05
 
 @export_group("Rates")
@@ -27,11 +29,17 @@ const GRAVITY := 9.81
 @export var yaw_center := 110.0
 @export var yaw_max := 380.0
 @export_range(0.0, 1.0, 0.01) var rate_expo := 0.25
-## Time constant of the angular rate following the command (s).
-@export var rate_lag := 0.03
+## Time constant of the angular rate following the command (s). Measured on the real quad: the gyro
+## follows the setpoint with tau = 0.013 s (roll/pitch) and 0.010 s (yaw), gain 1.00.
+@export var rate_lag := 0.013
 
 @export_group("Air")
-@export var drag_linear := 0.15
+## Drag accel = v * (drag_linear + drag_quadratic * v).
+## Fitted on the real flight (data/20261015_FLIGHT, vol #2: tilt in steady level flight), which only
+## reached 12 m/s: with the quadratic term below, the linear one comes out at 0.074 (residual 0.36 m/s²).
+## That flight cannot separate the two terms, so the quadratic one is kept from the airframe instead:
+## it sets the top speed to about 21 m/s (77 km/h) at 45° of tilt, which suits a 9" X8 carrying a camera.
+@export var drag_linear := 0.074
 @export var drag_quadratic := 0.018
 
 @export_group("Body")
