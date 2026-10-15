@@ -219,17 +219,15 @@ static func load_prefs(prefs: Dictionary) -> void:
 
 # --- Applying -----------------------------------------------------------------------------------------
 
-## Window mode, vertical sync and frame-rate cap (the main window).
+## Window mode, vertical sync and frame-rate cap (the main window). Only calls window_set_mode when the window
+## isn't already in the target mode: on macOS, native fullscreen is a toggle, so re-issuing the same fullscreen
+## mode (e.g. every time this is called on returning to the menu after a session) drops the window out of it.
 static func apply_display() -> void:
-	match window_mode:
-		0:
-			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN)
-		1:
-			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
-		_:
-			if DisplayServer.window_get_mode() in [DisplayServer.WINDOW_MODE_FULLSCREEN,
-					DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN]:
-				DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+	var modes: Array[DisplayServer.WindowMode] = [DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN,
+			DisplayServer.WINDOW_MODE_FULLSCREEN, DisplayServer.WINDOW_MODE_WINDOWED]
+	var target := modes[clampi(window_mode, 0, 2)]
+	if DisplayServer.window_get_mode() != target:
+		DisplayServer.window_set_mode(target)
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED if vsync else DisplayServer.VSYNC_DISABLED)
 	Engine.max_fps = FPS_CAPS[clampi(fps_cap, 0, FPS_CAPS.size() - 1)]
 
