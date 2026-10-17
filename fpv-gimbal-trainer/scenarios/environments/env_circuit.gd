@@ -17,7 +17,7 @@ var scenery: CircuitScenery
 
 func configure() -> void:
 	surface_offset = 0.05
-	layout = CircuitLayout.new(float(opt("track_scale", 0.5)), float(opt("point_step", 3.0)))
+	layout = CircuitLayout.shared(float(opt("track_scale", 0.5)), float(opt("point_step", 3.0)))
 	corridor_half_width = layout.half_width
 
 

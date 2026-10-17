@@ -52,6 +52,12 @@ func _process(delta: float) -> void:
 	_dots.text = ".".repeat(1 + int(_t / 0.35) % 3)
 
 
+## At most this many frames are drawn behind the loading screen after the scene change, and a frame
+## this quick means there is nothing left to compile.
+const WARM_FRAMES := 14
+const WARM_FAST_MS := 45.0
+
+
 ## Shows the loading screen, waits for it to actually be drawn, runs `action` (typically a scene change), then
 ## hides it again. Not meant to be awaited: call it plainly (fire-and-forget) so the caller's own return value
 ## (e.g. a success bool checked right after) is unaffected.
@@ -61,4 +67,27 @@ func run(action: Callable) -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	action.call()
+	await _warm_up()
 	visible = false
+
+
+## Holds the screen while the new scene draws its first frames.
+##
+## Building the scene is only half the wait. The first time a level is played, the first frame that
+## shows it compiles the shader of every material that comes into view - measured at 941 ms on the
+## ski slope, against 47 ms for the frames after it. Hiding the loading screen the moment the scene
+## change returned put that second squarely in the player's face, as a frozen half-drawn level.
+## Drawn behind the loading screen instead, it is just a load that took a moment longer, which is
+## what the screen is for. Once the frames come back quick - the usual case, the shaders being
+## cached on disk after the first time - this costs two frames.
+func _warm_up() -> void:
+	var fast := 0
+	for _i in WARM_FRAMES:
+		var t0 := Time.get_ticks_msec()
+		await get_tree().process_frame
+		if Time.get_ticks_msec() - t0 <= WARM_FAST_MS:
+			fast += 1
+			if fast >= 2:
+				return
+		else:
+			fast = 0

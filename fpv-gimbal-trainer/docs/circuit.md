@@ -158,6 +158,17 @@ Les tribunes et le bâtiment des stands sont par ailleurs reculés à **au moins
 drone de poursuite travaille jusqu'à 35 m de la piste, et une tribune plus près l'obligerait à
 passer **au-dessus du toit** — en perdant la voiture de vue.
 
+## Construit une seule fois
+
+`CircuitLayout.shared(échelle, pas)` construit le tracé, sa grille, son champ de hauteur et ses
+dégagements **une fois pour toutes** : tout cela est entièrement déterminé par l'échelle et le pas,
+et rien n'écrit dans un layout après sa construction. La deuxième session sur le circuit et le bac
+à sable réutilisent le premier (139 ms → 0,01 ms). Le maillage du terrain, qui en découle
+entièrement — 41 000 sommets, un appel à `ground()` chacun, 216 ms — est conservé avec lui
+(`CircuitScenery._terrain_cache`). Seul le maillage est partagé : le matériau porte le masque de sol
+de la session et reste privé. Au total, le circuit passe de 2,3 s à 0,9 s de construction au
+deuxième lancement. Voir [optimisation.md](optimisation.md).
+
 ## Le bac à sable « Circuit »
 
 `scenarios/sandbox/circuit_world.gd` et `circuit_traffic.gd`. Neuf voitures (deux GT3, deux GT4,

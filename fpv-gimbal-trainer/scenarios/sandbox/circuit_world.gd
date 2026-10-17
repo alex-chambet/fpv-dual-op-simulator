@@ -18,7 +18,7 @@ var _host: Node3D
 
 func build(host: Node3D) -> void:
 	_host = host
-	layout = CircuitLayout.new(0.5, 3.0)
+	layout = CircuitLayout.shared(0.5, 3.0)
 	scenery = CircuitScenery.new()
 	scenery.build(host, layout, 7)
 	mask = scenery.mask

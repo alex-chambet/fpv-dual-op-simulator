@@ -365,6 +365,11 @@ func get_best(id: String) -> int:
 	return int(_load_best().get(id, 0))
 
 
+## Every best score, by scenario id (see SessionConfig.scenario_id). Read by PracticeAdvisor.
+func all_best() -> Dictionary:
+	return _load_best()
+
+
 func _load_best() -> Dictionary:
 	if not FileAccess.file_exists(BEST_PATH):
 		return {}

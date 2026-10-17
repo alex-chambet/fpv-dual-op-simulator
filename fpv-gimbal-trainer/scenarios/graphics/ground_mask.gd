@@ -10,6 +10,38 @@ var rect := Rect2()
 var _world: Node3D
 var _layer := 0
 
+## The mask is painted with a handful of flat colours, over and over - the freeride face alone asks
+## for 613 discs of the same red. One material per colour and one disc mesh for all of them, rather
+## than one of each per call: that is 1 226 resources that no longer get built, and the mask looks
+## exactly the same. Shared between sessions, since nothing ever writes to them.
+static var _paints := {}
+static var _disc: CylinderMesh = null
+## A mask texel is about half a metre and a disc is a few metres across, so a dozen sides is already
+## rounder than the texels can show (it was 48).
+const DISC_SIDES := 14
+
+
+static func _paint(color: Color) -> StandardMaterial3D:
+	var key := color.to_rgba32()
+	if not _paints.has(key):
+		var m := StandardMaterial3D.new()
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.albedo_color = color
+		m.cull_mode = BaseMaterial3D.CULL_DISABLED
+		_paints[key] = m
+	return _paints[key]
+
+
+static func _disc_mesh() -> CylinderMesh:
+	if _disc == null:
+		_disc = CylinderMesh.new()
+		_disc.top_radius = 1.0
+		_disc.bottom_radius = 1.0
+		_disc.height = 0.1
+		_disc.radial_segments = DISC_SIDES
+		_disc.rings = 0
+	return _disc
+
 
 ## Covers the xz rectangle `r` (x, z, width, depth) with texels of about `texel` metres (at most 4096 per side).
 func setup(r: Rect2, texel := 0.5) -> void:
@@ -51,11 +83,7 @@ func add_band(pts: PackedVector3Array, half_width: float, color: Color) -> void:
 		flat.append(Vector3(p.x, 0.0, p.z))
 	var mi := MeshInstance3D.new()
 	mi.mesh = RoadBuilder.build_ribbon(flat, half_width, _layer * 0.5)
-	var m := StandardMaterial3D.new()
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	m.albedo_color = color
-	m.cull_mode = BaseMaterial3D.CULL_DISABLED
-	mi.material_override = m
+	mi.material_override = _paint(color)
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_world.add_child(mi)
 
@@ -64,16 +92,10 @@ func add_band(pts: PackedVector3Array, half_width: float, color: Color) -> void:
 func add_disc(c: Vector2, r: float, color: Color) -> void:
 	_layer += 1
 	var mi := MeshInstance3D.new()
-	var cyl := CylinderMesh.new()
-	cyl.top_radius = r
-	cyl.bottom_radius = r
-	cyl.height = 0.1
-	cyl.radial_segments = 48
-	mi.mesh = cyl
-	var m := StandardMaterial3D.new()
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	m.albedo_color = color
-	mi.material_override = m
+	mi.mesh = _disc_mesh()          # one unit disc for all of them, sized by the instance
+	mi.scale = Vector3(r, 1.0, r)
+	mi.material_override = _paint(color)
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mi.position = Vector3(c.x, _layer * 0.5, c.y)
 	_world.add_child(mi)
 

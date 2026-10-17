@@ -74,7 +74,7 @@ static func layout_of(ctx: ArchetypeContext) -> CircuitLayout:
 	var p := ctx.params
 	if ctx.env != null and ctx.env.has_method("circuit_layout"):
 		return ctx.env.call("circuit_layout")
-	return CircuitLayout.new(float(p.get("track_scale", 0.5)), float(p.get("sample_step", SAMPLE)))
+	return CircuitLayout.shared(float(p.get("track_scale", 0.5)), float(p.get("sample_step", SAMPLE)))
 
 
 func generate(ctx: ArchetypeContext) -> Dictionary:

@@ -115,12 +115,27 @@ func _mark_kerb(a: int, b: int) -> void:
 
 # --- Ground --------------------------------------------------------------------------------------
 
+## The hillside mesh of a layout, built once. It is 41 000 vertices, each one a call to
+## CircuitLayout.ground(), which is the single most expensive phase of building the circuit
+## (216 ms). The layout is shared and never changes after it is built, so the mesh it implies
+## never changes either: the second session on the circuit, and the sandbox, reuse this one.
+## Only the mesh is kept - the material carries the per-session ground mask and stays private.
+static var _terrain_cache := {}
+
+
 func _terrain() -> void:
 	var b := layout.bounds.grow(190.0)
 	var x_half := maxf(absf(b.position.x), absf(b.end.x)) + 10.0
 	var mi := MeshInstance3D.new()
 	mi.name = "Terrain"
-	mi.mesh = TerrainBuilder.build(Callable(layout, "ground"), x_half, b.position.y, b.end.y, 6.0, 34.0)
+	var key := layout.get_instance_id()
+	if not _terrain_cache.has(key):
+		var m := TerrainBuilder.build(Callable(layout, "ground"), x_half, b.position.y, b.end.y, 6.0, 34.0)
+		_terrain_cache[key] = {"mesh": m, "info": TerrainBuilder.last_info}
+	else:
+		# the grass reads the heights of the last terrain built: put them back
+		TerrainBuilder.last_info = _terrain_cache[key].info
+	mi.mesh = _terrain_cache[key].mesh
 	_ground_params = {"grass_a": Color(0.13, 0.28, 0.08), "grass_b": Color(0.27, 0.4, 0.12),
 			"dry": Color(0.4, 0.43, 0.23), "dry_amount": 0.08, "dirt_amount": 0.06, "fields": 0.0}
 	var mat := GroundMaterials.terrain(_ground_params)

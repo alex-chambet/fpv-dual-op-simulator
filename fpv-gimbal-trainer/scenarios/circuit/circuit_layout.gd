@@ -56,6 +56,21 @@ var _fh := 0
 var _noise: FastNoiseLite
 var _noise2: FastNoiseLite
 
+## Layouts already built, by scale and point spacing. Building one costs about 110 ms, and the
+## result is entirely determined by those two numbers: the same track, the same grid, the same
+## ground, every time. A second session on the circuit, and the sandbox, therefore reuse the first
+## one. Sharing is safe because nothing writes to a layout once _init has returned - the run-off
+## widths included, which is why _barrier_fit runs in there and not in the scenery.
+static var _shared := {}
+
+
+## A layout for this scale and spacing, built once and kept (see _shared).
+static func shared(track_scale := 0.5, point_step := 3.0) -> CircuitLayout:
+	var key := "%.4f/%.4f" % [track_scale, point_step]
+	if not _shared.has(key):
+		_shared[key] = CircuitLayout.new(track_scale, point_step)
+	return _shared[key]
+
 
 func _init(track_scale := 0.5, point_step := 3.0) -> void:
 	scale = track_scale
