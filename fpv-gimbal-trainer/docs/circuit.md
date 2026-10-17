@@ -158,6 +158,23 @@ Les tribunes et le bâtiment des stands sont par ailleurs reculés à **au moins
 drone de poursuite travaille jusqu'à 35 m de la piste, et une tribune plus près l'obligerait à
 passer **au-dessus du toit** — en perdant la voiture de vue.
 
+## Le sol sous la piste est creusé exprès
+
+Le terrain est dessiné en triangles de 6 m de côté et, entre ses sommets, il interpole en ligne
+droite. Là où la piste est bombée — un sommet de côte, un virage relevé — cette ligne droite passe
+**au-dessus** de la surface qu'elle est censée suivre, jusqu'à 14 cm (mesuré, pire cas à 69 % du
+tour). Comme la bande d'asphalte n'est posée qu'à 5 cm au-dessus de la surface, le terrain
+ressortait à travers la route : des plaques de sol, et de l'herbe que son shader peint, en plein
+milieu de la piste.
+
+Affiner le terrain assez pour qu'il épouse la courbure coûterait quatre fois plus de sommets pour
+quelque chose que personne ne voit — c'est sous l'asphalte. Le sol est donc simplement **abaissé de
+45 cm sous l'ensemble routier** (`CircuitLayout.ROAD_DIP`) et ramené à la surface exactement là où
+il redevient visible, au bord extérieur du dégagement, là où l'œil verrait une marche. La face
+extérieure du vibreur s'appuie du coup sur la bande de dégagement et non sur le sol, sinon elle
+mesurerait un demi-mètre. Vérifié sur les 858 points du tour : plus aucun percement, marge minimale
+de 12 cm.
+
 ## Construit une seule fois
 
 `CircuitLayout.shared(échelle, pas)` construit le tracé, sa grille, son champ de hauteur et ses

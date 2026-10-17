@@ -437,7 +437,30 @@ func ground(x: float, z: float) -> float:
 	var flat := flat_half_width(index_at(q.z), q.w) if runoff_l.size() > 0 else half_width + 8.0
 	if q.x >= flat + BLEND:
 		return free
-	return lerpf(free, q.y, 1.0 - smoothstep(flat, flat + BLEND, q.x))
+	return lerpf(free, q.y - _road_dip(index_at(q.z), q.w, q.x), 1.0 - smoothstep(flat, flat + BLEND, q.x))
+
+
+## How far the ground is dropped under the road, m.
+##
+## The terrain is drawn as triangles six metres across, and between its vertices it interpolates in
+## a straight line. Where the track is curved - a crest, a dip, a corner - that straight line rides
+## ABOVE the surface it is meant to follow, by up to 14 cm (measured, worst at 69 % of the lap).
+## The asphalt band sits only 5 cm over the surface, so the terrain came up through the road:
+## patches of ground, and of the grass the terrain shader paints, in the middle of the track.
+##
+## Making the terrain fine enough to follow the curve would cost four times the vertices for
+## something nobody can see - it is under the asphalt. So the ground is simply dropped away under
+## the road package and brought back to the surface exactly where it stops being hidden, at the
+## outer edge of the run-off, where the eye would catch a step.
+const ROAD_DIP := 0.45      ## three times the worst measured overshoot, so the margin is not thin
+const DIP_FADE := 5.0       ## the last metres of the run-off, where the dip returns to zero
+
+
+func _road_dip(i: int, side: float, dist: float) -> float:
+	if runoff_l.size() == 0:
+		return 0.0
+	var edge: float = half_width + (runoff_l[i] if side < 0.0 else runoff_r[i])
+	return ROAD_DIP * (1.0 - smoothstep(maxf(edge - DIP_FADE, half_width), edge, dist))
 
 
 ## The hillside without the track: the smooth field plus a relief that only grows away from the circuit.

@@ -8,6 +8,7 @@ id = "vtt_descente"
 display_name = "VTT descente"
 category = "Montagne / outdoor"
 description = "VTT de descente en forêt : vitesse irrégulière, sauts, virages serrés."
+in_menu = false
 archetype = "TOUT_TERRAIN_ERRATIQUE"
 overrides = {
 "duration": 60.0,

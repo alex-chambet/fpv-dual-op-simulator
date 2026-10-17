@@ -480,16 +480,12 @@ func _fill_play(mode: String) -> void:
 				_cards.append(card)
 		_:
 			_play_text.text = "Un sport, un parcours généré à chaque session : le drone vole tout seul (ou piloté par un 2e joueur) et tu gardes le sujet dans le cadre avec la gimbal. À la fin, une note sur 100.\n\nTouches 1 à %d : choisir un sport." % _sports.size()
-			var best := SessionScorer.all_best()
 			for i in _sports.size():
 				var s := _sports[i]
 				var card := _tile(s.display_name, "", Vector2(330, 210), 24)
 				card.picture = _thumb(s.id)
 				card.skew = 0.0
 				card.badge = _dots(s.base_difficulty)
-				# where the player is on this sport, so it reads as something to finish
-				var pg := SportProgress.of(s.id, best)
-				card.subtitle = "%s  %s" % [str(pg.dots), str(pg.name)]
 				card.pressed.connect(_choose_sport.bind(i))
 				_grid.add_child(card)
 				_cards.append(card)
@@ -715,15 +711,12 @@ func _open_setup(mode: String) -> void:
 			_preview.show_movement(_drill, _level_opt.selected)
 		_:
 			if _sport != null:
-				var pg := SportProgress.of(_sport.id)
 				_setup_heading.text = "ENTRAÎNEMENT"
 				_setup_title.text = "Session d'entraînement"
 				_setup_picture.picture = _thumb(_sport.id)
 				_setup_picture.title = _sport.display_name
-				_setup_picture.badge = "%s  %s" % [str(pg.dots), str(pg.name)]
-				_setup_text.text = "%s\n\n%s %s\n%s" % [_sport.description, str(pg.dots),
-						("Prochain palier : " + str(pg.next)) if str(pg.next) != "" else "Sport terminé.",
-						str(pg.detail)]
+				_setup_picture.badge = _dots(_sport.base_difficulty)
+				_setup_text.text = _sport.description
 	_setup_picture.queue_redraw()
 	_update_info()
 	_show(_setup)

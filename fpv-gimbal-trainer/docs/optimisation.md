@@ -141,9 +141,9 @@ joueur faible en vertical tilt → l'exercice vertical tilt, sujet immobile.
 
 ## 0 quater. Fait (17/10/2026) : D2 (paliers) et C (rangement)
 
-**D2 — trois paliers par sport** (`scenarios/sport_progress.gd`), affichés sur la carte de chaque
-sport dans la grille et sur sa page de réglages. Comme le conseiller, ils ne lisent que
-`best_scores.json` :
+**D2 — trois paliers par sport** (`scenarios/sport_progress.gd`) — **retirés de l'affichage** : ils
+ne se lisaient pas assez clairement. Le module reste pour ses seuils et ses mesures, plus rien ne
+l'appelle. Ils ne lisaient, comme le conseiller, que `best_scores.json` :
 
 1. **Découverte** — finir une session sur ce sport ;
 2. **Solide** — 70/100 sur trois mouvements différents ;

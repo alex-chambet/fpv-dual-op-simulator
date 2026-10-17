@@ -8,6 +8,7 @@ id = "trail"
 display_name = "Trail"
 category = "Montagne / outdoor"
 description = "Coureur sur un sentier sinueux en sous-bois dense."
+in_menu = false
 archetype = "COURSE_SOL_CYCLIQUE"
 overrides = {
 "duration": 60.0,

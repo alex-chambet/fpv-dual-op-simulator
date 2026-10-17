@@ -179,14 +179,15 @@ func _surface() -> void:
 	for i in n:
 		ro_in[i] = -hw - layout.runoff_l[i]
 		ro_out[i] = hw + layout.runoff_r[i]
-	_band(ro_in, _const_offsets(-hw), 0.015, _runoff_mat(), 0.09)
-	_band(_const_offsets(hw), ro_out, 0.015, _runoff_mat(), 0.09)
+	_band(ro_in, _const_offsets(-hw), 0.015, _runoff_mat(), 0.09, -1, -1, "RunoffLeft")
+	_band(_const_offsets(hw), ro_out, 0.015, _runoff_mat(), 0.09, -1, -1, "RunoffRight")
 	# asphalt
-	_band(_const_offsets(-hw), _const_offsets(hw), 0.05, GroundMaterials.asphalt({"half_width": hw}), 0.1)
+	_band(_const_offsets(-hw), _const_offsets(hw), 0.05, GroundMaterials.asphalt({"half_width": hw}), 0.1,
+			-1, -1, "Asphalt")
 	# white lines along both edges
 	var paint := GroundMaterials.paint()
-	_band(_const_offsets(-hw + 0.02), _const_offsets(-hw + 0.17), 0.07, paint, 1.0)
-	_band(_const_offsets(hw - 0.17), _const_offsets(hw - 0.02), 0.07, paint, 1.0)
+	_band(_const_offsets(-hw + 0.02), _const_offsets(-hw + 0.17), 0.07, paint, 1.0, -1, -1, "LineLeft")
+	_band(_const_offsets(hw - 0.17), _const_offsets(hw - 0.02), 0.07, paint, 1.0, -1, -1, "LineRight")
 	_racing_line()
 	_kerbs()
 	_start_line()
@@ -220,7 +221,7 @@ func _const_offsets(v: float) -> PackedFloat32Array:
 
 ## A flat band between two lateral offsets of the centre line, `y` above the track surface.
 func _band(inner: PackedFloat32Array, outer: PackedFloat32Array, y: float, mat: Material,
-		uv_per_m := 0.1, from := -1, to := -1) -> MeshInstance3D:
+		uv_per_m := 0.1, from := -1, to := -1, band_name := "Band") -> MeshInstance3D:
 	var n := layout.centre.size()
 	var i0 := 0 if from < 0 else from
 	var i1 := n if to < 0 else to
@@ -252,6 +253,7 @@ func _band(inner: PackedFloat32Array, outer: PackedFloat32Array, y: float, mat: 
 			st.set_uv(uv[idx])
 			st.add_vertex(quad[idx])
 	var mi := MeshInstance3D.new()
+	mi.name = band_name   # named so a stray band can be found in the scene tree
 	mi.mesh = st.commit()
 	mi.material_override = mat
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -297,8 +299,13 @@ func _kerb_run(side: float, from: int, to: int) -> void:
 			var y := layout.surface[idx]
 			var pin := layout.centre[idx] + nrm * layout.safe_offset(idx, side * hw)
 			var pout := layout.centre[idx] + nrm * layout.safe_offset(idx, side * (hw + kw))
+			# the outer face drops to whatever is drawn under the kerb: the run-off band where there
+			# is one, the ground where the run-off is narrower than the kerb. Taking the higher of
+			# the two keeps the face about 15 cm whatever happens - the ground under the road is
+			# dropped away on purpose (CircuitLayout.ROAD_DIP) and a face reaching down to it would
+			# stand half a metre tall.
 			ends.append([Vector3(pin.x, y + 0.055, pin.y), Vector3(pout.x, y + 0.055 + KERB_RISE, pout.y),
-					Vector3(pout.x, layout.ground(pout.x, pout.y), pout.y)])
+					Vector3(pout.x, maxf(y + 0.015, layout.ground(pout.x, pout.y)), pout.y)])
 		var u0 := run
 		var u1 := run + seg
 		# the sloping top, then the vertical outer face
@@ -393,10 +400,10 @@ func _pit_lane() -> void:
 		b[i] = PIT_LANE + 6.0
 	var i0 := layout.index_at(_pit_from)
 	var i1 := i0 + roundi((_pit_to - _pit_from) / layout.step)
-	_band(a, b, 0.04, GroundMaterials.asphalt({"half_width": 6.0}), 0.1, i0, i1)
+	_band(a, b, 0.04, GroundMaterials.asphalt({"half_width": 6.0}), 0.1, i0, i1, "PitLane")
 	var e0 := _const_offsets(PIT_LANE - 6.0)
 	var e1 := _const_offsets(PIT_LANE - 5.85)
-	_band(e0, e1, 0.06, paint, 1.0, i0, i1)
+	_band(e0, e1, 0.06, paint, 1.0, i0, i1, "PitLaneLine")
 
 
 # --- Guardrails, fences, hoardings ---------------------------------------------------------------

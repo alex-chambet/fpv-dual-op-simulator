@@ -22,7 +22,9 @@ Le drone vole tout seul autour du sujet. **Vous gérez uniquement la gimbal** : 
 
 Votre meilleur score est enregistré pour chaque sport. Vous pouvez revoir et rejouer vos sessions dans « Historique et replays ».
 
-**Les sports** : ski alpin (slalom), ski de descente (une piste de 2 km et plus façon Streif ou Bellevarde, à plus de 110 km/h, avec des sauts), ski freeride (une grande face raide façon Freeride World Tour : barres rocheuses à sauter ou à passer par un couloir, tout-droit, virages serrés, vitesse qui change sans cesse : le plus dur à filmer), circuit de course (un tour complet du Nürburgring, voir plus bas), trail, VTT de descente, voiture sur la Départementale, voiture sur route de montagne. Chaque session est générée avec un trajet différent.
+**Les sports** : ski alpin (slalom), ski de descente (une piste de 2 km et plus façon Streif ou Bellevarde, à plus de 110 km/h, avec des sauts), ski freeride (une grande face raide façon Freeride World Tour : barres rocheuses à sauter ou à passer par un couloir, tout-droit, virages serrés, vitesse qui change sans cesse : le plus dur à filmer), circuit de course (un tour complet du Nürburgring, voir plus bas), voiture sur la Départementale, voiture sur route de montagne. Chaque session est générée avec un trajet différent.
+
+*Le trail et le VTT de descente sont temporairement retirés du menu (`in_menu = false` sur leur fiche). Ils restent dans le catalogue : les sessions déjà enregistrées se rejouent, et il suffit d'une ligne pour les remettre.*
 
 **Le circuit de course.** Le Nürburgring (Grand-Prix-Strecke) réduit de moitié : 2,6 km, 15 virages, 20 m de dénivelé, stands, tribunes, pont Dunlop et forêt de l'Eifel. Une GT lancée fait **un tour complet en 1 min 30**. Sa vitesse n'est pas dessinée à la main : elle sort d'une **simulation de tour** de vraie voiture (appui aérodynamique, cercle d'adhérence, motricité, traînée, pente), le même modèle que les logiciels de temps au tour — à l'échelle 1 il donne 2'03 pour une GT3 et 2'12 pour une GT4, les vrais temps de ces catégories. Gros freinages avant le Castrol-S et la Dunlop-Kehre, relance dans la Mercedes-Arena, pleine charge dans le Schumacher-S : chaque changement de vitesse a une cause visible sur la piste. Détails : [docs/circuit.md](fpv-gimbal-trainer/docs/circuit.md).
 
@@ -42,9 +44,6 @@ Votre meilleur score est enregistré pour chaque sport. Vous pouvez revoir et re
 **Le niveau 6 – Expert** est conçu comme un vrai entraînement de cadreur : le drone s'éloigne puis revient à toute vitesse pour s'enrouler autour du sujet, plonge dessus, le croise face à face, enchaîne les figures. Le sujet passe de minuscule à plein cadre en quelques secondes.
 
 **Quatre optiques** : 24, 35, 50 et 85 mm. Plus l'optique est serrée, plus le cadrage est difficile.
-
-### Trois paliers par sport
-Chaque sport a trois objectifs, calculés à partir de vos meilleurs scores : **Découverte** (finir une session), **Solide** (70/100 sur trois mouvements différents) et **Maîtrise** (85/100 au niveau 4 ou plus). Ils s'affichent sur la carte du sport et sur sa page de réglages, avec le prochain objectif écrit en clair — de quoi avoir un sport à finir plutôt qu'une liste de combinaisons à piocher.
 
 ### Mouvements (exercices de figure)
 Un onglet à part, à côté d'*Entraînement* et de *Bac à sable*. Ici, **une seule figure de drone, répétée du début à la fin**, autour d'un sujet qui ne fait rien d'autre qu'avancer tout droit : tout ce qui n'est pas le geste à apprendre est enlevé. Cinq figures — **orbite**, **spirale vers l'intérieur**, **reveal tilt bas vers haut**, **flyby par derrière** (le drone rattrape le sujet en passant derrière lui et ressort de l'autre côté), **vertical tilt** (il passe juste au-dessus, presque perpendiculairement, et il faut mélanger tilt et pan).

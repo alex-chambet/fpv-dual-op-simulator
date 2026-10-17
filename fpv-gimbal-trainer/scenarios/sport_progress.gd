@@ -1,5 +1,10 @@
 class_name SportProgress
 extends RefCounted
+## NOT SHOWN AT THE MOMENT. The steps were on the sport cards and on the setup page; they were
+## taken off because they did not read clearly enough. Nothing calls this any more - it is kept
+## because the thresholds below and the way they are named took measuring to get right, not
+## because anything depends on it. Delete it if it is still unused in a while.
+##
 ## Three steps to reach on each sport, so that a sport is something you can get to the end of
 ## rather than an endless list of combinations to pick from.
 ##
