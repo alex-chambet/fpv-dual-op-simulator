@@ -668,15 +668,10 @@ func _build_furniture() -> void:
 		var list: Array = spec[1]
 		if list.is_empty():
 			continue
-		var mm := MultiMesh.new()
-		mm.transform_format = MultiMesh.TRANSFORM_3D
-		mm.mesh = spec[0]
-		mm.instance_count = list.size()
-		for i in list.size():
-			mm.set_instance_transform(i, list[i])
-		var mmi := MultiMeshInstance3D.new()
-		mmi.multimesh = mm
-		_host.add_child(mmi)
+		var batch: Array[Transform3D] = []
+		for t in list:
+			batch.append(t)
+		MeshBatch.add(_host, spec[0], batch)
 
 
 # --- Obstacles for the drone ---------------------------------------------------------------------------

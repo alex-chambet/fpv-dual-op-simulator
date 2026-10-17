@@ -7,6 +7,11 @@ extends Control
 ##  3. Session: only the options of what was chosen (players, screens, drone movement, level, lens), and LAUNCH.
 ## Esc (or Back) goes back one page. After a session the menu opens on the page of that session, ready to play again.
 
+## The "À travailler" card on the home page (PracticeAdvisor): off for now, to be looked at again
+## later. Everything behind it still works - the three steps per sport it shares its data with are
+## on the sport cards either way - so this is the only line to change to bring it back.
+const SHOW_ADVICE := false
+
 ## The three modes of the play / setup pages.
 const TRAINING := "training"
 const DRILLS := "drills"
@@ -316,12 +321,14 @@ func _build_home() -> Control:
 	row2.alignment = BoxContainer.ALIGNMENT_CENTER
 	row2.add_theme_constant_override("separation", 22)
 	tiles.add_child(row2)
-	# What to work on next, from the sessions already played (see PracticeAdvisor). It goes first:
-	# the catalogue is over 1 700 combinations and nothing else in the menu says where to go.
-	_advice_tile = _tile("À travailler", "", Vector2(282, 200), 24)
-	_advice_tile.icon_kind = ""   # it shows the picture of what it proposes
-	_advice_tile.pressed.connect(_start_advice)
-	row2.add_child(_advice_tile)
+	# The "À travailler" card. With SHOW_ADVICE off, the home page is the one it always was and the
+	# three tiles keep their full size; PracticeAdvisor and SportProgress carry on working, so
+	# turning it back on is this one flag.
+	if SHOW_ADVICE:
+		_advice_tile = _tile("À travailler", "", Vector2(282, 200), 24)
+		_advice_tile.icon_kind = ""   # it shows the picture of what it proposes
+		_advice_tile.pressed.connect(_start_advice)
+		row2.add_child(_advice_tile)
 	var small := [
 		["Session aléatoire", "Sport, mouvement et niveau au hasard", "dice", _start_random],
 		["Historique et replays", "Tes scores, revoir tes sessions", "history",
@@ -329,14 +336,16 @@ func _build_home() -> Control:
 		["Paramètres", "Réglage manette et graphismes", "gear",
 			func(): get_tree().change_scene_to_file("res://scenes/settings.tscn")],
 	]
+	var small_size := Vector2(282, 200) if SHOW_ADVICE else Vector2(378, 220)
 	for s in small:
-		var tile := _tile(s[0], s[1], Vector2(282, 200), 24)
+		var tile := _tile(s[0], s[1], small_size, 26 if not SHOW_ADVICE else 24)
 		tile.icon_kind = s[2]
 		tile.pressed.connect(s[3])
 		row2.add_child(tile)
-	_advice_line = _label("", 15, 0.7)
-	_advice_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	tiles.add_child(_advice_line)
+	if SHOW_ADVICE:
+		_advice_line = _label("", 15, 0.7)
+		_advice_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		tiles.add_child(_advice_line)
 
 	var bottom := HBoxContainer.new()
 	v.add_child(bottom)
@@ -471,12 +480,16 @@ func _fill_play(mode: String) -> void:
 				_cards.append(card)
 		_:
 			_play_text.text = "Un sport, un parcours généré à chaque session : le drone vole tout seul (ou piloté par un 2e joueur) et tu gardes le sujet dans le cadre avec la gimbal. À la fin, une note sur 100.\n\nTouches 1 à %d : choisir un sport." % _sports.size()
+			var best := SessionScorer.all_best()
 			for i in _sports.size():
 				var s := _sports[i]
 				var card := _tile(s.display_name, "", Vector2(330, 210), 24)
 				card.picture = _thumb(s.id)
 				card.skew = 0.0
 				card.badge = _dots(s.base_difficulty)
+				# where the player is on this sport, so it reads as something to finish
+				var pg := SportProgress.of(s.id, best)
+				card.subtitle = "%s  %s" % [str(pg.dots), str(pg.name)]
 				card.pressed.connect(_choose_sport.bind(i))
 				_grid.add_child(card)
 				_cards.append(card)
@@ -485,6 +498,8 @@ func _fill_play(mode: String) -> void:
 ## Fills the "À travailler" tile from the sessions already played. Hidden when there is nothing to
 ## say (an empty catalogue); on a first run it proposes the gentlest thing, which is the point.
 func _refresh_advice() -> void:
+	if not SHOW_ADVICE or _advice_tile == null:
+		return
 	_advice = PracticeAdvisor.suggest()
 	var has: bool = not _advice.is_empty()
 	_advice_tile.visible = has
@@ -700,12 +715,15 @@ func _open_setup(mode: String) -> void:
 			_preview.show_movement(_drill, _level_opt.selected)
 		_:
 			if _sport != null:
+				var pg := SportProgress.of(_sport.id)
 				_setup_heading.text = "ENTRAÎNEMENT"
 				_setup_title.text = "Session d'entraînement"
 				_setup_picture.picture = _thumb(_sport.id)
 				_setup_picture.title = _sport.display_name
-				_setup_picture.badge = _dots(_sport.base_difficulty)
-				_setup_text.text = _sport.description
+				_setup_picture.badge = "%s  %s" % [str(pg.dots), str(pg.name)]
+				_setup_text.text = "%s\n\n%s %s\n%s" % [_sport.description, str(pg.dots),
+						("Prochain palier : " + str(pg.next)) if str(pg.next) != "" else "Sport terminé.",
+						str(pg.detail)]
 	_setup_picture.queue_redraw()
 	_update_info()
 	_show(_setup)

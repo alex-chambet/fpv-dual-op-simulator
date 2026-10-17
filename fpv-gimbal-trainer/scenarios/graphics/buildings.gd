@@ -408,14 +408,8 @@ static func road_markers(parent: Node3D, points: PackedVector3Array, yaws: Packe
 		var list: Array = spec[1]
 		if list.is_empty():
 			continue
-		var mm := MultiMesh.new()
-		mm.transform_format = MultiMesh.TRANSFORM_3D
-		mm.mesh = spec[0]
-		mm.instance_count = list.size()
-		for j in list.size():
-			var t: Transform3D = list[j]
-			mm.set_instance_transform(j, Transform3D(t.basis, t.origin + Vector3(0, float(spec[2]), 0)))
-		var mmi := MultiMeshInstance3D.new()
-		mmi.multimesh = mm
-		mmi.visibility_range_end = 250.0
-		parent.add_child(mmi)
+		var lifted: Array[Transform3D] = []
+		for t in list:
+			lifted.append(Transform3D((t as Transform3D).basis,
+					(t as Transform3D).origin + Vector3(0, float(spec[2]), 0)))
+		MeshBatch.add(parent, spec[0], lifted, {"range_end": 250.0})

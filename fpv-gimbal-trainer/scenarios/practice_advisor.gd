@@ -125,9 +125,14 @@ static func _reason(top: Dictionary) -> String:
 	return "Ta moyenne : %d/100 sur %d sessions." % [roundi(float(top.mean)), n]
 
 
-## "matrix_<sport>_<movement>_L<level>[_<lens>mm]" -> {sport, movement, level, lens}, or {}.
+## "matrix_<sport>_<movement>_L<level>[_<lens>mm]" -> {sport, movement, level, lens}, or {} for
+## anything else (a two-player session, a drill, a fixed scenario of the menu).
 ## The sport and the movement both contain underscores, so the movement is matched against the
 ## known ids rather than guessed from the position of the separators.
+static func parse_key(key: String) -> Dictionary:
+	return _parse(key)
+
+
 static func _parse(key: String) -> Dictionary:
 	if not key.begins_with("matrix_"):
 		return {}

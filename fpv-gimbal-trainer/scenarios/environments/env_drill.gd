@@ -141,19 +141,7 @@ func _stone_mesh() -> Mesh:
 
 
 func _clump(xforms: Array[Transform3D], mesh: Mesh, mat: Material) -> void:
-	if xforms.is_empty():
-		return
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.mesh = mesh
-	mm.instance_count = xforms.size()
-	for i in xforms.size():
-		mm.set_instance_transform(i, xforms[i])
-	var mmi := MultiMeshInstance3D.new()
-	mmi.multimesh = mm
-	mmi.material_override = mat
-	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	host.add_child(mmi)
+	MeshBatch.add(host, mesh, xforms, {"material": mat, "shadows": false})
 
 
 ## How far the drone gets from the subject, horizontally, over the whole figure.

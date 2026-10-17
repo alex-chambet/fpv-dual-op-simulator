@@ -850,27 +850,7 @@ func _box_at(size: Vector3, centre: Vector3, mat: Material) -> MeshInstance3D:
 
 func _multimesh(mesh: Mesh, xforms: Array[Transform3D], shadows := true,
 		colours := PackedColorArray()) -> void:
-	if xforms.is_empty():
-		return
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.use_colors = not colours.is_empty()
-	mm.mesh = mesh
-	mm.instance_count = xforms.size()
-	for i in xforms.size():
-		mm.set_instance_transform(i, xforms[i])
-		if mm.use_colors:
-			mm.set_instance_color(i, colours[i])
-	var mmi := MultiMeshInstance3D.new()
-	mmi.multimesh = mm
-	if not shadows:
-		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	if mm.use_colors:
-		var m := StandardMaterial3D.new()
-		m.vertex_color_use_as_albedo = true
-		m.roughness = 0.7
-		mmi.material_override = m
-	host.add_child(mmi)
+	MeshBatch.add(host, mesh, xforms, {"shadows": shadows, "colours": colours})
 
 
 ## Registers a box obstacle (drone collisions, lines of sight) and raises the structure height field.

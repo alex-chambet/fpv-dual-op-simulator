@@ -214,16 +214,7 @@ func _add_perimeter(rect: Rect2) -> void:
 		for poly in [_rect_poly(rect)]:
 			for p in PathUtil.resample_2d(poly, 4.0):
 				posts.append(Transform3D(Basis(), Vector3(p.x, y + h * 0.5, p.y)))
-		var mm := MultiMesh.new()
-		mm.transform_format = MultiMesh.TRANSFORM_3D
-		mm.mesh = post
-		mm.instance_count = posts.size()
-		for i in posts.size():
-			mm.set_instance_transform(i, posts[i])
-		var mmi := MultiMeshInstance3D.new()
-		mmi.multimesh = mm
-		mmi.material_override = mat
-		host.add_child(mmi)
+		MeshBatch.add(host, post, posts, {"material": mat})
 
 
 # --- Props ---------------------------------------------------------------------------------------------

@@ -43,8 +43,8 @@ Votre meilleur score est enregistré pour chaque sport. Vous pouvez revoir et re
 
 **Quatre optiques** : 24, 35, 50 et 85 mm. Plus l'optique est serrée, plus le cadrage est difficile.
 
-### « À travailler »
-Le catalogue fait plus de 1 700 combinaisons (sport × mouvement × niveau × optique) : personne n'explore ça à la main. L'accueil affiche donc une carte qui propose **une** session à jouer, choisie à partir de vos sessions passées, avec la raison écrite en clair : *« Dévoilement · Départementale, niveau 4 · Une seule session, 51/100. »* Si un exercice existe pour le mouvement en question, c'est l'exercice qui est proposé — apprendre le geste avant de l'utiliser en situation.
+### Trois paliers par sport
+Chaque sport a trois objectifs, calculés à partir de vos meilleurs scores : **Découverte** (finir une session), **Solide** (70/100 sur trois mouvements différents) et **Maîtrise** (85/100 au niveau 4 ou plus). Ils s'affichent sur la carte du sport et sur sa page de réglages, avec le prochain objectif écrit en clair — de quoi avoir un sport à finir plutôt qu'une liste de combinaisons à piocher.
 
 ### Mouvements (exercices de figure)
 Un onglet à part, à côté d'*Entraînement* et de *Bac à sable*. Ici, **une seule figure de drone, répétée du début à la fin**, autour d'un sujet qui ne fait rien d'autre qu'avancer tout droit : tout ce qui n'est pas le geste à apprendre est enlevé. Cinq figures — **orbite**, **spirale vers l'intérieur**, **reveal tilt bas vers haut**, **flyby par derrière** (le drone rattrape le sujet en passant derrière lui et ressort de l'autre côté), **vertical tilt** (il passe juste au-dessus, presque perpendiculairement, et il faut mélanger tilt et pan).

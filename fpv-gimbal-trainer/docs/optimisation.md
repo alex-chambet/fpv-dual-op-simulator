@@ -98,9 +98,14 @@ simplifié, des paquets d'arbres plus petits et plus justes. Sur cette carte gra
 rendu est bon marché et la géométrie ne l'est pas. `CHUNK` reste à 64 m. (À reconsidérer sur une
 machine plus faible, où l'arbitrage s'inverserait.)
 
-## 0 ter. Fait (17/10/2026) : D1, la carte « À travailler »
+## 0 ter. Fait (17/10/2026) : D1, la carte « À travailler » — **masquée pour l'instant**
 
-`scenarios/practice_advisor.gd`, affichée sur l'accueil à gauche de « Session aléatoire ». Elle lit
+> Elle est désactivée par `MainMenu.SHOW_ADVICE = false` : l'accueil est redevenu celui qu'il était,
+> à revoir plus tard. Tout ce qui est décrit ici marche toujours et `SportProgress`, qui partage ses
+> données, reste affiché sur les cartes de sport (section 0 quater). Une seule ligne à changer pour
+> la remettre.
+
+`scenarios/practice_advisor.gd`. Elle lit
 les deux fichiers que le jeu écrivait déjà sans que personne ne les relise, et propose **une**
 session à jouer, avec la raison en toutes lettres sous les cartes :
 
@@ -134,7 +139,46 @@ Vérifié aussi sur des sauvegardes fabriquées : joueur neuf → poursuite arri
 ne fait que du latéral et le réussit → poursuite arrière (le seul mouvement facile jamais touché) ;
 joueur faible en vertical tilt → l'exercice vertical tilt, sujet immobile.
 
-Reste à faire : **D2** (des paliers par sport) et **D3**, décrits plus bas.
+## 0 quater. Fait (17/10/2026) : D2 (paliers) et C (rangement)
+
+**D2 — trois paliers par sport** (`scenarios/sport_progress.gd`), affichés sur la carte de chaque
+sport dans la grille et sur sa page de réglages. Comme le conseiller, ils ne lisent que
+`best_scores.json` :
+
+1. **Découverte** — finir une session sur ce sport ;
+2. **Solide** — 70/100 sur trois mouvements différents ;
+3. **Maîtrise** — 85/100 au niveau 4 ou plus.
+
+D'abord la largeur, ensuite la qualité : c'est exactement ce qui manque d'après les sessions
+enregistrées. Les trois sont comptés **indépendamment** — on peut maîtriser un sport au niveau 5 en
+n'ayant que deux mouvements à 70 — donc les pastilles disent combien de paliers sont cochés et le
+nom dit celui qu'on est en train de faire, c'est-à-dire le premier qui ne l'est pas. Nommer le plus
+haut palier compté aurait étiqueté « Solide » un joueur à qui Solide est précisément ce qui manque,
+ce que faisait la première version. Sur la sauvegarde réelle : ski alpin et voiture sur route
+terminés, Départementale ●●○, trail et circuit jamais joués.
+
+**C — un seul constructeur de MultiMesh** (`scenarios/graphics/mesh_batch.gd`). Quatorze blocs
+identiques dans treize fichiers, dont deux copies conformes au caractère près de la même fonction
+`_multimesh` (le circuit et la descente). Il en reste trois, qui sont réellement différents : les
+poteaux et traverses de la ligne électrique (deux MultiMesh remplis dans la même boucle), l'herbe
+(un tampon de flottants brut, sensible aux performances) et la trace de ski (pré-allouée, qui
+grandit par `visible_instance_count`).
+
+Aucun gain de performance attendu ni mesuré : c'est du rangement, et surtout un piège en moins —
+oublier `transform_format` met toutes les instances à l'origine, oublier `use_colors` ignore
+silencieusement les couleurs.
+
+**Ce que la vérification prouve, et ce qu'elle ne prouve pas.** Les 13 niveaux ont, après comme
+avant, **exactement le même nombre de nœuds, de triangles et d'instances**. En revanche la
+comparaison des empreintes complètes a échoué pour une raison qui ne tient pas au code : l'empreinte
+incluait l'`instance_id` des matériaux, qui dépend de l'ordre d'allocation et change donc d'une
+exécution à l'autre. Corrigée (signature du matériau au lieu de son id), elle est redevenue
+déterministe — deux exécutions identiques — mais trop tard pour servir de référence. Les positions
+réécrites (les décalages verticaux d'`env_snow` et de `buildings`) ont donc été contrôlées à l'image
+sur le ski alpin et la Départementale : pylônes, sièges, piquets, haies et ligne électrique sont à
+leur place.
+
+Reste à faire : **D3**, décrit plus bas.
 
 ---
 
@@ -249,10 +293,12 @@ abandonné — élargir les chunks économise des appels de rendu et coûte du t
 
 ### C. Rangement du code, sans gain de performance
 
-`movement_planner.gd` (1 122 lignes), `circuit_scenery.gd` (910), `env_downhill.gd` (907) sont les
-trois fichiers qui mériteraient d'être coupés. Le dédoublonnage de `_multimesh` / `_mat` / `_quad`
-va dans le même sens. À faire **après** A et B, et seulement si le code gêne : rien de tout cela ne
-se voit à l'écran.
+Le dédoublonnage des constructeurs de MultiMesh est **fait** (section 0 quater). Restent
+`movement_planner.gd` (1 122 lignes), `circuit_scenery.gd` (910) et `env_downhill.gd` (907), qui
+mériteraient d'être coupés, et les sept copies de `_mat()`. À faire seulement si le code gêne :
+rien de tout cela ne se voit à l'écran, et couper un fichier de mille lignes qui plane des
+trajectoires de drone demande une référence de non-régression plus solide que celle d'un simple
+dédoublonnage.
 
 ### D. Le gameplay : c'est là que manque le plus
 
@@ -275,8 +321,7 @@ d'exploration. Ce n'est pas un défaut du joueur, c'est qu'aucun écran ne dit q
 Trois propositions, de la plus simple à la plus ambitieuse :
 
 1. ~~**« À travailler »** sur l'accueil~~ — **fait**, voir la section 0 ter.
-2. **Un objectif par sport** : trois paliers (par exemple 70 / 85 / 95 sur trois mouvements
-   différents) qui donnent une raison de revenir. Les scores nécessaires sont déjà stockés.
+2. ~~**Un objectif par sport**~~ — **fait**, voir la section 0 quater.
 3. **Lier les exercices à l'entraînement** : les « Mouvements » sont déjà une échelle de difficulté
    propre (5 figures × 4 vitesses). Un mauvais score sur une orbite en session pourrait renvoyer
    vers l'exercice d'orbite correspondant. C'est le chaînon qui manque entre apprendre un geste et

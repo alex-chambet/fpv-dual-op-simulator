@@ -141,17 +141,13 @@ static func place(parent: Node3D, kind: String, xforms: Array[Transform3D], cust
 	var detail := GraphicsSettings.tree_detail_distance()
 	for key in buckets:
 		var items: Array = buckets[key]
+		var batch: Array[Transform3D] = []
+		var tints := PackedColorArray()
+		for j in items.size():
+			batch.append(xforms[items[j]])
+			tints.append(customs[items[j]])
 		for lod in (2 if two_lods else 1):
-			var mm := MultiMesh.new()
-			mm.transform_format = MultiMesh.TRANSFORM_3D
-			mm.use_custom_data = true
-			mm.mesh = mesh(kind, lod, key.z)
-			mm.instance_count = items.size()
-			for j in items.size():
-				mm.set_instance_transform(j, xforms[items[j]])
-				mm.set_instance_custom_data(j, customs[items[j]])
-			var mmi := MultiMeshInstance3D.new()
-			mmi.multimesh = mm
+			var mmi := MeshBatch.add(null, mesh(kind, lod, key.z), batch, {"custom": tints})
 			if two_lods:
 				mmi.set_meta("lod", lod)
 				mmi.set_meta("end", end_distance)

@@ -163,13 +163,7 @@ static func scatter(parent: Node3D, grounds: PackedVector3Array, sizes: PackedFl
 		var items: Array = buckets[v]
 		if items.is_empty():
 			continue
-		var mm := MultiMesh.new()
-		mm.transform_format = MultiMesh.TRANSFORM_3D
-		mm.mesh = mesh(v)
-		mm.instance_count = items.size()
-		for j in items.size():
-			mm.set_instance_transform(j, items[j])
-		var mmi := MultiMeshInstance3D.new()
-		mmi.multimesh = mm
-		mmi.visibility_range_end = 160.0
-		parent.add_child(mmi)
+		var batch: Array[Transform3D] = []
+		for t in items:
+			batch.append(t)
+		MeshBatch.add(parent, mesh(v), batch, {"range_end": 160.0})

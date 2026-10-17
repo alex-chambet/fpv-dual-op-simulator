@@ -145,15 +145,7 @@ func populate(_path: PackedVector3Array, _drone: PackedVector3Array, _plan: Dict
 		var r := t.normalized().cross(Vector3.UP)
 		for side in [-1.0, 1.0]:
 			posts.append(Transform3D(Basis(), p + r * side * (ROAD_HALF_WIDTH + 0.9) + Vector3(0, 0.4, 0)))
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.mesh = post
-	mm.instance_count = posts.size()
-	for i in posts.size():
-		mm.set_instance_transform(i, posts[i])
-	var mmi := MultiMeshInstance3D.new()
-	mmi.multimesh = mm
-	host.add_child(mmi)
+	MeshBatch.add(host, post, posts)
 
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 5 + host.world_seed

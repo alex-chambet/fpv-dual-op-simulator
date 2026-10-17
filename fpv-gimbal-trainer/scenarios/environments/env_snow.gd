@@ -200,15 +200,10 @@ func _marker_poles(xforms: Array[Transform3D], top: Color) -> void:
 		cyl.height = part[1]
 		cyl.radial_segments = 6
 		cyl.material = PathSubject.make_mat(part[0], 0.6)
-		var mm := MultiMesh.new()
-		mm.transform_format = MultiMesh.TRANSFORM_3D
-		mm.mesh = cyl
-		mm.instance_count = xforms.size()
-		for i in xforms.size():
-			mm.set_instance_transform(i, Transform3D(xforms[i].basis, xforms[i].origin + Vector3(0, float(part[2]), 0)))
-		var mmi := MultiMeshInstance3D.new()
-		mmi.multimesh = mm
-		host.add_child(mmi)
+		var lifted: Array[Transform3D] = []
+		for t in xforms:
+			lifted.append(Transform3D(t.basis, t.origin + Vector3(0, float(part[2]), 0)))
+		MeshBatch.add(host, cyl, lifted)
 
 
 ## A 20 m orange safety net along the piste edge (a see-through mesh on poles).
@@ -321,16 +316,8 @@ func _chairlift(towers: PackedVector3Array) -> void:
 		bmesh.size = box[1]
 		cst.append_from(bmesh, 0, Transform3D(Basis(), box[0]))
 	var chair_mesh := cst.commit()
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.mesh = chair_mesh
-	mm.instance_count = chairs.size()
-	for i in chairs.size():
-		mm.set_instance_transform(i, chairs[i])
-	var mmi := MultiMeshInstance3D.new()
-	mmi.multimesh = mm
-	mmi.material_override = PathSubject.make_mat(Color(0.2, 0.22, 0.25), 0.6)
-	host.add_child(mmi)
+	MeshBatch.add(host, chair_mesh, chairs,
+			{"material": PathSubject.make_mat(Color(0.2, 0.22, 0.25), 0.6)})
 
 
 ## Scripted drone path of the fixed scenario: the slalom averaged over one period (nearly

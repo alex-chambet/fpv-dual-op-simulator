@@ -252,22 +252,10 @@ func _make(mesh: Mesh, mat: Material, xforms: Array[Transform3D], data: PackedCo
 		range_end: float) -> void:
 	if xforms.is_empty():
 		return
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.use_custom_data = true
-	mm.mesh = mesh
-	mm.instance_count = xforms.size()
-	for i in xforms.size():
-		mm.set_instance_transform(i, xforms[i])
-		mm.set_instance_custom_data(i, data[i])
-	var mmi := MultiMeshInstance3D.new()
-	mmi.multimesh = mm
-	mmi.material_override = mat
-	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if shadows else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	mmi.visibility_range_end = range_end
-	mmi.visibility_range_end_margin = 60.0
+	var mmi := MeshBatch.add(self, mesh, xforms, {"material": mat, "custom": data,
+			"shadows": shadows, "range_end": range_end, "range_margin": 60.0})
+	# the crowd fades out rather than popping (it is a wall of people, not a scatter of props)
 	mmi.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
-	add_child(mmi)
 
 
 func _process(_delta: float) -> void:
