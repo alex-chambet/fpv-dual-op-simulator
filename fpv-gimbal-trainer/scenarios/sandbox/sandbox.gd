@@ -16,13 +16,18 @@ const PROFILE_NAMES := ["Slow", "Medium", "Fast"]
 
 ## Lens of the gimbal camera (mm), set by the menu.
 static var lens_mm := 24
+## Which map to fly: "campagne" (the Départementale countryside) or "circuit" (the Nürburgring
+## Grand-Prix-Strecke at half scale, with a field of racing cars lapping it). Set by the menu.
+static var map := "campagne"
 ## Time of day / weather of this sandbox (Ambience; the menu choice, or drawn at random).
 var ambience := "noon"
 var _looks: EnvironmentBuilder
 var _hud_base_size := 0
 
-var world: SandboxWorld
+## The world: a SandboxWorld ("campagne") or a CircuitWorld ("circuit").
+var world
 var traffic: SandboxTraffic
+var circuit: CircuitTraffic
 var people: Pedestrians
 var sky: SkyTraffic
 var fauna: SandboxFauna
@@ -52,24 +57,32 @@ func _ready() -> void:
 	Vegetation.snow_cover = 0.0
 	Rocks.moss_amount = 0.25
 	_build_environment()
-	world = SandboxWorld.new()
-	world.build(self)
-	traffic = SandboxTraffic.new()
-	traffic.name = "Traffic"
-	add_child(traffic)
-	traffic.setup(world)
-	people = Pedestrians.new()
-	people.name = "Pedestrians"
-	add_child(people)
-	people.setup(world)
-	sky = SkyTraffic.new()
-	sky.name = "SkyTraffic"
-	add_child(sky)
-	sky.setup(world)
-	fauna = SandboxFauna.new()
-	fauna.name = "Fauna"
-	add_child(fauna)
-	fauna.setup(world)
+	if map == "circuit":
+		world = CircuitWorld.new()
+		world.build(self)
+		circuit = CircuitTraffic.new()
+		circuit.name = "CircuitTraffic"
+		add_child(circuit)
+		circuit.setup(world)
+	else:
+		world = SandboxWorld.new()
+		world.build(self)
+		traffic = SandboxTraffic.new()
+		traffic.name = "Traffic"
+		add_child(traffic)
+		traffic.setup(world)
+		people = Pedestrians.new()
+		people.name = "Pedestrians"
+		add_child(people)
+		people.setup(world)
+		sky = SkyTraffic.new()
+		sky.name = "SkyTraffic"
+		add_child(sky)
+		sky.setup(world)
+		fauna = SandboxFauna.new()
+		fauna.name = "Fauna"
+		add_child(fauna)
+		fauna.setup(world)
 	_build_drone()
 	_build_hud()
 	grass = GrassField.new()
@@ -103,7 +116,7 @@ func _build_environment() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
 	ambience = Ambience.pick(rng, false)
-	looks.style = Ambience.variant(load("res://scenarios/environments/styles/departementale.tres"), ambience)
+	looks.style = Ambience.variant(load(_style_path()), ambience)
 	looks.apply_to_scene(_env, _sun)
 	Ambience.finish(ambience, _env.environment, looks.style)
 	var cam_look := CanvasLayer.new()
@@ -126,9 +139,19 @@ func set_ambience(id: String) -> void:
 		return
 	ambience = id
 	var ground = world.get("terrain_material") if world != null else null
-	Ambience.switch(id, load("res://scenarios/environments/styles/departementale.tres"), _looks, _env, _sun, self,
+	Ambience.switch(id, load(_style_path()), _looks, _env, _sun, self,
 			rig.camera if rig != null else null, ground as Material)
 	apply_graphics()
+
+
+## Look of the current map.
+static func _style_path() -> String:
+	return "res://scenarios/environments/styles/%s.tres" % ("circuit" if map == "circuit" else "departementale")
+
+
+## Name of the current map, for the display.
+static func map_name() -> String:
+	return "Nürburgring" if map == "circuit" else "Départementale"
 
 ## Applies the graphics quality (GraphicsSettings); called again when it changes in the pause menu.
 func apply_graphics() -> void:
@@ -167,7 +190,7 @@ func _build_drone() -> void:
 
 
 func _reset_drone() -> void:
-	var p := world.start_pos
+	var p: Vector3 = world.start_pos
 	p.y = world.ground(p.x, p.z) + drone.radius
 	drone.reset_to(p, world.start_look)
 	drone.armed = mode != "acro"
@@ -215,11 +238,14 @@ func _build_hud() -> void:
 
 
 func _obstacle_push(pos: Vector3, r: float) -> Vector3:
-	var a := world.push(pos, r)
-	var b := traffic.push(pos, r)
-	var c := fauna.push(pos, r)
-	var best := a if a.length() > b.length() else b
-	return best if best.length() > c.length() else c
+	var best: Vector3 = world.push(pos, r)
+	for node in [traffic, circuit, fauna]:
+		if node == null:
+			continue
+		var p: Vector3 = node.push(pos, r)
+		if p.length() > best.length():
+			best = p
+	return best
 
 
 func _process(delta: float) -> void:
@@ -296,7 +322,7 @@ func _fly_assisted(delta: float) -> void:
 		p += push
 		var n := push.normalized()
 		_vel -= n * minf(_vel.dot(n), 0.0)
-	var gy := world.ground(p.x, p.z) + drone.radius
+	var gy: float = world.ground(p.x, p.z) + drone.radius
 	if p.y < gy:
 		p.y = gy
 		_vel.y = maxf(_vel.y, 0.0)
@@ -317,12 +343,13 @@ func _key(k: Key) -> float:
 
 
 func _update_hud() -> void:
-	var gy := world.ground(drone.position.x, drone.position.z)
+	var gy: float = world.ground(drone.position.x, drone.position.z)
 	var label := "AUTO : décollage puis vol aléatoire fluide" if mode == "auto" else ("ASSISTÉ (clavier : I/K J/L avancer / côtés, U/O tourner, Y/H monter / descendre, Maj rapide)" if mode == "assisted" \
 			else "ACRO (manette pilote)" + ("" if drone.armed else " - DÉSARMÉ : gaz au minimum pour armer"))
 	var t := int(_time)
-	_hud.text = "BAC À SABLE - Départementale   temps libre %02d:%02d   %d véhicules\nDrone %s\nAlt %.0f m   %.0f km/h   %d mm   gimbal pan %+.0f°  tilt %+.0f°  roll %+.0f°" % [
-			t / 60, t % 60, traffic.count(), label, drone.position.y - gy, drone.speed_kmh(), lens_mm,
+	var vehicles := circuit.count() if circuit != null else traffic.count()
+	_hud.text = "BAC À SABLE - %s   temps libre %02d:%02d   %d véhicules\nDrone %s\nAlt %.0f m   %.0f km/h   %d mm   gimbal pan %+.0f°  tilt %+.0f°  roll %+.0f°" % [
+			map_name(), t / 60, t % 60, vehicles, label, drone.position.y - gy, drone.speed_kmh(), lens_mm,
 			rig.angles[0], rig.angles[1], rig.angles[2]]
 	if _view.osd != null:
 		_view.osd.text = "PILOTE   ALT %.0f m   %.0f km/h   %s" % [drone.position.y - gy, drone.speed_kmh(),

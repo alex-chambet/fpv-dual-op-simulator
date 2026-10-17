@@ -89,6 +89,11 @@ static func _plan_with(movement: String, S: PackedVector3Array, ctx: Dictionary)
 	var fast := movement == "orbit" or movement == "reveal" or movement == "flyby" or figures
 	var cap_pan := float(lp.pan_cap) * float(PAN_CAP_FACTOR[movement])
 	var cap_tilt := float(lp.tilt_cap) * float(TILT_CAP_FACTOR[movement])
+	# A subject that brakes and accelerates as hard as a racing car cannot be chased by a drone that
+	# never pulls more than half a g: its sheet says how much more smoothing the planner may use
+	# (sig_cap) and how much harder its chase drone may work (cap_acc).
+	var sig_cap := 2.5 * clampf(float(g.get("smoothing_budget", 1.0)), 1.0, 6.0)
+	var cap_acc := 1.15 * float(lp.accel_cap) * clampf(float(g.get("accel_relax", 1.0)), 1.0, 4.0)
 	var best := {}
 	var best_score := INF
 	var last_score := INF
@@ -97,7 +102,7 @@ static func _plan_with(movement: String, S: PackedVector3Array, ctx: Dictionary)
 		var stats := _measure(res.drone, g.S, g.tt)
 		var over_pan: float = stats.pan95 / cap_pan
 		var over_tilt: float = stats.tilt95 / cap_tilt
-		var over_acc: float = stats.acc99 / (1.15 * float(lp.accel_cap))
+		var over_acc: float = stats.acc99 / cap_acc
 		# A figure flight also keeps a believable top speed (the far legs are flown fast), and its far legs
 		# must not put a hill between the drone and the subject (they are brought closer if they do).
 		var over_spd: float = float(stats.spd99) / FIGURE_SPEED_CAP if figures else 0.0
@@ -121,8 +126,8 @@ static func _plan_with(movement: String, S: PackedVector3Array, ctx: Dictionary)
 		if over_acc > 1.0:
 			# Smooth the path more; slow the movement down only when the smoothing is used up (the level asks
 			# for a given speed of orbit / sweep, which the planner should change as little as it can).
-			if sig_mul < 2.49:
-				sig_mul = minf(sig_mul * clampf(pow(over_acc, 0.6), 1.12, 1.5), 2.5)
+			if sig_mul < sig_cap - 0.01:
+				sig_mul = minf(sig_mul * clampf(pow(over_acc, 0.6), 1.12, 1.5), sig_cap)
 			elif fast:
 				time_mul = minf(time_mul * clampf(pow(over_acc, 0.5), 1.1, 1.4), 2.2)
 			if _attempt >= 1 and over_acc > 1.03:
@@ -174,6 +179,8 @@ static func _prepare(movement: String, S: PackedVector3Array, ctx: Dictionary) -
 		"ground": ctx.get("ground", Callable()), "min_h": float(ctx.get("min_height", 3.0)),
 		"side": float(ctx.get("side", 1.0)), "seed": int(ctx.get("seed", 1)),
 		"occlusion": float(ctx.get("occlusion", 0.5)),
+		"smoothing_budget": float(ctx.get("smoothing_budget", 1.0)),
+		"accel_relax": float(ctx.get("accel_relax", 1.0)),
 		"lp": DroneDifficulty.params(float(ctx.get("level", 3.0))),
 		"curv": PathUtil.curvature(Sx),
 		"cache": {},

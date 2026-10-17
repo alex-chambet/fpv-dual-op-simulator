@@ -180,6 +180,13 @@ static func _box_vehicle(parent: Node3D, col: Color, acc: Color, gear: String, p
 			parts["wheels"].append(w)
 		parts["wheel_radius"] = 0.33
 		parts["aim_y"] = 0.9
+	elif gear == "race_car":
+		var race := CarModel.race(parent, col, acc)
+		for w in race["wheels"]:
+			parts["wheels"].append(w)
+		parts["wheel_radius"] = float(race["wheel_radius"])
+		parts["brake_lights"] = race["brake_lights"]
+		parts["aim_y"] = 0.8
 	else:
 		_mesh(parent, _box(1.0, 0.8, 2.0), _mat(col, 0.35), Vector3(0, 0.5, 0))
 		_mesh(parent, _box(0.8, 0.3, 0.9), _mat(acc), Vector3(0, 1.05, 0.2))

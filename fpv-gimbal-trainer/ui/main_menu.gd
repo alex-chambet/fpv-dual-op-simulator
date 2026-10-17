@@ -23,7 +23,16 @@ const LEVEL_LABELS := ["Auto (difficulté du sport)", "Aléatoire (niveaux 1 à 
 ## What makes a session hard (see DroneDifficulty): the movement, the axes (pan / tilt) and the proximity.
 const DIFFICULTY_HELP := "La difficulté vient du mouvement du drone, des axes à gérer (pan seul / tilt seul, puis les deux) et de la distance au sujet. Le drone vole toujours de façon fluide."
 const LENS_HELP := {24: "  (large, plus facile)", 35: "", 50: "  (le sujet est plus gros, plus dur à garder)", 85: "  (très serré : chaque geste compte)"}
-const SANDBOX_TEXT := "La campagne de la Départementale en libre, sans limite de temps ni score : routes, village, fermes, voitures, camions, cyclistes, piétons, un avion et un hélicoptère.\n\nSans manette, ou avec seulement celle de la gimbal, le drone décolle tout seul et vole de façon aléatoire mais fluide dans toute la carte : tu règles ta gimbal et tu filmes ce qui passe. Avec une 2e manette (pilote) : vol acro. En jeu, la touche M change le mode du drone (auto, clavier, acro)."
+const SANDBOX_TEXT := "Un terrain en libre, sans limite de temps ni score.\n\nSans manette, ou avec seulement celle de la gimbal, le drone décolle tout seul et vole de façon aléatoire mais fluide dans toute la carte : tu règles ta gimbal et tu filmes ce qui passe. Avec une 2e manette (pilote) : vol acro. En jeu, la touche M change le mode du drone (auto, clavier, acro)."
+## The sandbox maps (Sandbox.map).
+const SANDBOX_MAPS := [
+	{"id": "campagne", "name": "Campagne", "thumb": "sandbox",
+		"subtitle": "Village, routes, fermes, trafic, avion, hélicoptère",
+		"text": "La campagne de la Départementale : routes, village, fermes, voitures, camions, cyclistes, piétons, un avion et un hélicoptère. Retour arrière en jeu : le drone revient sur la place du village."},
+	{"id": "circuit", "name": "Circuit", "thumb": "sandbox_circuit",
+		"subtitle": "Nürburgring : 9 voitures de course, 6 classes",
+		"text": "Le Nürburgring (Grand-Prix-Strecke) à l'échelle 1/2, avec neuf voitures de six classes qui tournent à leur propre rythme : deux GT3, deux GT4, deux tourismes, une historique, une GT de route et la safety car. Elles se rattrapent et se doublent toutes seules. Retour arrière en jeu : le drone revient sur la ligne de départ."},
+]
 const VERSION := "Version 1.6"
 const THUMBS := "res://ui/thumbs/%s.png"
 
@@ -115,6 +124,10 @@ func _apply_prefs(prefs: Dictionary) -> void:
 	DronePip.enabled = bool(prefs.get("drone_pip", DronePip.enabled))
 	GraphicsSettings.load_prefs(prefs)
 	GraphicsSettings.apply_display()
+	var saved_map := str(prefs.get("sandbox_map", Sandbox.map))
+	for m in SANDBOX_MAPS:
+		if str(m.id) == saved_map:
+			Sandbox.map = saved_map
 	for pair in [[_mode_opt, "mode"], [_movement_opt, "movement"], [_level_opt, "level"], [_lens_opt, "lens"], [_screens_opt, "screens"], [_ambience_opt, "ambience"]]:
 		var o: OptionButton = pair[0]
 		var i := int(prefs.get(pair[1], 0))
@@ -132,7 +145,7 @@ func _save_prefs() -> void:
 	var prefs := _load_prefs()
 	prefs.merge({"sport": _sport.id, "mode": _mode_opt.selected, "movement": _movement_opt.selected,
 			"level": _level_opt.selected, "lens": _lens_opt.selected, "screens": _screens_opt.selected, "ambience": _ambience_opt.selected, "blur": MotionBlur.level,
-			"quality": GraphicsSettings.quality}, true)
+			"quality": GraphicsSettings.quality, "sandbox_map": Sandbox.map}, true)
 	var f := FileAccess.open(PREFS_PATH, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(prefs, "\t"))
@@ -393,13 +406,14 @@ func _fill_play(sandbox: bool) -> void:
 		c.queue_free()
 	_cards.clear()
 	if sandbox:
-		_play_text.text = SANDBOX_TEXT
-		var card := _tile("Campagne", "Village, routes, fermes, trafic, avion, hélicoptère", Vector2(420, 250), 26)
-		card.picture = _thumb("sandbox")
-		card.skew = 0.0
-		card.pressed.connect(func(): _open_setup(true))
-		_grid.add_child(card)
-		_cards.append(card)
+		_play_text.text = SANDBOX_TEXT + "\n\nTouches 1 à %d : choisir un terrain." % SANDBOX_MAPS.size()
+		for m in SANDBOX_MAPS:
+			var card := _tile(str(m.name), str(m.subtitle), Vector2(420, 250), 26)
+			card.picture = _thumb(str(m.thumb))
+			card.skew = 0.0
+			card.pressed.connect(_choose_sandbox_map.bind(str(m.id)))
+			_grid.add_child(card)
+			_cards.append(card)
 	else:
 		_play_text.text = "Un sport, un parcours généré à chaque session : le drone vole tout seul (ou piloté par un 2e joueur) et tu gardes le sujet dans le cadre avec la gimbal. À la fin, une note sur 100.\n\nTouches 1 à %d : choisir un sport." % _sports.size()
 		for i in _sports.size():
@@ -417,6 +431,20 @@ func _choose_sport(i: int) -> void:
 	_sport = _sports[i]
 	_save_prefs()
 	_open_setup(false)
+
+
+func _choose_sandbox_map(id: String) -> void:
+	Sandbox.map = id
+	_save_prefs()
+	_open_setup(true)
+
+
+## The entry of SANDBOX_MAPS currently selected.
+static func _sandbox_map() -> Dictionary:
+	for m in SANDBOX_MAPS:
+		if str(m.id) == Sandbox.map:
+			return m
+	return SANDBOX_MAPS[0]
 
 
 # --- Page 3: session setup -----------------------------------------------------------------------
@@ -543,12 +571,13 @@ func _info(parent: Control, key: String) -> Label:
 func _open_setup(sandbox: bool) -> void:
 	_sandbox = sandbox
 	if sandbox:
+		var m := _sandbox_map()
 		_setup_heading.text = "BAC À SABLE"
-		_setup_title.text = "Bac à sable  -  vol libre"
-		_setup_picture.picture = _thumb("sandbox")
-		_setup_picture.title = "Campagne"
+		_setup_title.text = "Bac à sable  -  %s" % str(m.name)
+		_setup_picture.picture = _thumb(str(m.thumb))
+		_setup_picture.title = str(m.name)
 		_setup_picture.badge = ""
-		_setup_text.text = "Pas de chrono, pas de score. Retour arrière en jeu : le drone revient sur la place du village."
+		_setup_text.text = "Pas de chrono, pas de score. " + str(m.text)
 	elif _sport != null:
 		_setup_heading.text = "ENTRAÎNEMENT"
 		_setup_title.text = "Session d'entraînement"
@@ -664,7 +693,9 @@ func _unhandled_input(event: InputEvent) -> void:
 				KEY_ENTER, KEY_KP_ENTER: _open_play(false)
 		_play:
 			var n: int = event.physical_keycode - KEY_1
-			if not _sandbox and n >= 0 and n < _sports.size():
+			if _sandbox and n >= 0 and n < SANDBOX_MAPS.size():
+				_choose_sandbox_map(str(SANDBOX_MAPS[n].id))
+			elif not _sandbox and n >= 0 and n < _sports.size():
 				_choose_sport(n)
 		_setup:
 			if event.physical_keycode in [KEY_ENTER, KEY_KP_ENTER]:

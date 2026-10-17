@@ -179,7 +179,9 @@ static var _person: ArrayMesh
 static var _flag: ArrayMesh
 static var _banner: ArrayMesh
 
-var host: ScenarioBase
+## The scene the crowd belongs to: a ScenarioBase (with a `subject` the people cheer at) or any
+## other world, such as the sandbox, where there is nobody in particular to watch.
+var host: Node3D
 var _people: Array[Transform3D] = []
 var _people_data := PackedColorArray()
 var _flags: Array[Transform3D] = []
@@ -269,9 +271,12 @@ func _make(mesh: Mesh, mat: Material, xforms: Array[Transform3D], data: PackedCo
 
 
 func _process(_delta: float) -> void:
-	if host == null or host.subject == null:
+	if host == null:
 		return
-	var p := host.subject.global_position
+	var subject = host.get("subject")
+	if subject == null:
+		return
+	var p: Vector3 = subject.global_position
 	_people_mat_get().set_shader_parameter("focus", p)
 	_flag_mat_get().set_shader_parameter("focus", p)
 

@@ -1,11 +1,16 @@
 # Bac à sable
 
-La campagne de la Départementale en libre : pas de sujet, pas de chrono, pas de score. Le drone vole où il veut et le
-cadreur filme ce qui lui plaît (trafic, cyclistes, villageois, paysage).
+Un terrain en libre : pas de sujet, pas de chrono, pas de score. Le drone vole où il veut et le cadreur filme ce qui
+lui plaît. Deux terrains :
+
+- **Campagne** — la campagne de la Départementale : trafic, cyclistes, villageois, paysage.
+- **Circuit** — le Nürburgring (Grand-Prix-Strecke) à l'échelle ½, avec **neuf voitures de course** de six classes
+  qui tournent à leur propre rythme et se doublent toutes seules. Voir [circuit.md](circuit.md).
 
 ## Lancer
-Menu principal > panneau « Bac à sable » > *Lancer le bac à sable* (ou touche **B**). L'optique et le choix
-« Écrans » de la session d'entraînement s'appliquent aussi au bac à sable.
+Menu principal > panneau « Bac à sable » > choisir le terrain (touches **1** et **2**) > *Lancer le bac à sable*.
+L'optique et le choix « Écrans » de la session d'entraînement s'appliquent aussi au bac à sable. Le terrain choisi est
+retenu d'une partie à l'autre.
 
 ## Commandes
 - **Gimbal** : manette gimbal, ou WASD + Q / E (les flèches ne servent plus à la gimbal), profils 1 / 2 / 3, G = grille des tiers.
@@ -19,7 +24,18 @@ Menu principal > panneau « Bac à sable » > *Lancer le bac à sable* (ou touch
     Maj = rapide).
 - Échap : pause (Reprendre, Recommencer, Graphismes, Quitter). F1 : masquer l'affichage.
 
-## La carte (scenarios/sandbox/)
+## La carte « Circuit » (scenarios/sandbox/)
+- `circuit_world.gd` : le même circuit que le niveau d'entraînement (`CircuitLayout` + `CircuitScenery`) — asphalte,
+  vibreurs, dégagements, rails, stands, tribunes, pont Dunlop, forêt, château. Le drone démarre sur la ligne de
+  départ ; **Retour arrière** l'y ramène.
+- `circuit_traffic.gd` : neuf voitures (deux GT3, deux GT4, deux tourismes, une historique, une GT de route, la safety
+  car). Chacune roule à la vitesse que sa classe permet, calculée par la même simulation de tour que le niveau
+  d'entraînement (1'26 pour la GT3 la plus rapide, 2'29 pour la safety car). Elles se rattrapent donc, se déportent
+  pour doubler et se rabattent une fois le dépassement fini. Vérifié sur 4 minutes : aucune voiture qui en traverse
+  une autre, aucune bloquée.
+- Le pilote automatique suit aussi le circuit lui-même, juste au-dessus de la piste.
+
+## La carte « Campagne » (scenarios/sandbox/)
 - `sandbox_world.gd` : 1,6 x 1,6 km de campagne autour d'un village.
   - Routes : une rocade d'environ 4 km, deux départementales qui se croisent au centre du village, une rue de
     village, des chemins de terre vers six fermes.

@@ -79,6 +79,8 @@ func _planner_extras() -> Dictionary:
 		"speed_variation": arch.speed_variation(params) if arch.uses_default_speed() else 0.0,
 		"min_speed": maxf(0.05, 0.3 * float(params.speed_min)),
 		"subject_size": def.effective_size(),
+		"smoothing_budget": float(params.get("drone_smoothing", 1.0)),
+		"accel_relax": float(params.get("drone_accel_relax", 1.0)),
 	}
 
 

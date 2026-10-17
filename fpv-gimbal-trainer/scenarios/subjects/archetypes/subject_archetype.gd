@@ -30,6 +30,9 @@ const PARAM_DOCS := {
 	"drone_distance_scale": "Scales every drone distance (a paraglider needs a far drone, a climber a close one).",
 	"drone_min_height": "Minimum drone height above the ground, m.",
 	"drone_relative_height": "true: the drone height is relative to the subject (airborne subjects) instead of the ground.",
+	"drone_smoothing": "How much more the planner may smooth the drone path (1 = the usual budget). Useful for a subject whose own path is very tortuous.",
+	"drone_accel_relax": "How much harder than the level allows the chase drone may work (1 = the level's limit). A racing car brakes at nearly 2 g: its chase drone has to pull as hard to stay with it, as a real FPV chase drone does.",
+	"anticipation": "How far ahead (s) the subject reads its own path. An animated athlete prepares the next change of direction that long before it happens (pole swing, rise, knees across), which is what lets the operator see it coming. 0 = no anticipation.",
 	# GLISSE_PENTE
 	"weave_ratio": "Slow modulation of the slalom amplitude (0 = constant).",
 	"weave_period": "Period of that modulation, m.",
@@ -74,6 +77,14 @@ const PARAM_DOCS := {
 	"corner_radius": "Radius of the corners of the path, m.",
 	"pause_probability": "Chance of a pause after each burst.",
 	"burst_ratio": "Burst speed as a fraction of speed_max.",
+	# CIRCUIT
+	"car": "Racing car driven on the circuit: an id of RaceCarPhysics.CARS (gt3, gt4, tcr, historique, gt_route, safety).",
+	"track_scale": "Scale of the circuit (0.5 = half the real Nürburgring Grand-Prix-Strecke, lengths and heights alike, so the gradients are the real ones).",
+	"line_margin": "How far the racing line stays inside the white lines, m.",
+	"line_swing": "How much of the width the racing line uses (1 = a racing driver, 0 = the centre line).",
+	"grip": "Overrides the tyre friction coefficient of the car (0 = keep the car's own).",
+	"power": "Overrides the power of the car, kW (0 = keep the car's own).",
+	"pace": "How close to the limit the driver is (1 = on the limit, 0.9 = a quick road pace).",
 	# SAUT_ACROBATIQUE
 	"jump_count": "Number of jumps.",
 	"approach_length": "Run-up before the first jump, m.",
@@ -109,6 +120,8 @@ static func common_defaults() -> Dictionary:
 		"path_length": 0.0, "duration": 55.0, "sample_step": 5.0,
 		"cornering_accel": 0.0,
 		"drone_distance_scale": 1.0, "drone_min_height": 3.0, "drone_relative_height": false,
+		"drone_smoothing": 1.0, "drone_accel_relax": 1.0,
+		"anticipation": 0.5,
 	}
 
 
@@ -242,6 +255,7 @@ func configure_subject(s: ArchetypeSubject) -> void:
 	s.min_speed = maxf(0.05, 0.3 * vmin)
 	s.max_lean_deg = float(p.lean_max_deg)
 	s.lean_gain = float(p.lean_gain)
+	s.anticipation = float(p.get("anticipation", 0.5))
 	s.follow_slope = follows_slope()
 	s.speed_profile = s.plan.profile
 

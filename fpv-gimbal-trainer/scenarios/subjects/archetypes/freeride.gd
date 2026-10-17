@@ -791,22 +791,8 @@ func animate(s: ArchetypeSubject, delta: float) -> void:
 	target = maxf(target, 0.95 * (1.0 - smoothstep(0.08, 0.5, since)))
 	var a: AthleteModel = s.parts["athlete"]
 	a.tuck = lerpf(a.tuck, target, 1.0 - exp(-delta / 0.08))
-	# pole plant: as a turn ends (the lean going back through 10 degrees), the pole on the side of the next turn
-	# touches the snow, 0.1-0.2 s before the edge change; it stays planted a moment, then swings back
-	var peak := maxf(float(s.state.get("lean_peak", 0.0)) * exp(-delta / 1.5), lean)
-	var planted := float(s.state.get("plant", 0.0))
-	if peak > 16.0 and lean < 10.0 and not in_air and float(s.state.get("prev_lean", 0.0)) >= 10.0:
-		planted = signf(s.lean_deg) if absf(s.lean_deg) > 0.5 else signf(float(s.state.get("lean_sign", 1.0)))
-		s.state["plant_t"] = 0.0
-		peak = 0.0
-	var pt := float(s.state.get("plant_t", 9.0)) + delta
-	s.state["plant_t"] = pt
-	s.state["lean_peak"] = peak
-	s.state["prev_lean"] = lean
-	if absf(s.lean_deg) > 3.0:
-		s.state["lean_sign"] = signf(s.lean_deg)
-	s.state["plant"] = planted
-	a.plant = signf(planted) * smoothstep(0.0, 0.08, pt) * (1.0 - smoothstep(0.25, 0.5, pt)) if planted != 0.0 else 0.0
+	# (the pole swing and the plant come from AthleteModel, which reads the turn the path is about to
+	# ask for: the pole goes forward before the edge change, not after it)
 
 
 ## The skid of the plan where the rider is (signed: + skis turned towards +x).

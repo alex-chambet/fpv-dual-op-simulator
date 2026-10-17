@@ -1,0 +1,38 @@
+[gd_resource type="Resource" script_class="SubjectDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/subjects/subject_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "circuit_course"
+display_name = "Circuit de course"
+category = "Mécanique"
+description = "Un tour complet du Nürburgring (Grand-Prix-Strecke, tracé 2002) réduit de moitié : 2,6 km, 15 virages, 20 m de dénivelé. Une GT de course lancée, dont la vitesse vient d'une simulation de tour (appui aérodynamique, cercle d'adhérence, freinage, pente) : gros freinages avant l'épingle du Castrol-S et la Dunlop-Kehre, relance dans la Mercedes-Arena, pleine charge dans le Schumacher-S et la ligne droite d'arrivée. Environ 1 min 30."
+archetype = "CIRCUIT"
+overrides = {
+"car": "gt4",
+"drone_accel_relax": 3.8,
+"drone_distance_scale": 1.1,
+"drone_min_height": 2.5,
+"drone_smoothing": 2.0,
+"lean_gain": 0.12,
+"lean_max_deg": 3.0,
+"line_margin": 1.5,
+"line_swing": 1.0,
+"sample_step": 3.0,
+"speed_max": 60.0,
+"speed_min": 8.0,
+"speed_variability": 0.0,
+"track_scale": 0.5
+}
+subject_size = 4.6
+placeholder_shape = "box"
+placeholder_gear = "race_car"
+placeholder_color = Color(0.08, 0.32, 0.78, 1)
+placeholder_accent = Color(0.95, 0.78, 0.05, 1)
+environment = "circuit"
+env_overrides = {
+"track_scale": 0.5
+}
+recommended_movements = PackedStringArray("pursuit", "lateral", "frontal", "orbit", "reveal", "flyby", "approach_orbit", "dive", "choreo")
+base_difficulty = 5

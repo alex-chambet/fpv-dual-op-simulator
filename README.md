@@ -22,7 +22,9 @@ Le drone vole tout seul autour du sujet. **Vous gérez uniquement la gimbal** : 
 
 Votre meilleur score est enregistré pour chaque sport. Vous pouvez revoir et rejouer vos sessions dans « Historique et replays ».
 
-**Les sports** : ski alpin (slalom), ski de descente (une piste de 2 km et plus façon Streif ou Bellevarde, à plus de 110 km/h, avec des sauts), ski freeride (une grande face raide façon Freeride World Tour : barres rocheuses à sauter ou à passer par un couloir, tout-droit, virages serrés, vitesse qui change sans cesse : le plus dur à filmer), trail, VTT de descente, voiture sur la Départementale, voiture sur route de montagne. Chaque session est générée avec un trajet différent.
+**Les sports** : ski alpin (slalom), ski de descente (une piste de 2 km et plus façon Streif ou Bellevarde, à plus de 110 km/h, avec des sauts), ski freeride (une grande face raide façon Freeride World Tour : barres rocheuses à sauter ou à passer par un couloir, tout-droit, virages serrés, vitesse qui change sans cesse : le plus dur à filmer), circuit de course (un tour complet du Nürburgring, voir plus bas), trail, VTT de descente, voiture sur la Départementale, voiture sur route de montagne. Chaque session est générée avec un trajet différent.
+
+**Le circuit de course.** Le Nürburgring (Grand-Prix-Strecke) réduit de moitié : 2,6 km, 15 virages, 20 m de dénivelé, stands, tribunes, pont Dunlop et forêt de l'Eifel. Une GT lancée fait **un tour complet en 1 min 30**. Sa vitesse n'est pas dessinée à la main : elle sort d'une **simulation de tour** de vraie voiture (appui aérodynamique, cercle d'adhérence, motricité, traînée, pente), le même modèle que les logiciels de temps au tour — à l'échelle 1 il donne 2'03 pour une GT3 et 2'12 pour une GT4, les vrais temps de ces catégories. Gros freinages avant le Castrol-S et la Dunlop-Kehre, relance dans la Mercedes-Arena, pleine charge dans le Schumacher-S : chaque changement de vitesse a une cause visible sur la piste. Détails : [docs/circuit.md](fpv-gimbal-trainer/docs/circuit.md).
 
 **Les mouvements du drone** (au choix, ou au hasard) :
 
@@ -45,7 +47,9 @@ Votre meilleur score est enregistré pour chaque sport. Vous pouvez revoir et re
 Un joueur **pilote** le drone en mode acro (manette FPV, sans stabilisation, comme en vrai). L'autre tient la **gimbal**. Le pilote voit sa vue FPV en incrustation, ou sur un second écran. Les deux sont notés, et vous obtenez un score d'équipe.
 
 ### Bac à sable
-Un monde ouvert, sans chrono ni score : 1,6 × 1,6 km de campagne avec un village, des fermes, une rocade, des voitures, des camions, des cyclistes, des piétons, et un avion et un hélicoptère dans le ciel.
+Un monde ouvert, sans chrono ni score. Deux terrains au choix :
+- **Campagne** : 1,6 × 1,6 km avec un village, des fermes, une rocade, des voitures, des camions, des cyclistes, des piétons, et un avion et un hélicoptère dans le ciel.
+- **Circuit** : le Nürburgring à l'échelle ½, avec **neuf voitures de course** de six classes (GT3, GT4, tourisme, historique, GT de route, safety car) qui tournent à leur propre rythme, se rattrapent et se doublent toutes seules.
 - **Sans manette, ou avec une seule** (celle de la gimbal) : le drone décolle tout seul et vole de façon aléatoire mais fluide dans toute la carte. C'est idéal pour régler sa gimbal et filmer ce qui passe.
 - **Avec une 2e manette** : vol acro libre.
 - **Au clavier** : vol assisté.
@@ -70,7 +74,7 @@ Un monde ouvert, sans chrono ni score : 1,6 × 1,6 km de campagne avec un villag
 ## Premiers pas
 
 1. Sur l'accueil, cliquez sur **JOUER**.
-2. Choisissez **Entraînement** (ou **Bac à sable** pour le vol libre), puis un **terrain** (touches 1 à 7).
+2. Choisissez **Entraînement** (ou **Bac à sable** pour le vol libre), puis un **terrain** (touches 1 à 8).
 3. Réglez le **mouvement du drone**, le **niveau** et l'**optique**. Au début : suivi latéral, niveau 1 ou 2, 24 mm.
 4. **LANCER** (ou Entrée). Un compte à rebours de quelques secondes laisse le temps de s'installer.
 5. Gardez le sujet dans le rectangle vert. À la fin, regardez votre note, et rejouez pour la battre.
@@ -111,7 +115,7 @@ Dans le bac à sable : **M** change de mode de vol (auto, clavier, acro), **Reto
 Quatre niveaux de qualité (Basse, Moyenne, Haute, Ultra) et un **flou de mouvement** réaliste, par objet : le décor file derrière un sujet net, comme sur une vraie caméra. Si le jeu est lent sur votre machine, baissez la qualité ou l'**échelle de rendu** (agrandissement AMD FSR) dans « Paramètres » ou pendant la partie (Échap → Graphismes). Chaque détail se règle aussi à part (ombres, anticrénelage, herbe, spectateurs…), comme la synchro verticale, la limite d'images/s, le mode plein écran, la luminosité, le contraste, la saturation, les effets de caméra (vignettage, aberration, grain), et l'affichage en jeu (opacité et taille des infos, couleurs du cadre, dont une palette pour daltoniens).
 
 - **Ambiances** : plein jour, matin, fin de journée, temps couvert, chute de neige (sur la neige), ou au hasard. Elles se choisissent sur la page de réglages de la session (ligne « Ambiance »).
-- **Athlètes animés** : le skieur prend la position de recherche de vitesse, le coureur passe de la marche au sprint, le vététiste pédale sur un vrai VTT.
+- **Athlètes animés** : le coureur passe de la marche au sprint, le vététiste pédale sur un vrai VTT. Le **skieur** est posé image par image à partir du virage qu'il fait et de **celui qui arrive** : il s'écrase et s'angule dans la courbe, puis se grandit, balance le bâton en avant et traverse les genoux une bonne demi-seconde **avant** que ses skis ne changent de direction — de quoi anticiper le virage rien qu'en le regardant.
 - **Décors vivants** : public, drapeaux et banderoles sur la descente ; fermes, champs labourés et blés mûrs sur la Départementale ; parois rocheuses et massifs sur la route de montagne ; rayons de lumière dans la forêt (qualité Ultra).
 - **Rendu caméra** : vignettage, légère aberration chromatique et grain, comme une vraie optique.
 
@@ -126,6 +130,7 @@ Quatre niveaux de qualité (Basse, Moyenne, Haute, Ultra) et un **flou de mouvem
 - Ajouter un sport, régler la difficulté : [docs/ajouter_un_sport.md](fpv-gimbal-trainer/docs/ajouter_un_sport.md)
 - Le mode 2 joueurs : [docs/mode_2_joueurs.md](fpv-gimbal-trainer/docs/mode_2_joueurs.md)
 - Le bac à sable : [docs/bac_a_sable.md](fpv-gimbal-trainer/docs/bac_a_sable.md)
+- Le circuit du Nürburgring : [docs/circuit.md](fpv-gimbal-trainer/docs/circuit.md)
 - La Départementale : [docs/departementale.md](fpv-gimbal-trainer/docs/departementale.md)
 - Les graphismes : [docs/graphismes.md](fpv-gimbal-trainer/docs/graphismes.md)
 - L'historique des versions : onglet **Releases**
@@ -135,4 +140,5 @@ Le code source est dans le dossier `fpv-gimbal-trainer/` (projet Godot 4.7).
 ## Crédits
 
 - Mannequin animé des athlètes : « Universal Animation Library » de [Quaternius](https://quaternius.com), licence CC0 (domaine public).
+- Tracé du circuit : d'après le plan « Nürburgring - Grand-Prix-Strecke » de [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:N%C3%BCrburgring_-_Grand-Prix-Strecke.svg), aplati puis re-parcouru à courbure bornée (voir [docs/circuit.md](fpv-gimbal-trainer/docs/circuit.md)).
 - Moteur : [Godot Engine](https://godotengine.org) (licence MIT).

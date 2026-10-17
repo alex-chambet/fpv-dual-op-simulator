@@ -59,6 +59,7 @@ règle avec `speed_min` / `speed_max`.
 | `SAUT_ACROBATIQUE` | élan, phase aérienne (rotation, saltos), réception, plusieurs sauts | freestyle, saut à ski, skate, BMX, saut d'obstacles |
 | `FREERIDE` | freeride sur une grande face raide (environnement `freeride`) : la ligne est choisie barre rocheuse par barre rocheuse (sauter une falaise ou passer par un couloir) ; grandes courbes, moyennes, tout-droit ou virages serrés techniques entre les barres ; vitesse « skiée », jamais imposée : la pente, le frottement dans la poudreuse et l'air agissent en permanence, et le skieur ne perd de la vitesse qu'en dérapant, skis en travers (en fin de virage, dans un virage de contrôle lancé quand il va plus vite qu'il ne le veut ou après une réception, au-dessus de chaque falaise (presque à l'arrêt au-dessus d'un départ technique — bord en biais, grosse barre —, un simple contrôle au-dessus d'un départ facile qu'il prend avec de la vitesse), quand la courbe est trop serrée pour sa vitesse, et à l'arrêt), à la réception d'un saut ou quand la pente s'adoucit ; un tout-droit accélère toujours ; le rythme de ses virages suit la pente, comme dans des runs filmés en FPV (environ 0,5-0,6 s par virage court et dérapé à 45°, 1 s vers 35°, 1,5-2 s en courbes plus coupées sur 25°, qui gardent la vitesse) ; il se grandit, skis à plat, à chaque changement de carre et plante le bâton aval juste avant, s'écrase au sommet du virage ; il se laisse tomber des barres presque sans pop et contrôle sa vitesse par un dérapage juste après chaque réception. Les skis se mettent en travers juste avant le freinage (profil skid du plan, avec un nuage de neige) pour que le cadreur puisse anticiper ; sauts là où le terrain s'éloigne plus vite que la trajectoire balistique ; deux figures par descente sur les plus grosses falaises (un 360 puis un backflip) | ski freeride |
 | `DESCENTE` | course de descente : grandes courbes, virages serrés (souvent en S), schuss, sauts sur les cassures de pente ; vitesse calculée par un petit modèle physique (pente, frottement, air, freinage avant les virages serrés, vol balistique) | ski de descente |
+| `CIRCUIT` | **un tour complet d'un circuit fermé** (le Nürburgring Grand-Prix-Strecke, environnement `circuit`) : la trajectoire de course du circuit (large à l'entrée, à la corde, large à la sortie) et une vitesse qui sort d'une **simulation de tour** d'une vraie voiture — cercle d'adhérence avec appui aérodynamique, motricité puis puissance / vitesse, traînée, pente, et partage de l'adhérence entre virage et freinage. Le tour part et revient sur la ligne de départ, lancé. Voir [docs/circuit.md](circuit.md) | voiture de course |
 
 ### Paramètres communs (tous les archétypes)
 
@@ -83,6 +84,9 @@ règle avec `speed_min` / `speed_max`.
 | `drone_distance_scale` | × | échelle de toutes les distances du drone (parapente : 4, grimpeur : 0,35) |
 | `drone_min_height` | m | hauteur minimale du drone au-dessus du sol |
 | `drone_relative_height` | vrai/faux | vrai : hauteur du drone relative au sujet (sujets en l'air) |
+| `drone_smoothing` | × | lissage supplémentaire autorisé au planificateur du drone (1 = budget normal) ; utile pour un sujet au trajet très tortueux |
+| `drone_accel_relax` | × | combien de fois plus fort que la limite du niveau le drone de poursuite a le droit de travailler (1 = la limite du niveau). Une voiture de course freine à près de 2 g : son drone doit tirer autant pour rester avec elle, comme un vrai drone FPV de poursuite |
+| `anticipation` | s | à quelle distance devant lui le sujet lit son propre trajet (0,5 par défaut). Un athlète animé prépare son prochain changement de direction ce temps-là à l'avance — c'est ce qui permet au cadreur de le voir venir (voir « Le skieur » plus bas). 0 = aucune anticipation |
 
 ### Paramètres propres à chaque archétype (valeur par défaut)
 
@@ -97,6 +101,7 @@ règle avec `speed_min` / `speed_max`.
 | `STOP_AND_GO_ZONE` | `zone_width` 60 m, `zone_length` 100 m, `corner_radius` 2 m, `pause_probability` 0,35, `burst_ratio` 0,8 (vitesse d'une pointe en fraction de `speed_max`), `bob`, `limb_swing` |
 | `SAUT_ACROBATIQUE` | `jump_count` 3, `approach_length` 80 m (élan), `rollout_length` 45 m (distance entre une réception et le saut suivant), plus `jump_length`, `jump_height`, `flips`, `spin_deg` |
 | `FREERIDE` | `cornering_accel` 12 (accélération latérale tenue sur les carres, au-delà il dérape), `drop_share` 0,65 (part des barres rocheuses sautées par une falaise, les autres passées par un couloir ou par le côté), `snow_friction` 0,07, `air_drag` 0,0035, `jump_height` 0,8 (pop au bord d'une falaise, m/s), `drone_min_height` 5 m. La durée vient de la face elle-même (environ 1 min 20 à 1 min 50) : `duration` n'allonge pas la ligne |
+| `CIRCUIT` | `car` (identifiant de `RaceCarPhysics.CARS` : `gt3`, `gt4`, `tcr`, `historique`, `gt_route`, `safety`), `track_scale` 0,5 (échelle du circuit — longueurs **et** hauteurs, donc les pentes sont les vraies ; à mettre aussi dans `env_overrides`), `line_margin` 1,5 m (distance de la trajectoire aux lignes blanches), `line_swing` 1 (part de la largeur utilisée : 0 = l'axe), `grip` / `power` / `pace` (surchargent la voiture choisie : adhérence, kW, et à quel point le pilote est à la limite). La durée vient du circuit : `duration` ne l'allonge pas |
 | `DESCENTE` | `turn_frequency` 0,55 (part des virages parmi les éléments du tracé), `tight_turns` 0,4 (part des virages serrés, rayon 34 - 52 m ; les autres sont de grandes courbes de 110 - 190 m), `cornering_accel` 12 m/s² (accélération latérale max en virage), `air_drag` 0,0042 et `snow_friction` 0,035 (vitesse de pointe selon la pente), `jump_height` 1,2 (impulsion verticale au décollage, m/s), `duration` 98 s. Les sauts ne sont pas tirés au hasard : ils sont placés sur les cassures de pente du terrain (un replat qui se termine sur un mur raide), `turn_tightness` 0 (0 à 1 : tracé plus sinueux, rayons plus serrés, tout-droits plus courts, enchaînements de 3 à 4 virages serrés ; 1 pour le ski de descente, qui a aussi `tight_turns` 0,65 et `turn_frequency` 0,9) |
 
 `turn_frequency` selon l'archétype : `GLISSE_PENTE` = demi-périodes du slalom ; `COURSE_SOL_CYCLIQUE`
@@ -174,6 +179,7 @@ mouvement d'autant plus difficile que le niveau est élevé (jamais une figure e
 | `placeholder_gear` | Ajoute |
 |---|---|
 | `none` | rien |
+| `race_car` (avec `box`) | voiture de course GT : carrosserie basse, aileron arrière, lame avant, diffuseur, slicks, livrée deux tons avec un rond de numéro, feux arrière qui s'allument au freinage |
 | `skis`, `snowboard`, `sled` (avec `person_lying`) | équipement de neige |
 | `skates`, `wheels`, `skateboard`, `scooter` | patins, rollers, skate, trottinette |
 | `wakeboard`, `surfboard`, `sup` | planches |
@@ -184,6 +190,37 @@ mouvement d'autant plus difficile que le niveau est élevé (jamais une figure e
 | `car` (avec `box`) | voiture |
 
 `placeholder_color` colore le corps ou le véhicule ; `placeholder_accent` la tête, le casque ou l'équipement.
+
+### L'athlète animé
+
+Un sujet `person` sans équipement, avec des `skis` ou avec un `bike` n'est pas une capsule : c'est le
+mannequin articulé de la bibliothèque Quaternius (`scenarios/subjects/athlete_model.gd`). Le coureur
+joue les animations de la bibliothèque (marche, trot, sprint) à son allure, le vététiste pédale ou
+roue libre, et le skieur est posé **par le code**, image par image.
+
+### Le skieur
+
+Un skieur ne tient pas une position : il s'écrase dans le virage et se redresse pour en changer. Tout
+est piloté par deux nombres — le virage qu'il est en train de faire (son inclinaison) et **celui qui
+arrive**, lu `anticipation` secondes plus loin sur le trajet :
+
+| Ce qu'il fait | Quand, par rapport au changement de carre |
+|---|---|
+| Les genoux traversent vers le nouveau virage | ~1 s avant |
+| La main part en avant, le bâton se balance | 0,7 à 0,8 s avant |
+| Il se grandit (extension, jambes tendues) | 0,4 à 0,8 s avant |
+| Le bâton touche la neige | au changement lui-même |
+| Il s'écrase et s'angule dans le nouveau virage | après |
+
+S'y ajoutent, en permanence : l'**angulation** (le bassin rentre dans le virage, le buste reste par-dessus
+le ski extérieur — la « virgule »), la **dissociation** (le haut du corps reste face à la pente pendant
+que les jambes tournent), l'**avancée du ski intérieur**, l'**absorption** des réceptions et des
+cassures (lue sur l'accélération verticale du trajet), et un léger mouvement permanent : il n'est
+jamais parfaitement immobile.
+
+C'est volontairement le **mouvement du corps qui annonce le virage**, pas l'inverse : le cadreur qui
+regarde le skieur voit le bâton partir en avant et le corps se grandir une bonne demi-seconde avant
+que les skis ne changent de direction. Les trois sports de ski en profitent sans rien avoir à régler.
 
 ---
 
@@ -198,6 +235,7 @@ tous les autres utilisent le constructeur générique configuré par un fichier 
 | `neige` | pente neigeuse, arbres, rochers, portes de slalom (`env_overrides` : `slope`, pente de 0,3 par défaut ; `relief`, de 0 à 1, fait varier la pente le long de la descente : raides, replats et cassures, 0 par défaut, 0,6 pour le ski alpin) |
 | `descente` | piste de descente façon Streif / Bellevarde : versant de 2 à 2,5 km dont la pente change par sections (replats 16 - 26 %, parties rapides 30 - 40 %, murs 45 - 62 %), cassures de pente pour les sauts, piste damée de 36 à 60 m de large taillée dans la forêt, portes rouges, filets A rouges (4 m) à l'extérieur des virages et le long des réceptions, filets B orange, lignes bleues avant les sauts, un télésiège le long de la piste et un autre qui la survole, cabane de départ, arrivée (ligne, arche, tribune avec spectateurs, panneaux). Rien n'est construit sur le trajet du drone (un télésiège est déplacé, ou retiré, si le drone passe près de ses câbles) ; `env_overrides` : `relief` (0 à 1, 0,7 pour le ski de descente) raccourcit les sections de pente, ajoute des ondulations de 30 à 60 m qui font varier la pente et rapproche les cassures |
 | `freeride` | grande face raide façon Freeride World Tour : départ sur l'arête sommitale (portique, drapeaux, officiels), face de 600 m environ à 38 - 50° avec bosses, arêtes et couloirs dans la ligne de pente, 3 à 5 barres rocheuses (falaises de 7 à 13 m, couloirs dans leurs brèches), îlots rocheux, arêtes latérales, vieilles traces dans la neige ; en bas, cône de déjection puis cuvette d'arrivée (ligne, arche gonflable, public derrière des banderoles, drapeaux), sapins. Le relief qui cache le sujet compte comme obstacle |
+| `circuit` | **circuit automobile** : le Nürburgring Grand-Prix-Strecke à l'échelle ½ (2 573 m, 15 virages, 20 m de dénivelé) — asphalte, lignes blanches, vibreurs, dégagements et bacs à gravier, rails et grillages pare-débris, panneaux, stands et voie des stands, tribunes avec public, portique de départ, pont Dunlop, forêt de l'Eifel, château de Nürburg (`env_overrides` : `track_scale`, `point_step`). Voir [docs/circuit.md](circuit.md) |
 | `route_montagne` | route de montagne posée sur le trajet, bornes, pins, rochers, **tunnel** si le trajet a une partie droite de 66 m ou plus |
 | `foret` | forêt dense et sentier (`env_overrides` : `trail_clearance`, `drone_clearance`, `background_trees`) |
 | `glace` | patinoire : bandes, lignes, tribunes ; les joueurs servent d'obstacles |
@@ -293,7 +331,7 @@ Enregistrez, relancez : « Squash » est dans la catégorie « Collectifs / terr
 - **Replays** : chaque session enregistrée embarque une copie de la fiche. Modifier ou supprimer une
   fiche ensuite ne casse pas les anciens replays.
 - **Durée des courses** : `duration` (55 s par défaut) est respectée à quelques pour cent près pour
-  tous les archétypes sauf `SAUT_ACROBATIQUE`, dont la durée vient du parcours lui-même
+  tous les archétypes sauf `CIRCUIT` (la durée vient du circuit : un tour) et `SAUT_ACROBATIQUE`, dont la durée vient du parcours lui-même
   (`approach_length` + `jump_count` × (`jump_length` + `rollout_length`), divisé par la vitesse) :
   ajoutez des sauts ou allongez l'élan pour allonger la course. Si vous imposez `path_length`, c'est la
   longueur qui commande et la durée en découle. Visez 40 à 70 s ; une discipline naturellement brève

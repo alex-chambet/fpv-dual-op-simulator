@@ -19,7 +19,12 @@ const ACC_TAU := 0.7      ## low-pass of the acceleration (s): bounds the jerk
 const MIN_AGL := 4.0
 const BOUND := 680.0
 
-var world: SandboxWorld
+## The map: a SandboxWorld or a CircuitWorld (same ground / push / roads interface).
+var world
+## How far from the middle of the map the drone may wander, and the radius inside which it flies low
+## (no tall trees). Both come from the world when it says so.
+var area := Rect2(-BOUND, -BOUND, 2.0 * BOUND, 2.0 * BOUND)
+var village_r := SandboxWorld.VILLAGE_R
 var position := Vector3.ZERO
 var velocity := Vector3.ZERO
 var heading := 0.0
@@ -31,8 +36,11 @@ var _queue: Array[Dictionary] = []   # {p, speed, r}
 
 
 ## Starts at `pos`: lifting off from the ground (takeoff) or taking over a drone already flying with velocity `vel`.
-func start(w: SandboxWorld, pos: Vector3, look: Vector3, takeoff := true, vel := Vector3.ZERO) -> void:
+func start(w, pos: Vector3, look: Vector3, takeoff := true, vel := Vector3.ZERO) -> void:
 	world = w
+	if w.has_method("flight_area"):
+		area = w.call("flight_area")
+	village_r = float(w.call("low_zone_radius")) if w.has_method("low_zone_radius") else SandboxWorld.VILLAGE_R
 	_rng.randomize()
 	position = pos
 	velocity = vel
@@ -70,7 +78,7 @@ func step_target(dt: float) -> void:
 	var turn := 0.0
 	if vel_h.length() > 1.0 and dir != Vector3.ZERO:
 		turn = clampf(vel_h.angle_to(dir) / PI, 0.0, 1.0)
-	var agl := position.y - world.ground(position.x, position.z)
+	var agl: float = position.y - world.ground(position.x, position.z)
 	var factor := lerpf(1.0, 0.4, turn) * smoothstep(1.5, 7.0, agl)
 	var want := dir * float(w.speed) * factor
 	want.y = clampf(to.y * 0.5, -3.0, 3.5)
@@ -82,7 +90,7 @@ func step_target(dt: float) -> void:
 	accel += (a_cmd - accel) * (1.0 - exp(-dt / ACC_TAU))
 	velocity += accel * dt
 	position += velocity * dt
-	var floor_y := world.ground(position.x, position.z) + 0.15
+	var floor_y: float = world.ground(position.x, position.z) + 0.15
 	if position.y < floor_y:
 		position.y = floor_y
 		velocity.y = maxf(velocity.y, 0.0)
@@ -112,9 +120,9 @@ func _extend() -> void:
 
 func _free_leg() -> bool:
 	var a := _last()
-	var x := clampf(a.x + _rng.randf_range(-420.0, 420.0), -BOUND, BOUND)
-	var z := clampf(a.z + _rng.randf_range(-420.0, 420.0), -BOUND, BOUND)
-	var p := Vector3(x, world.ground(x, z) + _rng.randf_range(16.0, 45.0), z)
+	var x := clampf(a.x + _rng.randf_range(-420.0, 420.0), area.position.x, area.end.x)
+	var z := clampf(a.z + _rng.randf_range(-420.0, 420.0), area.position.y, area.end.y)
+	var p := Vector3(x, float(world.ground(x, z)) + _rng.randf_range(16.0, 45.0), z)
 	if Vector2(p.x - a.x, p.z - a.z).length() < 120.0 or not _clear(a, p):
 		return false
 	_queue.append({"p": p, "speed": _rng.randf_range(9.0, 16.0), "r": 16.0})
@@ -123,9 +131,12 @@ func _free_leg() -> bool:
 
 func _road_leg() -> bool:
 	var candidates: Array[Dictionary] = []
-	for r in world.roads:
+	var all_roads: Array = world.roads
+	for r in all_roads:
 		if r.kind != "track":
 			candidates.append(r)
+	if candidates.is_empty():
+		return false
 	var road: Dictionary = candidates[_rng.randi() % candidates.size()]
 	var pts: PackedVector3Array = road.pts
 	var n := pts.size()
@@ -156,9 +167,9 @@ func _road_leg() -> bool:
 		t.y = 0.0
 		var side := t.normalized().cross(Vector3.UP) if t.length() > 0.001 else Vector3.RIGHT
 		# low in the village (no tall trees), above the crowns of the roadside plane trees outside it
-		var h := height if Vector2(c.x, c.z).length() < SandboxWorld.VILLAGE_R + 20.0 else height + 9.0
-		var p := Vector3(c.x, world.ground(c.x, c.z) + h, c.z) + side * lateral
-		if absf(p.x) > BOUND or absf(p.z) > BOUND or not _clear(prev, p, 3.5 if h < 16.0 else 5.0):
+		var h := height if Vector2(c.x, c.z).length() < village_r + 20.0 else height + 9.0
+		var p := Vector3(c.x, float(world.ground(c.x, c.z)) + h, c.z) + side * lateral
+		if not area.has_point(Vector2(p.x, p.z)) or not _clear(prev, p, 3.5 if h < 16.0 else 5.0):
 			break
 		leg.append({"p": p, "speed": speed, "r": 10.0})
 		prev = p
@@ -175,8 +186,9 @@ func _clear(a: Vector3, b: Vector3, radius := 5.0) -> bool:
 	var steps := maxi(2, int(len / 4.0))
 	for i in steps + 1:
 		var p := a.lerp(b, float(i) / steps)
-		if p.y < world.ground(p.x, p.z) + MIN_AGL and i > 0:
+		if p.y < float(world.ground(p.x, p.z)) + MIN_AGL and i > 0:
 			return false
-		if world.push(p, radius).length() > 0.0:
+		var push_out: Vector3 = world.push(p, radius)
+		if push_out.length() > 0.0:
 			return false
 	return true

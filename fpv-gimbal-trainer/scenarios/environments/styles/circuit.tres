@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="EnvironmentStyle" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/environments/environment_style.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+tag = "circuit"
+display_name = "Racing circuit"
+builder = "circuit"
+sky_top_color = Color(0.27, 0.49, 0.85, 1)
+sky_horizon_color = Color(0.76, 0.84, 0.93, 1)
+sky_curve = 0.14
+ground_horizon_color = Color(0.74, 0.81, 0.88, 1)
+ground_bottom_color = Color(0.17, 0.2, 0.13, 1)
+ground_curve = 0.02
+sun_angle_max = 25.0
+sun_curve = 0.15
+sun_color = Color(1, 0.96, 0.89, 1)
+sun_energy = 1.55
+sun_angular_distance = 0.5
+sun_elevation = 46.0
+sun_azimuth = -55.0
+shadow_max_distance = 320.0
+cloud_coverage = 0.46
+cloud_scale = 1.1
+ambient_energy = 0.92
+ssao_radius = 2.0
+ssao_intensity = 2.6
+glow_intensity = 0.4
+glow_bloom = 0.0
+glow_hdr_threshold = 1.1
+adjustment_contrast = 1.06
+adjustment_saturation = 1.06
+fog_color = Color(0.79, 0.86, 0.93, 1)
+fog_density = 0.0006
+fog_sun_scatter = 0.2
+fog_sky_affect = 0.6
+fog_aerial_perspective = 0.5
+occluder_kind = "walls"
