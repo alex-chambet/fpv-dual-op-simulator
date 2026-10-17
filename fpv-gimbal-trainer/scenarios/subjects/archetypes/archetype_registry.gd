@@ -28,6 +28,7 @@ static func get_archetype(id: String) -> SubjectArchetype:
 		"DESCENTE": a = ArchetypeDescente.new()
 		"FREERIDE": a = ArchetypeFreeride.new()
 		"CIRCUIT": a = ArchetypeCircuit.new()
+		"CIBLE": a = ArchetypeCible.new()
 		_:
 			push_warning("Unknown archetype '%s', using GLISSE_PENTE" % id)
 			a = ArchetypeGlissePente.new()

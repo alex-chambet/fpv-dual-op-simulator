@@ -311,6 +311,11 @@ func plan_drone_path() -> PackedVector3Array:
 	var base := make_curve(subject_pts)
 	var step := clampf(0.12 * float(extras.get("speed_hint", 8.0)), 0.12, 2.5)
 	step = maxf(step, base.get_baked_length() / 2500.0)
+	# A subject that barely moves (the standing target of a movement drill) has a path a metre long:
+	# its sheet says how many samples the flight needs, since the path length cannot say it.
+	var want := int(extras.get("path_samples", 0))
+	if want > 0:
+		step = minf(step, base.get_baked_length() / float(want))
 	subject_pts = RoadBuilder.sample_curve(base, step)
 	var ctx := _planner_context()
 	var res := MovementPlanner.plan(matrix.movement, subject_pts, ctx)

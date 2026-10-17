@@ -30,6 +30,13 @@ var filter := {}
 var fixed := false
 var fixed_id := ""
 var fixed_title := ""
+## Movement drill ("Mouvements" menu): which speed step of ScenarioMatrix.DRILL_STEPS the subject
+## moves at. -1 = not a drill.
+var drill_step := -1
+
+
+func is_drill() -> bool:
+	return drill_step >= 0
 
 
 const LENSES := [24, 35, 50, 85]
@@ -45,6 +52,9 @@ func movement_name() -> String:
 func title() -> String:
 	if fixed:
 		return fixed_title
+	if is_drill():
+		return "MOUVEMENT - %s / %s / level %d%s" % [movement_name(),
+				ScenarioMatrix.DRILL_STEPS[drill_step].name, level, "" if lens == 24 else " / %d mm" % lens]
 	if two_player:
 		return "2 PLAYERS - %s%s" % [subject.display_name, "" if lens == 24 else " / %d mm" % lens]
 	return "TRAINING - %s / %s / level %d%s" % [subject.display_name, movement_name(), level, "" if lens == 24 else " / %d mm" % lens]
@@ -53,6 +63,8 @@ func title() -> String:
 func scenario_id() -> String:
 	if fixed:
 		return fixed_id
+	if is_drill():  # one score board per figure, speed step and level
+		return "drill_%s_v%d_L%d%s" % [movement, drill_step, level, "" if lens == 24 else "_%dmm" % lens]
 	if two_player:
 		return "duo_%s%s" % [subject.id, "" if lens == 24 else "_%dmm" % lens]
 	return "matrix_%s_%s_L%d%s" % [subject.id, movement, level, "" if lens == 24 else "_%dmm" % lens]
@@ -64,5 +76,5 @@ func to_dict() -> Dictionary:
 	return {
 		"definition": subject.to_dict(), "subject": subject.id, "movement": movement, "level": level,
 		"seed": seed, "side": side, "lens": lens, "two_player": two_player, "fixed": fixed, "fixed_id": fixed_id, "fixed_title": fixed_title,
-		"ambience": ambience,
+		"ambience": ambience, "drill_step": drill_step,
 	}

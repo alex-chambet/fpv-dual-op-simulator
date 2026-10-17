@@ -20,10 +20,14 @@ const MAX_LEVEL := 6
 const EXPERT_LEVEL := 6
 ## Movements made of chained figures (MovementPlanner._build_figures): only drawn at random at the Expert level.
 const EXPERT_MOVEMENTS := ["approach_orbit", "dive", "choreo"]
+## Movements of the "Mouvements" menu: one figure repeated so the operator can get the hang of it.
+## They are played on purpose, never drawn for a training session.
+const DRILL_MOVEMENTS := ["spiral_in", "reveal_up", "pass_behind", "vertical_pass"]
 
 ## Rank of each drone movement, 1 (easy) to 6 (expert): used to draw a movement that suits the level.
 const MOVEMENT_TIER := {"pursuit": 1, "lateral": 1, "frontal": 2, "reveal": 3, "orbit": 4, "flyby": 5,
-		"approach_orbit": 6, "dive": 6, "choreo": 6}
+		"approach_orbit": 6, "dive": 6, "choreo": 6,
+		"spiral_in": 4, "reveal_up": 3, "pass_behind": 4, "vertical_pass": 5}
 
 ## Distance of the drone, relative to the level 3 distance (bigger = farther = easier).
 const PROXIMITY := [1.45, 1.22, 1.0, 0.82, 0.68, 0.56]
@@ -99,6 +103,9 @@ static func session_params(level: int) -> Dictionary:
 ## A drone movement among `allowed`, more likely to be one whose rank is close to the level. The expert
 ## figures are only drawn at the Expert level, and the Expert level only draws the hardest movements.
 static func pick_movement(allowed: Array, level: int, rng: RandomNumberGenerator) -> String:
+	allowed = allowed.filter(func(m): return not (m in DRILL_MOVEMENTS))
+	if allowed.is_empty():
+		return "lateral"
 	var kept := allowed.filter(func(m): return (movement_tier(m) >= 4) if level >= EXPERT_LEVEL else not (m in EXPERT_MOVEMENTS))
 	if not kept.is_empty():
 		allowed = kept

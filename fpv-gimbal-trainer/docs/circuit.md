@@ -114,17 +114,45 @@ départ, **tribunes** avec public à la Mercedes-Arena et aux grands virages, **
 **pont Dunlop**, **paddock**, **forêt d'épicéas de l'Eifel** et la **tour du château de Nürburg**
 sur sa butte.
 
-Deux contraintes géométriques sont gérées automatiquement, sans quoi le circuit se replie sur
-lui-même :
+Les **vibreurs** sont de vrais vibreurs en relief : une pente qui monte depuis l'asphalte puis une
+joue verticale à l'extérieur, avec des bandes rouges et blanches d'un mètre peintes par la
+coordonnée de texture. La **trajectoire de course** laisse une trace de gomme sombre de 3 m de large
+sur l'asphalte, estompée sur ses bords. Des **murs de pneus** sont empilés là où le dégagement
+atteint plus de la moitié de sa largeur maximale.
+
+Les **grillages pare-débris** ne sont montés que **devant les tribunes et le long de la ligne des
+stands** — partout ailleurs il n'y a que le rail, comme sur le vrai circuit. Un grillage posé tout
+autour du tour finissait par traverser la piste dans les épingles : au-delà d'un certain décalage,
+une parallèle au tracé se retourne.
+
+C'est la première de quatre contraintes géométriques gérées automatiquement, sans quoi le circuit se
+replie sur lui-même :
 
 - **Décalages bornés par le rayon** (`CircuitLayout.safe_offset`) : une ligne parallèle à la piste
   se retourne dès qu'on la décale de plus que le rayon du virage vers son centre. Un dégagement de
   35 m à l'intérieur d'une épingle de 14 m deviendrait un nœud.
-- **Dégagements ajustés aux autres brins du tour** (`CircuitScenery._fit_runoff`) : la
+- **Rails lissés et bornés qui ne peuvent que se rapprocher** (`CircuitLayout._barrier_fit`) : un
+  rail se courbe, il ne se plie pas, donc sa ligne est lissée puis limitée en variation par mètre
+  de piste. Mais ces deux opérations n'ont le droit que de **rapprocher** le rail de la piste,
+  jamais de l'en écarter : lisser une ligne qui épouse l'intérieur d'une épingle la repoussait de
+  plusieurs mètres **à l'intérieur des lignes blanches** (jusqu'à 7,9 m), et le limiteur de pente
+  aggravait le cas. Ce qu'ils retirent au rail est retiré au dégagement en même temps — c'est
+  pourquoi le calcul vit dans le `CircuitLayout` et non dans le décor : la largeur du dégagement
+  est la seule chose qui dise à la fois où le gravier est dessiné, où le sol est aplani et où le
+  rail se tient. Corriger le rail seul laisserait le gravier dessiné **derrière** sa propre
+  glissière. Vérifié sur tout le tour, aux deux échelles de points (429 et 858) et des deux côtés :
+  aucun point de rail sur l'asphalte, aucun repli, aucune marche, aucun gravier au-delà du rail.
+- **Dégagements ajustés aux autres brins du tour** (`CircuitLayout._build_runoff`) : la
   Mercedes-Arena est un oméga dont les deux brins ne sont qu'à quelques dizaines de mètres l'un de
   l'autre. Chaque côté est rétréci jusqu'à ce que son rail soit dégagé de **toute** partie du
-  circuit. Les tribunes et les bâtiments sont placés de la même façon, et ceux qui n'ont de place
-  nulle part ne sont pas construits.
+  circuit. La largeur du dégagement appartient au `CircuitLayout` lui-même, et non au décor : c'est
+  ce qui permet au terrain de s'aplanir exactement sous le dégagement dessiné. Les tribunes et les
+  bâtiments sont placés de la même façon, et ceux qui n'ont de place nulle part ne sont pas
+  construits.
+- **Altitudes relâchées entre brins voisins** (`CircuitLayout._level_folds`) : l'altitude est
+  donnée le long du tour, donc deux brins qui se croisent presque peuvent se retrouver à 25 m l'un
+  au-dessus de l'autre — une falaise au milieu du paddock. Chaque point est tiré vers les points
+  proches en plan (moins de 60 m) mais éloignés le long du tour (plus de 150 m), en vingt passes.
 
 Les tribunes et le bâtiment des stands sont par ailleurs reculés à **au moins 41 m de l'axe** : le
 drone de poursuite travaille jusqu'à 35 m de la piste, et une tribune plus près l'obligerait à

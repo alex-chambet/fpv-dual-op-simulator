@@ -47,6 +47,10 @@ panneau commun `ui/graphics_panel.gd`).
   contreforts et creux, strates, coulées sombres, vires herbeuses), parcelles agricoles (blé, colza, labours, chaumes,
   jeunes cultures, avec rangs, passages de tracteur, tournières et zones plus ou moins mûres) sur la départementale, neige damée (sillons de dameuse) ou poudreuse,
   asphalte (traces de roues, rustines, fissures, bord qui s'effrite), peinture usée, gravier, sentier de terre.
+  La neige garde son relief jusqu'à l'horizon : le dégradé bleuté des creux et le grain de surface s'estompent sur
+  220 m au lieu de 45, de sorte qu'une grande face ne devient pas un aplat blanc au fond. Les seuils des masques de
+  roche s'élargissent avec la distance (`soft` dans `ground_materials.gd`) : au loin, une transition large remplace le
+  pixel par pixel qui scintillait sous forme de poivre et sel.
 - **Masque du sol** (`ground_mask.gd`) : carte vue de dessus des routes, sentiers, accotements et de la piste damée,
   lue par les shaders (pas d'herbe sur la route, pas de champ au bord de la route, piste damée sous le skieur).
 - **Herbe 3D** (`grass_field.gd`) : une grille de touffes qui suit la caméra, posée par la carte graphique sur le
@@ -71,6 +75,14 @@ panneau commun `ui/graphics_panel.gd`).
   30 km/h). Le mannequin vient de la « Universal Animation Library » de **Quaternius**, sous licence **CC0** (domaine
   public) : `assets/characters/LICENSE_Quaternius_CC0.txt`.
 - **Face de freeride** (`env_freeride.gd`) : roche vue de tous les côtés (strates, fissures, relief) sur les falaises et les parois de couloir, roche apparente peinte par l'environnement le long des barres rocheuses, sur les îlots et sur les crêtes des arêtes de neige, affleurements qui strient le versant au-delà de la face (jamais sur la ligne du skieur), vieilles traces de skieurs dans la poudreuse, skis en travers et nuage de neige à chaque dérapage (fin de virage, virage de contrôle, arrêt), nuage de poudreuse à chaque réception.
+- **Circuit** (`scenarios/circuit/circuit_scenery.gd`) : vrais vibreurs en relief (pente puis joue verticale, bandes
+  rouges et blanches d'un mètre) aux cordes et aux sorties, trace de gomme sombre de la trajectoire de course sur
+  l'asphalte, murs de pneus là où le dégagement est le plus large. Les rails suivent le bord du dégagement, lissés et
+  à pente bornée pour ne jamais couper la piste dans une épingle, et les **grillages pare-débris ne sont montés que
+  devant les tribunes et la ligne des stands** — ailleurs il n'y a que le rail, comme sur le vrai circuit. La largeur
+  du dégagement appartient à `CircuitLayout`, donc le terrain s'aplanit exactement dessous.
+- **Terrain d'exercice** (`env_drill.gd`) : prairie vallonnée dont les décors ne peuvent jamais passer entre la caméra
+  et le sujet (voir [mouvements.md](mouvements.md)).
 - **Public** (`crowd.gd`) : sur la descente et à l'arrivée du freeride, des spectateurs (veste de ski, bonnet à pompon) se massent aux sauts, dans
   quelques virages et à l'arrivée, derrière les filets, avec des drapeaux nationaux qui flottent et des banderoles
   publicitaires (marques inventées). Ils lèvent les bras et sautent quand le skieur arrive. Ils restent en dehors du vol

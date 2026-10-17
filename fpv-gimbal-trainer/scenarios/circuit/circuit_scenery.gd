@@ -10,9 +10,9 @@ extends RefCounted
 ## It is used by both the training environment (EnvCircuit) and the sandbox (CircuitWorld), so the
 ## circuit looks the same in both.
 
-const RUNOFF_BASE := 5.0     ## width of the painted / asphalt strip along the track everywhere, m
-const RUNOFF_CORNER := 22.0  ## ...and on the outside of a corner, m
-const BARRIER_GAP := 2.5     ## between the edge of the run-off and the guardrail, m
+## The width of the run-off and of the gap behind it belong to the CircuitLayout: the ground is
+## flattened to match them, so they must be the same numbers here.
+const BARRIER_GAP := CircuitLayout.BARRIER_GAP
 const FENCE_HEIGHT := 3.6    ## debris fence above the guardrail, m
 const PIT_LANE := 20.0       ## offset of the pit lane from the centre line, m
 const STAND_SETBACK := 7.0   ## between the guardrail and the first row of a grandstand, m
@@ -38,10 +38,10 @@ var _tw := 0
 var _th := 0
 const TOP_CELL := 8.0
 
-var _runoff_l := PackedFloat32Array()
-var _runoff_r := PackedFloat32Array()
 var _kerb_l := PackedByteArray()
 var _kerb_r := PackedByteArray()
+## Where the grandstands go: {s0, s1, side, rows, roof, off}. Decided before anything is built.
+var _stands: Array[Dictionary] = []
 var _ground_params := {}
 var _pit_from := 0.0
 var _pit_to := 0.0
@@ -55,7 +55,8 @@ func build(h: Node3D, l: CircuitLayout, seed_value := 7) -> void:
 	rng.seed = seed_value
 	_pit_from = -0.068 * layout.lap_length   # about 350 m before the line at full scale
 	_pit_to = 0.050 * layout.lap_length
-	_zones()
+	_kerb_zones()
+	_stand_zones()   # decided before anything is built: the debris fences follow the grandstands
 	_terrain()
 	_surface()
 	_barriers()
@@ -64,21 +65,18 @@ func build(h: Node3D, l: CircuitLayout, seed_value := 7) -> void:
 	_vegetation()
 
 
-# --- Where the run-off and the kerbs go ---------------------------------------------------------
+# --- Where the kerbs go -------------------------------------------------------------------------
 
-## For every point of the centre line: how wide the run-off is on each side (wide on the outside of
-## a corner, narrow along a straight) and where the kerbs are (inside of a corner, and the exit).
-func _zones() -> void:
+## Kerbs on the inside of every corner, and along its exit. How wide the run-off is comes from the
+## CircuitLayout, which flattens the ground to match: the two can no longer disagree and leave a
+## flat run-off drawn over a slope.
+func _kerb_zones() -> void:
 	var n := layout.centre.size()
-	var k := CircuitTrack.signed_curvature(layout.centre)
+	var k := layout.curvature
 	var k_thresh := 1.0 / (0.043 * layout.lap_length)
-	_runoff_l.resize(n)
-	_runoff_r.resize(n)
 	_kerb_l.resize(n)
 	_kerb_r.resize(n)
 	for i in n:
-		_runoff_l[i] = RUNOFF_BASE
-		_runoff_r[i] = RUNOFF_BASE
 		_kerb_l[i] = 0
 		_kerb_r[i] = 0
 	var i0 := -1
@@ -88,81 +86,32 @@ func _zones() -> void:
 		if strong and i0 < 0:
 			i0 = c
 		elif not strong and i0 >= 0:
-			var span := c - i0
-			if span * layout.step >= 12.0:
-				_mark_corner(i0, c - 1, k)
+			if (c - i0) * layout.step >= 12.0:
+				_mark_kerb(i0, c - 1)
 			i0 = -1
 			if c >= n:
 				break
-	_fit_runoff()
 
 
-## The lap folds back on itself (the Mercedes-Arena is an omega whose two legs are only a few tens of
-## metres apart): a run-off as wide as the one of an open corner would put its guardrail on the other
-## leg. Each side is narrowed until its barrier stands clear of every part of the track.
-func _fit_runoff() -> void:
-	var n := layout.centre.size()
-	var hw := layout.half_width
-	var clear := hw + 7.0
-	for i in n:
-		for side in [-1.0, 1.0]:
-			var w: float = _runoff_l[i] if side < 0.0 else _runoff_r[i]
-			while w > 1.5:
-				var off := layout.safe_offset(i, side * (hw + w + BARRIER_GAP + 1.0))
-				var p := layout.centre[i] + layout.normals[i] * off
-				if layout.distance_to_track(p.x, p.y) > clear:
-					break
-				w -= 1.5
-			if side < 0.0:
-				_runoff_l[i] = w
-			else:
-				_runoff_r[i] = w
-	# and smooth the two profiles so the edge of the run-off has no step
-	_runoff_l = _smoothed(_runoff_l, 4)
-	_runoff_r = _smoothed(_runoff_r, 4)
-
-
-static func _smoothed(a: PackedFloat32Array, passes: int) -> PackedFloat32Array:
-	var n := a.size()
-	var cur := a
-	for _p in passes:
-		var s := cur.duplicate()
-		for i in n:
-			s[i] = (cur[(i - 1 + n) % n] + 2.0 * cur[i] + cur[(i + 1) % n]) * 0.25
-		cur = s
-	return cur
-
-
-func _mark_corner(a: int, b: int, k: PackedFloat32Array) -> void:
+func _mark_kerb(a: int, b: int) -> void:
 	var n := layout.centre.size()
 	var dir := 0.0
 	for c in range(a, b + 1):
-		dir += k[c % n]
-	var left := dir > 0.0          # the corner turns left: inside = left, outside = right
+		dir += layout.curvature[c % n]
+	var left := dir > 0.0          # turns left: the inside is the left-hand side
 	var span := b - a
-	var pad := roundi(30.0 / layout.step)
-	for c in range(a - pad, b + pad * 2 + 1):
-		var i := (c % n + n) % n
-		var t := clampf(float(c - a + pad) / float(span + pad * 3), 0.0, 1.0)
-		var w := RUNOFF_CORNER * sin(PI * t)
-		if left:
-			_runoff_r[i] = maxf(_runoff_r[i], RUNOFF_BASE + w)
-		else:
-			_runoff_l[i] = maxf(_runoff_l[i], RUNOFF_BASE + w)
-	# inside kerb over the whole corner, outside kerb on the exit half
 	for c in range(a, b + 1):
 		var i := (c % n + n) % n
 		if left:
 			_kerb_l[i] = 1
 		else:
 			_kerb_r[i] = 1
-	for c in range(a + span / 2, b + maxi(span / 2, 4) + 1):
+	for c in range(a + span / 2, b + maxi(span / 2, 4) + 1):   # and the exit kerb, on the outside
 		var i := (c % n + n) % n
 		if left:
 			_kerb_r[i] = 1
 		else:
 			_kerb_l[i] = 1
-
 
 # --- Ground --------------------------------------------------------------------------------------
 
@@ -172,8 +121,8 @@ func _terrain() -> void:
 	var mi := MeshInstance3D.new()
 	mi.name = "Terrain"
 	mi.mesh = TerrainBuilder.build(Callable(layout, "ground"), x_half, b.position.y, b.end.y, 6.0, 34.0)
-	_ground_params = {"grass_a": Color(0.15, 0.3, 0.09), "grass_b": Color(0.3, 0.42, 0.14),
-			"dry": Color(0.45, 0.46, 0.25), "dry_amount": 0.18, "dirt_amount": 0.12, "fields": 0.0}
+	_ground_params = {"grass_a": Color(0.13, 0.28, 0.08), "grass_b": Color(0.27, 0.4, 0.12),
+			"dry": Color(0.4, 0.43, 0.23), "dry_amount": 0.08, "dirt_amount": 0.06, "fields": 0.0}
 	var mat := GroundMaterials.terrain(_ground_params)
 	mi.material_override = mat
 	host.add_child(mi)
@@ -183,7 +132,7 @@ func _terrain() -> void:
 	mask.setup(terrain_rect)
 	var centre := layout.centre3d()
 	mask.add_band(centre, 52.0, Color(0, 1, 0))
-	mask.add_band(centre, layout.half_width + RUNOFF_BASE + 4.0, Color(0, 1, 1))
+	mask.add_band(centre, layout.half_width + CircuitLayout.RUNOFF_BASE + 4.0, Color(0, 1, 1))
 	mask.add_band(centre, layout.half_width + 0.6, Color(1, 1, 1))
 	host.add_child(mask)
 	mask.bind(mat)
@@ -213,8 +162,8 @@ func _surface() -> void:
 	ro_in.resize(n)
 	ro_out.resize(n)
 	for i in n:
-		ro_in[i] = -hw - _runoff_l[i]
-		ro_out[i] = hw + _runoff_r[i]
+		ro_in[i] = -hw - layout.runoff_l[i]
+		ro_out[i] = hw + layout.runoff_r[i]
 	_band(ro_in, _const_offsets(-hw), 0.015, _runoff_mat(), 0.09)
 	_band(_const_offsets(hw), ro_out, 0.015, _runoff_mat(), 0.09)
 	# asphalt
@@ -223,9 +172,27 @@ func _surface() -> void:
 	var paint := GroundMaterials.paint()
 	_band(_const_offsets(-hw + 0.02), _const_offsets(-hw + 0.17), 0.07, paint, 1.0)
 	_band(_const_offsets(hw - 0.17), _const_offsets(hw - 0.02), 0.07, paint, 1.0)
+	_racing_line()
 	_kerbs()
 	_start_line()
 	_pit_lane()
+
+
+## The rubber a season of racing leaves on the ideal line: a darker, shinier band that wanders from
+## one side of the track to the other through the corners. It is the single detail that most makes
+## an asphalt ribbon read as a racing circuit.
+func _racing_line() -> void:
+	var line := layout.racing_line(1.5, 1.0)
+	var pts := PackedVector3Array()
+	for p in line:
+		pts.append(p + Vector3(0, 0.056, 0))
+	pts.append(pts[0])
+	var mi := MeshInstance3D.new()
+	mi.name = "RacingLine"
+	mi.mesh = RoadBuilder.build_ribbon(pts, 1.5, 0.0, 0.08)
+	mi.material_override = _rubber_mat()
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	host.add_child(mi)
 
 
 func _const_offsets(v: float) -> PackedFloat32Array:
@@ -277,11 +244,13 @@ func _band(inner: PackedFloat32Array, outer: PackedFloat32Array, y: float, mat: 
 	return mi
 
 
-## Red and white kerbs: a strip just outside the white line, raised at its outer edge.
+## Red and white kerbs: a real raised kerb, not a painted band - it rises from the asphalt at the
+## white line to KERB_RISE at its outer edge, then drops back to the ground on a vertical face. That
+## edge catches the light, so a corner reads from a long way off.
+const KERB_RISE := 0.11
+
 func _kerbs() -> void:
 	var n := layout.centre.size()
-	var hw := layout.half_width
-	var kw := layout.kerb_width
 	for side in [-1.0, 1.0]:
 		var flags: PackedByteArray = _kerb_l if side < 0.0 else _kerb_r
 		var c := 0
@@ -292,14 +261,43 @@ func _kerbs() -> void:
 			var a := c
 			while c < n and flags[c] == 1:
 				c += 1
-			if (c - a) * layout.step < 6.0:
-				continue
-			var inner := _const_offsets(side * hw)
-			var outer := _const_offsets(side * (hw + kw))
-			var strip := _band(inner if side > 0.0 else outer, outer if side > 0.0 else inner,
-					0.06, _kerb_mat(), 1.0, a, c)
-			if strip != null:
-				strip.name = "Kerb"
+			if (c - a) * layout.step >= 6.0:
+				_kerb_run(side, a, c)
+
+
+func _kerb_run(side: float, from: int, to: int) -> void:
+	var n := layout.centre.size()
+	var hw := layout.half_width
+	var kw := layout.kerb_width
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var run := 0.0
+	for c in range(from, to):
+		var i := c % n
+		var j := (c + 1) % n
+		var seg := layout.centre[i].distance_to(layout.centre[j])
+		var ends := []
+		for idx in [i, j]:
+			var nrm := layout.normals[idx]
+			var y := layout.surface[idx]
+			var pin := layout.centre[idx] + nrm * layout.safe_offset(idx, side * hw)
+			var pout := layout.centre[idx] + nrm * layout.safe_offset(idx, side * (hw + kw))
+			ends.append([Vector3(pin.x, y + 0.055, pin.y), Vector3(pout.x, y + 0.055 + KERB_RISE, pout.y),
+					Vector3(pout.x, layout.ground(pout.x, pout.y), pout.y)])
+		var u0 := run
+		var u1 := run + seg
+		# the sloping top, then the vertical outer face
+		_quad(st, ends[0][0], ends[0][1], ends[1][1], ends[1][0], Vector3.UP,
+				Vector2(0.0, u0), Vector2(1.0, u1))
+		_quad(st, ends[0][1], ends[0][2], ends[1][2], ends[1][1],
+				Vector3(side * layout.normals[i].x, 0.0, side * layout.normals[i].y),
+				Vector2(0.0, u0), Vector2(1.0, u1))
+		run += seg
+	var mi := MeshInstance3D.new()
+	mi.name = "Kerb"
+	mi.mesh = st.commit()
+	mi.material_override = _kerb_mat()
+	host.add_child(mi)
 
 
 ## Start / finish line, the grid boxes behind it and the gantry over the track.
@@ -391,29 +389,36 @@ func _pit_lane() -> void:
 func _barriers() -> void:
 	var n := layout.centre.size()
 	var hw := layout.half_width
+	# The rail simply stands at the edge of the run-off. There is nothing to clamp or smooth here:
+	# CircuitLayout._barrier_fit has already made the width of the run-off rail-safe, so that the
+	# gravel, the flattened ground and the rail all agree (see the comment there).
 	for side in [-1.0, 1.0]:
 		var off := PackedFloat32Array()
 		off.resize(n)
 		for i in n:
-			var ro: float = _runoff_l[i] if side < 0.0 else _runoff_r[i]
+			var ro: float = layout.runoff_l[i] if side < 0.0 else layout.runoff_r[i]
 			off[i] = side * (hw + ro + BARRIER_GAP)
-		_guardrail(_smoothed(off, 4), side)
+		_guardrail(off, side)
 
 
-## Steel guardrail (two rails on posts) with a debris fence above it, and advertising hoardings in
-## front of it. Built as one mesh per side, plus multimeshes for the posts and the hoardings.
+## Steel guardrail (two rails on posts) with advertising hoardings in front of it, all round the
+## lap, and a debris fence ONLY in front of the grandstands - which is where a real circuit puts
+## one, and which keeps the rest of the track clear to look at.
 func _guardrail(off: PackedFloat32Array, side: float) -> void:
 	var n := layout.centre.size()
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var fence := SurfaceTool.new()
 	fence.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var any_fence := false
 	var posts: Array[Transform3D] = []
 	var boards: Array[Transform3D] = []
 	var tints := PackedColorArray()
 	var palette := [Color(0.85, 0.08, 0.06), Color(0.1, 0.3, 0.75), Color(0.93, 0.93, 0.93),
 			Color(0.95, 0.72, 0.05), Color(0.1, 0.5, 0.25)]
 	var run := 0.0
+	var board_run := 0          # hoardings come in runs of the same colour, not one by one
+	var board_tint: Color = palette[0]
 	for i in n:
 		var j := (i + 1) % n
 		var pa := _rail_point(off, i)
@@ -424,41 +429,62 @@ func _guardrail(off: PackedFloat32Array, side: float) -> void:
 			_quad(st, pa + Vector3(0, y0, 0), pb + Vector3(0, y0, 0),
 					pb + Vector3(0, y0 + 0.26, 0), pa + Vector3(0, y0 + 0.26, 0), nrm,
 					Vector2(run, 0.0), Vector2(run + seg, 0.26))
-		_quad(fence, pa + Vector3(0, 1.1, 0), pb + Vector3(0, 1.1, 0),
-				pb + Vector3(0, 1.1 + FENCE_HEIGHT, 0), pa + Vector3(0, 1.1 + FENCE_HEIGHT, 0), nrm,
-				Vector2(run, 0.0), Vector2(run + seg, FENCE_HEIGHT))
+		if _fenced(layout.s_at[i], side):
+			_quad(fence, pa + Vector3(0, 1.1, 0), pb + Vector3(0, 1.1, 0),
+					pb + Vector3(0, 1.1 + FENCE_HEIGHT, 0), pa + Vector3(0, 1.1 + FENCE_HEIGHT, 0), nrm,
+					Vector2(run, 0.0), Vector2(run + seg, FENCE_HEIGHT))
+			any_fence = true
 		if i % maxi(1, roundi(3.5 / layout.step)) == 0:
 			posts.append(Transform3D(Basis().scaled(Vector3(1.0, 1.15, 1.0)), pa + Vector3(0, 0.57, 0)))
-		if rng.randf() < 0.55:
+		if board_run <= 0:
+			board_run = rng.randi_range(3, 9) if rng.randf() < 0.75 else -rng.randi_range(2, 7)
+			board_tint = palette[rng.randi() % palette.size()]
+		board_run -= 1 if board_run > 0 else -1
+		if board_run >= 0:
 			var along := (pb - pa).normalized()
 			var right := Vector3(nrm.x, 0.0, nrm.z)
 			boards.append(Transform3D(Basis(right, Vector3.UP, along),
-					(pa + pb) * 0.5 + right * 0.35 + Vector3(0, 0.5, 0)))
-			tints.append(palette[rng.randi() % palette.size()])
+					(pa + pb) * 0.5 + right * 0.3 + Vector3(0, 0.46, 0)))
+			tints.append(board_tint)
 		run += seg
 	var rail := MeshInstance3D.new()
 	rail.name = "Guardrail"
 	rail.mesh = st.commit()
-	rail.material_override = _mat("rail", Color(0.62, 0.64, 0.67), 0.4, 0.7)
+	rail.material_override = _mat("rail", Color(0.66, 0.68, 0.71), 0.35, 0.8)
 	host.add_child(rail)
-	var fn := MeshInstance3D.new()
-	fn.name = "DebrisFence"
-	fn.mesh = fence.commit()
-	fn.material_override = _fence_mat()
-	fn.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	host.add_child(fn)
+	if any_fence:
+		var fn := MeshInstance3D.new()
+		fn.name = "DebrisFence"
+		fn.mesh = fence.commit()
+		fn.material_override = _fence_mat()
+		fn.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		host.add_child(fn)
 	var post := BoxMesh.new()
 	post.size = Vector3(0.12, 1.0, 0.12)
 	post.material = _mat("rail_post", Color(0.4, 0.42, 0.45), 0.6, 0.4)
 	_multimesh(post, posts)
 	if not boards.is_empty():
 		var board := BoxMesh.new()
-		board.size = Vector3(0.1, 0.9, layout.step * 0.88)
+		board.size = Vector3(0.09, 0.82, layout.step * 0.9)
 		_multimesh(board, boards, true, tints)
 
 
+## True where a debris fence stands: in front of a grandstand, and along the pit straight.
+func _fenced(s: float, side: float) -> bool:
+	for z in _stands:
+		if signf(float(z.side)) == side and _spans(s, float(z.s0) - 25.0, float(z.s1) + 25.0):
+			return true
+	return side > 0.0 and _spans(s, _pit_from - 20.0, _pit_to + 20.0)
+
+
+## Whether the lap distance `s` is between s0 and s1 (which may wrap round the start line).
+func _spans(s: float, s0: float, s1: float) -> bool:
+	var lap := layout.lap_length
+	return fposmod(s - s0, lap) <= fposmod(s1 - s0, lap)
+
+
 func _rail_point(off: PackedFloat32Array, i: int) -> Vector3:
-	var p := layout.centre[i] + layout.normals[i] * layout.safe_offset(i, off[i])
+	var p := layout.centre[i] + layout.normals[i] * off[i]
 	return Vector3(p.x, layout.ground(p.x, p.y), p.y)
 
 
@@ -499,8 +525,6 @@ func _pit_complex() -> void:
 		win.rotation.y = yaw
 		_obstacle(p, yaw, 6.6, step * 0.5, 8.6)
 		s += step
-	# main grandstand facing the pits, on the other side of the track
-	_grandstand(-0.055 * layout.lap_length, 0.040 * layout.lap_length, -1.0, 8, true)
 
 
 ## The landmarks of the circuit: the big grandstand of the Mercedes-Arena, the stands of the main
@@ -508,15 +532,12 @@ func _pit_complex() -> void:
 func _structures() -> void:
 	var lap := layout.lap_length
 	var full := CircuitTrack.LAP_LENGTH
+	for z in _stands:
+		_grandstand(z)
 	for lm in CircuitTrack.LANDMARKS:
-		var s: float = float(lm[0]) / full * lap
-		match str(lm[1]):
-			"arena":
-				_grandstand(s - 0.030 * lap, s + 0.030 * lap, 1.0, 10, true)
-			"stand":
-				_grandstand(s - 0.016 * lap, s + 0.016 * lap, _outer_side(s), 6, false)
-			"bridge":
-				_bridge(s)
+		if str(lm[1]) == "bridge":
+			_bridge(float(lm[0]) / full * lap)
+	_tyre_walls()
 	_marshal_posts()
 	_paddock()
 	_castle()
@@ -579,24 +600,48 @@ func _outer_side(s: float) -> float:
 	return 1.0 if k[i] > 0.0 else -1.0
 
 
-## A tiered grandstand along the track between two lap distances, with its roof and its crowd.
-## It is set back far enough (STAND_SETBACK) that the chase drone flies between the track and it
-## rather than over its roof, as the grandstands of a real circuit sit behind the run-off.
-func _grandstand(s0: float, s1: float, side: float, rows: int, roof: bool) -> void:
+## Decides where the grandstands go, before anything is built: the main one facing the pits, the
+## big one of the Mercedes-Arena, and one at each of the landmark corners. A stand is set back far
+## enough (STAND_CORRIDOR) that the chase drone flies between the track and it rather than over its
+## roof, and the lap folds back on itself, so the side with the most room wins - and where neither
+## side has any, no stand is built at all.
+func _stand_zones() -> void:
+	var lap := layout.lap_length
+	var full := CircuitTrack.LAP_LENGTH
+	var wanted := [[-0.055 * lap, 0.040 * lap, -1.0, 8, true]]
+	for lm in CircuitTrack.LANDMARKS:
+		var s: float = float(lm[0]) / full * lap
+		match str(lm[1]):
+			"arena":
+				wanted.append([s - 0.028 * lap, s + 0.028 * lap, 1.0, 10, true])
+			"stand":
+				wanted.append([s - 0.016 * lap, s + 0.016 * lap, _outer_side(s), 6, false])
+	for w in wanted:
+		var s0: float = w[0]
+		var s1: float = w[1]
+		var side: float = w[2]
+		var base_off := maxf(layout.half_width + maxf(_runoff_at(s0, side), _runoff_at(s1, side))
+				+ BARRIER_GAP + STAND_SETBACK, STAND_CORRIDOR)
+		var room := _stand_room(s0, s1, side, base_off)
+		var other := _stand_room(s0, s1, -side, base_off)
+		if other > room + 6.0:
+			side = -side
+			room = other
+		if room < STAND_CORRIDOR - 8.0:
+			continue
+		_stands.append({"s0": s0, "s1": s1, "side": side, "rows": int(w[3]), "roof": bool(w[4]),
+				"off": base_off})
+
+
+## A tiered grandstand along the track, with its roof and its crowd.
+func _grandstand(z: Dictionary) -> void:
+	var s0: float = z.s0
+	var s1: float = z.s1
+	var side: float = z.side
+	var rows: int = z.rows
+	var roof: bool = z.roof
+	var base_off: float = z.off
 	var grey := _mat("stand", Color(0.52, 0.54, 0.57), 0.8)
-	# never closer than STAND_CORRIDOR to the centre line: the chase drone works out to about 35 m
-	# from the track, and a stand inside that would force it to climb over the roof (and lose the car)
-	var base_off := maxf(layout.half_width + maxf(_runoff_at(s0, side), _runoff_at(s1, side))
-			+ BARRIER_GAP + STAND_SETBACK, STAND_CORRIDOR)
-	# the lap folds back on itself: the chosen side may put the stand beside another corner. Take the
-	# side with the most room, and build no stand at all when neither side has any.
-	var room := _stand_room(s0, s1, side, base_off)
-	var other := _stand_room(s0, s1, -side, base_off)
-	if other > room + 6.0:
-		side = -side
-		room = other
-	if room < STAND_CORRIDOR - 8.0:
-		return
 	var crowd := Crowd.new()
 	crowd.host = host
 	var dens := Crowd.density()
@@ -663,7 +708,7 @@ func _stand_room(s0: float, s1: float, side: float, base_off: float) -> float:
 
 func _runoff_at(s: float, side: float) -> float:
 	var i := layout.index_at(s)
-	return _runoff_l[i] if side < 0.0 else _runoff_r[i]
+	return layout.runoff_l[i] if side < 0.0 else layout.runoff_r[i]
 
 
 ## The Dunlop bridge: an arch over the track with its advertising banner.
@@ -686,6 +731,40 @@ func _bridge(s: float) -> void:
 	var walk := _box_at(Vector3(width, 0.3, 2.6), Vector3(mid.x, top - 2.8, mid.z), dark)
 	walk.rotation.y = yaw
 	_top_box(Vector3(mid.x, 0.0, mid.z), width * 0.55, 2.2, top)
+
+
+## Stacks of tyres in front of the guardrail where a corner is fastest and its run-off widest: the
+## last thing a car hits, and a strong splash of colour at the trackside.
+func _tyre_walls() -> void:
+	var n := layout.centre.size()
+	var xforms: Array[Transform3D] = []
+	var tints := PackedColorArray()
+	var black := Color(0.07, 0.07, 0.08)
+	var bright := [Color(0.85, 0.1, 0.07), Color(0.95, 0.75, 0.05), Color(0.9, 0.9, 0.88)]
+	for side in [-1.0, 1.0]:
+		for i in n:
+			var ro: float = layout.runoff_l[i] if side < 0.0 else layout.runoff_r[i]
+			if ro < CircuitLayout.RUNOFF_CORNER * 0.55:
+				continue
+			if i % maxi(1, roundi(1.1 / layout.step)) != 0:
+				continue
+			var off := layout.safe_offset(i, side * (layout.half_width + ro + BARRIER_GAP - 0.75))
+			var p := layout.centre[i] + layout.normals[i] * off
+			var g := layout.ground(p.x, p.y)
+			var rows := 2 if rng.randf() < 0.75 else 3
+			for r in rows:
+				var basis := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.95, 1.05))
+				xforms.append(Transform3D(basis, Vector3(p.x, g + 0.17 + r * 0.33, p.y)))
+				tints.append(bright[rng.randi() % bright.size()] if (r == rows - 1 and rng.randf() < 0.35) else black)
+	if xforms.is_empty():
+		return
+	var tyre := CylinderMesh.new()
+	tyre.top_radius = 0.33
+	tyre.bottom_radius = 0.33
+	tyre.height = 0.3
+	tyre.radial_segments = 10
+	tyre.rings = 1
+	_multimesh(tyre, xforms, true, tints)
 
 
 ## Marshal posts around the lap: a small cabin with a flag.
@@ -719,7 +798,7 @@ func _vegetation() -> void:
 		var d := q.x
 		if d < 120.0:
 			# close to the track: only beyond the barriers, and not everywhere
-			var limit: float = layout.half_width + maxf(_runoff_l[layout.index_at(q.z)], _runoff_r[layout.index_at(q.z)]) + TREE_CLEAR
+			var limit: float = layout.half_width + maxf(layout.runoff_l[layout.index_at(q.z)], layout.runoff_r[layout.index_at(q.z)]) + TREE_CLEAR
 			if d < limit or rng.randf() < 0.55:
 				continue
 		if _top_at(x, z) > 0.5:
@@ -845,6 +924,28 @@ static func _mat(key: String, c: Color, rough := 0.8, metal := 0.0) -> StandardM
 		m.metallic = metal
 		_mats[key] = m
 	return _mats[key]
+
+
+## Rubber laid down on the racing line: darker and smoother than the asphalt, fading out at its edges.
+static func _rubber_mat() -> ShaderMaterial:
+	if _mats.has("rubber"):
+		return _mats["rubber"]
+	var sh := Shader.new()
+	sh.code = """
+shader_type spatial;
+render_mode blend_mix, depth_draw_never, cull_disabled;
+void fragment() {
+	float edge = 1.0 - smoothstep(0.35, 1.0, abs(UV.x - 0.5) * 2.0);
+	ALBEDO = vec3(0.055, 0.055, 0.06);
+	ROUGHNESS = 0.55;
+	ALPHA = edge * 0.6;
+}
+"""
+	var m := ShaderMaterial.new()
+	m.shader = sh
+	m.render_priority = 1
+	_mats["rubber"] = m
+	return m
 
 
 ## Red and white kerb: stripes about 1 m long along the band (V is in metres).

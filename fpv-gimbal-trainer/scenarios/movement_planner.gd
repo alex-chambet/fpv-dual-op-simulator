@@ -33,11 +33,14 @@ const AIM_HEIGHT := 1.0        # m, height of the point of the subject that is f
 const BASE_ELEVATION := 0.26   # rad (15 deg): the drone is a little above the subject
 const MAX_AZIMUTH := 1.22      # rad
 const REF_DISTANCE := {"pursuit": 15.0, "frontal": 15.0, "lateral": 14.0, "orbit": 14.0, "reveal": 15.0,
-		"flyby": 16.0}
+		"flyby": 16.0, "spiral_in": 15.0, "reveal_up": 15.0, "pass_behind": 15.0, "vertical_pass": 14.0}
 const CENTER_SIGMA := {"pursuit": 1.8, "frontal": 1.8, "lateral": 1.4, "orbit": 1.4, "reveal": 1.4,
-		"flyby": 1.4}
+		"flyby": 1.4, "spiral_in": 1.4, "reveal_up": 1.4, "pass_behind": 1.4, "vertical_pass": 1.4}
 const SWAY_FACTOR := {"pursuit": 0.8, "frontal": 1.0, "lateral": 1.15, "orbit": 1.0, "reveal": 0.8,
-		"flyby": 0.8}
+		"flyby": 0.8, "spiral_in": 0.5, "reveal_up": 0.4, "pass_behind": 0.5, "vertical_pass": 0.35}
+## The drills (see the "Mouvements" menu): one figure, repeated, nothing else going on - the sway of
+## the drone is turned down so the operator sees the figure itself and not the wandering around it.
+const DRILLS := ["spiral_in", "reveal_up", "pass_behind", "vertical_pass"]
 ## Where the obstacles of a reveal stand on the line of sight (fraction of the way from the subject to the
 ## drone): the usual one first, the others when the drone / subject would meet the obstacle at another time.
 const HIDE_FRACTIONS := [0.46, 0.38, 0.55, 0.64]
@@ -50,9 +53,11 @@ const EVENT_GAP := 4.0         # s, free time wanted between two events
 const QUINTIC_PEAK := 5.77     # peak acceleration of a quintic blend = 5.77 x distance / duration^2
 ## Movements that are inherently fast in the image get a larger pan / tilt limit.
 const PAN_CAP_FACTOR := {"pursuit": 1.0, "frontal": 1.1, "lateral": 1.2, "reveal": 1.5, "orbit": 1.25, "flyby": 1.7,
-		"approach_orbit": 1.3, "dive": 1.3, "choreo": 1.35}
+		"approach_orbit": 1.3, "dive": 1.3, "choreo": 1.35,
+		"spiral_in": 1.6, "reveal_up": 1.1, "pass_behind": 1.7, "vertical_pass": 2.2}
 const TILT_CAP_FACTOR := {"pursuit": 1.0, "frontal": 1.0, "lateral": 1.0, "reveal": 1.2, "orbit": 1.2, "flyby": 1.5,
-		"approach_orbit": 1.3, "dive": 1.6, "choreo": 1.5}
+		"approach_orbit": 1.3, "dive": 1.6, "choreo": 1.5,
+		"spiral_in": 1.4, "reveal_up": 2.0, "pass_behind": 1.2, "vertical_pass": 2.2}
 ## Figures (expert movements, see _build_figures)
 const FIGURE_SIGMA := 0.8      # s, low-pass of the azimuth / distance / height of the drone around the subject
 const FIGURE_SPEED_CAP := 40.0 # m/s (144 km/h), 99th percentile of the drone speed in a figure flight
@@ -86,7 +91,8 @@ static func _plan_with(movement: String, S: PackedVector3Array, ctx: Dictionary)
 	var time_mul := 1.0   # slows the orbit / the sweeps
 	var sway_k := 1.0     # softens the sway (last resort: a tortuous path leaves little room for it)
 	var figures := movement in DroneDifficulty.EXPERT_MOVEMENTS
-	var fast := movement == "orbit" or movement == "reveal" or movement == "flyby" or figures
+	var fast := movement == "orbit" or movement == "reveal" or movement == "flyby" or figures \
+			or movement in DRILLS
 	var cap_pan := float(lp.pan_cap) * float(PAN_CAP_FACTOR[movement])
 	var cap_tilt := float(lp.tilt_cap) * float(TILT_CAP_FACTOR[movement])
 	# A subject that brakes and accelerates as hard as a racing car cannot be chased by a drone that
@@ -160,7 +166,12 @@ static func _prepare(movement: String, S: PackedVector3Array, ctx: Dictionary) -
 	var n := S.size()
 	var cum := PathUtil.cumulative(S)
 	var total: float = cum[n - 1]
-	var v_hint := maxf(float(ctx.get("speed_hint", 8.0)), 0.3)
+	# A subject can be genuinely slow (a climber) or all but still (the standing target of a
+	# movement drill): the guard here is against a speed of zero, not against a slow one, so its
+	# floor is the slowest the subject may really travel, which its sheet gives. A floor above that
+	# would have the planner lay out a minute and a half of flight on a timeline of a few seconds.
+	var v_floor := clampf(float(ctx.get("min_speed", 0.15)), 0.004, 0.3)
+	var v_hint := maxf(float(ctx.get("speed_hint", 8.0)), v_floor)
 	# Timeline of the drone (it does not copy the speed changes of the subject) and place of the
 	# subject at each point of the drone path.
 	var tl := _timeline(cum, total, ctx.get("profile", PackedFloat32Array()), v_hint,
@@ -215,6 +226,10 @@ static func _timeline(cum: PackedFloat32Array, total: float, profile: PackedFloa
 	var t := 0.0
 	var i := 1
 	var guard := 0
+	# The last point counts as reached a little early (the subject creeps to a stop at the end of a
+	# ride); on a path a few metres long - the standing subject of a movement drill - that slack
+	# has to shrink with it, or the timeline stops seconds before the run does.
+	var tail := minf(0.05, 0.02 * total)
 	while i < n and guard < 600000:
 		guard += 1
 		var s_prev := s
@@ -226,7 +241,7 @@ static func _timeline(cum: PackedFloat32Array, total: float, profile: PackedFloa
 		var sig_new := sig + vf * dt
 		sig_new += (s - sig_new) * k_c
 		t += dt
-		while i < n and sig_new >= cum[i] - (0.05 if i == n - 1 else 0.0):
+		while i < n and sig_new >= cum[i] - (tail if i == n - 1 else 0.0):
 			var f := clampf((cum[i] - sig) / maxf(sig_new - sig, 0.000001), 0.0, 1.0)
 			tt[i] = t - dt + dt * f
 			e[i] = lerpf(s_prev, s, f) - cum[i]
@@ -291,7 +306,7 @@ static func _build(g: Dictionary, k_dist: float, sig_mul: float, time_mul: float
 	var C: PackedVector3Array = cache[key][0]
 	# The subject swings around the smoothed path: keep clear of it when it can swing towards the drone.
 	var swing: float = cache[key][1]
-	if movement == "orbit" or movement == "lateral" or movement == "reveal":
+	if movement == "orbit" or movement == "lateral" or movement == "reveal" or movement in DRILLS:
 		d0 = maxf(d0, 1.25 * swing + 1.4 * d_floor)
 	if movement == "flyby":
 		d0 = maxf(d0, 1.25 * swing + 2.2 * d_floor)
@@ -311,6 +326,17 @@ static func _build(g: Dictionary, k_dist: float, sig_mul: float, time_mul: float
 	var theta0 := 0.0
 	if movement == "orbit":
 		theta0 = atan2(heads[0].z, heads[0].x) + PI + rng.randf_range(-0.4, 0.4)
+	# A drill repeats one figure; the angle of a spiral is the integral of its angular speed, so it is
+	# run through once here rather than recomputed at every point.
+	var dr := _drill_setup(g, lp, time_mul, d0, d_min) if movement in DRILLS else {}
+	var spiral_th := PackedFloat32Array()
+	if movement == "spiral_in":
+		spiral_th.resize(n)
+		var th: float = atan2(heads[0].z, heads[0].x) + PI
+		spiral_th[0] = th
+		for i in range(1, n):
+			th += side * float(dr.v_tan) / _spiral_radius(dr, tt[i - 1]) * (tt[i] - tt[i - 1])
+			spiral_th[i] = th
 	var D := PackedVector3Array()
 	D.resize(n)
 	for i in n:
@@ -333,6 +359,7 @@ static func _build(g: Dictionary, k_dist: float, sig_mul: float, time_mul: float
 		var el := BASE_ELEVATION + a_el * sin(TAU * t / t_el + phi_el)
 		var xz: Vector3
 		var dh := d0
+		var hy := INF  # a drill sets the height above the subject itself
 		match movement:
 			"pursuit":
 				xz = right * (d0 * tan(az)) - head * d0
@@ -343,14 +370,161 @@ static func _build(g: Dictionary, k_dist: float, sig_mul: float, time_mul: float
 				var r := d0 * (1.0 + 0.05 * sin(TAU * t / 17.0 + phi_az))
 				xz = Vector3(cos(th), 0.0, sin(th)) * r
 				dh = r
+			"spiral_in":
+				# An orbit that closes in on the subject, then opens back out for the next turn.
+				var r := _spiral_radius(dr, t)
+				xz = Vector3(cos(spiral_th[i]), 0.0, sin(spiral_th[i])) * r
+				dh = r
+			"reveal_up":
+				# High and behind looking steeply down, then down and ahead looking up: the camera
+				# tilts from the ground to the horizon while the subject stays in the frame.
+				var q := fposmod(t / float(dr.period), 1.0)
+				var u := _drill_hold(q, float(dr.sweep), float(dr.hold))
+				var l: float = lerpf(float(dr.l_near), float(dr.l_far), u)
+				var psi: float = lerpf(float(dr.psi_back), float(dr.psi_front), u)
+				xz = (head * cos(psi) + right * (side * sin(psi))) * l
+				dh = l
+				hy = lerpf(float(dr.h_hi), float(dr.h_lo), u) + dh * tan(el - BASE_ELEVATION)
+			"pass_behind":
+				# Far behind and wide on one side, catches up passing behind the subject, comes out
+				# on the other side and settles alongside it; then drops back for the next pass,
+				# which crosses the other way.
+				var ph := t / float(dr.period)
+				var cyc := floori(ph)
+				var sgn := side * (-1.0 if cyc % 2 == 1 else 1.0)
+				var q := ph - float(cyc)
+				var lat := 0.0
+				var back := 0.0
+				if q < float(dr.pass_f):
+					var u := _sstep(0.0, float(dr.pass_f), q)
+					lat = lerpf(float(dr.lat_wide), -float(dr.lat), u)
+					back = lerpf(-float(dr.back), 0.0, u)
+				elif q < float(dr.pass_f) + float(dr.hold):
+					lat = -float(dr.lat)
+				else:
+					var u := _sstep(float(dr.pass_f) + float(dr.hold), 1.0, q)
+					lat = lerpf(-float(dr.lat), -float(dr.lat_wide), u)
+					back = lerpf(0.0, -float(dr.back), u)
+				xz = right * (sgn * lat) + head * back
+				dh = maxf(Vector2(lat, back).length(), d_floor)
+			"vertical_pass":
+				# Straight over the subject on a line a little off the perpendicular: in from behind,
+				# out in front, high. The drone does not go exactly overhead (the pan would have to
+				# spin on the spot), it passes `miss` metres to the side.
+				var q := fposmod(t / float(dr.period), 1.0)
+				var dir := (right * (side * cos(float(dr.skew))) + head * sin(float(dr.skew))).normalized()
+				var off := dir.cross(Vector3.UP) * (side * float(dr.miss))
+				if q < float(dr.pass_f):
+					var u := _sstep(0.0, float(dr.pass_f), q)
+					xz = dir * lerpf(-float(dr.reach), float(dr.reach), u) + off
+					hy = float(dr.high) * (1.0 + 0.10 * sin(PI * u))
+				else:  # the long way round, wide and high, back to where it came in
+					var u := _sstep(float(dr.pass_f), 1.0, q)
+					var a := PI * u
+					xz = dir.rotated(Vector3.UP, side * a) * (float(dr.reach) * (1.0 + 0.3 * sin(a))) + off
+					hy = float(dr.high) * (1.0 + 0.45 * sin(a))
+				dh = maxf(Vector2(xz.x, xz.z).length(), d_floor)
+				hy += dh * tan(el - BASE_ELEVATION)
 			_:  # lateral, reveal, flyby: alongside, drifting ahead / behind
 				var l := maxf(d0 + dl_ev, d_floor)
 				var ahead := l * tan(az) + ahead_ev
 				xz = right * (side * l) + head * ahead
 				dh = sqrt(l * l + ahead * ahead)
 		var base: Vector3 = C[i]
-		D[i] = Vector3(base.x + xz.x, base.y + dh * tan(el), base.z + xz.z)
+		D[i] = Vector3(base.x + xz.x, base.y + (dh * tan(el) if hy == INF else hy), base.z + xz.z)
 	return _finish(g, D, sig_mul, d_floor, events, heads)
+
+
+## A drill (the "Mouvements" levels) repeats one figure over and over so the operator can get the
+## hang of it. The figure is cut into phases, each one a quintic blend - it starts and ends at rest,
+## so the joins and the wrap back to the start are smooth whatever the sizes. This sets those sizes
+## and the period: long enough that no phase asks for more acceleration than the level allows, and
+## cut so a whole number of figures fits in the run.
+static func _drill_setup(g: Dictionary, lp: Dictionary, time_mul: float, d0: float,
+		d_min: float) -> Dictionary:
+	var a_lim := EVENT_ACCEL * float(lp.accel_cap)
+	var d := {}
+	var want := 0.0   # period the figure would like
+	var legs := []    # [travel of a phase (m), share of the period it gets]
+	var turns := []   # [radius of a half circle flown in a phase (m), share of the period]
+	match g.movement:
+		"spiral_in":
+			d["r_far"] = 1.5 * d0
+			d["r_near"] = maxf(0.5 * d0, d_min)
+			d["in_frac"] = 0.72  # closing in takes most of the turn, opening back out is quicker
+			# Tangential speed: fast enough to feel like an orbit, slow enough that the centripetal
+			# acceleration at the tightest radius stays inside the level.
+			d["v_tan"] = minf(sqrt(ORBIT_ACCEL * float(lp.accel_cap) * float(d.r_near)),
+					TAU * d0 / maxf(float(lp.orbit_period), 1.0)) / time_mul
+			want = 1.5 * PI * (float(d.r_far) + float(d.r_near)) / float(d.v_tan)
+			var dr_m: float = float(d.r_far) - float(d.r_near)
+			legs = [[dr_m, float(d.in_frac)], [dr_m, 1.0 - float(d.in_frac)]]
+		"reveal_up":
+			d["l_near"] = maxf(0.6 * d0, d_min)
+			d["l_far"] = 1.45 * d0
+			d["h_hi"] = 1.3 * float(d.l_near)    # ~52 deg of look-down
+			d["h_lo"] = -0.1 * float(d.l_far)    # under the subject where the ground falls away
+			d["psi_back"] = 2.1                  # rad from the heading: behind and to the side...
+			d["psi_front"] = 1.35                # ...to abeam and a little ahead
+			d["sweep"] = 0.54
+			d["hold"] = 0.14
+			want = 13.0
+			var travel := Vector2(float(d.l_far) - float(d.l_near),
+					float(d.h_hi) - float(d.h_lo)).length()
+			legs = [[travel, float(d.sweep)], [travel, 1.0 - float(d.sweep) - float(d.hold)]]
+		"pass_behind":
+			d["lat"] = d0
+			d["lat_wide"] = 1.35 * d0
+			d["back"] = 1.9 * d0
+			d["pass_f"] = 0.5
+			d["hold"] = 0.17
+			want = 17.0
+			legs = [[Vector2(float(d.lat) + float(d.lat_wide), float(d.back)).length(), float(d.pass_f)],
+					[Vector2(float(d.lat_wide) - float(d.lat), float(d.back)).length(),
+							1.0 - float(d.pass_f) - float(d.hold)]]
+		"vertical_pass":
+			d["reach"] = 1.3 * d0
+			d["high"] = maxf(0.7 * d0, 6.0)
+			d["skew"] = 0.42  # rad off the perpendicular: in from behind, out in front
+			d["miss"] = 0.45 * float(d.high)
+			d["pass_f"] = 0.46
+			want = 15.0
+			legs = [[2.0 * float(d.reach), float(d.pass_f)],
+					[PI * float(d.reach), 1.0 - float(d.pass_f)]]
+			turns = [[1.3 * float(d.reach), 1.0 - float(d.pass_f)]]
+	var period := want * time_mul
+	for leg in legs:
+		var share: float = leg[1]
+		if float(leg[0]) > 0.01 and share > 0.01:
+			period = maxf(period, sqrt(QUINTIC_PEAK * float(leg[0]) / a_lim) / share)
+	for turn in turns:
+		var share: float = turn[1]
+		if float(turn[0]) > 0.1 and share > 0.01:
+			# A half circle of that radius flown in that share of the period: at the quickest
+			# moment of the blend the drone goes about 1.5 times its mean speed, and the
+			# centripetal acceleration there has to fit inside the level as well.
+			period = maxf(period, 1.5 * PI * sqrt(float(turn[0]) / a_lim) / share)
+	# A whole number of figures in the run - the last one is not cut in half - without ever squeezing
+	# a figure into less than the period it needs.
+	d["period"] = maxf(float(g.T) / float(maxi(1, int(floor(float(g.T) / period)))), period)
+	return d
+
+
+## Radius of a spiral_in drill at time t: it closes in over most of the figure, then opens back out.
+static func _spiral_radius(d: Dictionary, t: float) -> float:
+	var q := fposmod(t / float(d.period), 1.0)
+	var f: float = float(d.in_frac)
+	var u := _sstep(0.0, f, q) if q < f else 1.0 - _sstep(f, 1.0, q)
+	return lerpf(float(d.r_far), float(d.r_near), u)
+
+
+## 0 -> 1 over the first `sweep` of a figure, held at 1 for `hold`, then back to 0.
+static func _drill_hold(q: float, sweep: float, hold: float) -> float:
+	if q < sweep:
+		return _sstep(0.0, sweep, q)
+	if q < sweep + hold:
+		return 1.0
+	return 1.0 - _sstep(sweep + hold, 1.0, q)
 
 
 ## Smooth, above the ground, away from the subject.

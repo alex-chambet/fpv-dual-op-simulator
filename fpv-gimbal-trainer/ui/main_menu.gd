@@ -1,10 +1,30 @@
 extends Control
 ## Main menu, in pages (like the menus of the FPV simulators):
 ##  1. Home: PLAY (big tile), then random session, history and replays, settings; quit.
-##  2. Play: training (a scored session on one of the sports) or sandbox (free flight in the countryside), and the
-##     terrain, as a grid of picture cards.
+##  2. Play: one of three modes - training (a scored session on one of the sports), movement drills
+##     (one drone figure, repeated, to learn it) or sandbox (free flight) - and the terrain or the
+##     figure, as a grid of picture cards.
 ##  3. Session: only the options of what was chosen (players, screens, drone movement, level, lens), and LAUNCH.
 ## Esc (or Back) goes back one page. After a session the menu opens on the page of that session, ready to play again.
+
+## The three modes of the play / setup pages.
+const TRAINING := "training"
+const DRILLS := "drills"
+const SANDBOX := "sandbox"
+
+## The movement drills ("Mouvements"): name, subtitle of the card, and what the operator has to do.
+const DRILL_LABELS := {
+	"orbit": ["Orbite", "Tourner autour du sujet",
+		"Le drone décrit un cercle autour du sujet, à distance constante. C'est la figure de base : un pan régulier, sans à-coup, pendant tout le tour. Garde le sujet au même endroit du cadre et accompagne-le au lieu de le rattraper."],
+	"spiral_in": ["Spirale vers l'intérieur", "Une orbite qui se resserre",
+		"Le même cercle, mais le rayon diminue : le sujet grossit et le pan s'accélère à mesure que le drone se rapproche. Il faut anticiper cette accélération, sinon on se fait déborder au plus près. Le drone ressort ensuite pour recommencer."],
+	"reveal_up": ["Reveal tilt bas vers haut", "Du sol vers l'horizon",
+		"Le drone part haut et tout près, caméra plongeant à pic sur le sol, puis descend en s'éloignant jusqu'à passer devant le sujet : le tilt remonte du sol jusqu'à l'horizon pendant que le sujet se dévoile. Exercice de tilt presque pur, le pan ne bouge que peu."],
+	"pass_behind": ["Flyby par derrière", "Rattraper, passer derrière, ressortir",
+		"Le drone arrive de loin, décalé en arrière et sur un côté, rattrape le sujet en passant derrière lui et ressort de l'autre côté pour le suivre latéralement. Le pan s'inverse au moment du passage : c'est là qu'il faut être propre. La figure repart ensuite dans l'autre sens."],
+	"vertical_pass": ["Vertical tilt", "Passage juste au-dessus",
+		"Le drone passe au-dessus du sujet sur une trajectoire presque perpendiculaire à sa course : il entre un peu par l'arrière et ressort un peu en avant. Au plus près il faut piquer fort et panoter en même temps — c'est la seule figure où les deux axes travaillent à fond ensemble."],
+}
 
 const MOVEMENT_LABELS := {
 	"pursuit": ["Poursuite arrière", "Le drone suit le sujet par l'arrière."],
@@ -36,14 +56,15 @@ const SANDBOX_MAPS := [
 const VERSION := "Version 1.6"
 const THUMBS := "res://ui/thumbs/%s.png"
 
-## Page to open the next time the menu is shown ("home", "play", "setup"), and whether "setup" is the sandbox.
+## Page to open the next time the menu is shown ("home", "play", "setup"), and in which mode.
 static var return_page := "home"
-static var return_sandbox := false
+static var return_mode := TRAINING
 
 var _sports: Array[SubjectDefinition] = []
 var _sport: SubjectDefinition
 var _profile_opt: OptionButton
-var _sandbox := false   ## the play / setup pages are for the sandbox (else a training session)
+var _mode := TRAINING    ## which of the three modes the play / setup pages are showing
+var _drill := "orbit"    ## the movement of the drill chosen on the "Mouvements" tab
 
 var _home: Control
 var _play: Control
@@ -51,8 +72,7 @@ var _setup: Control
 var _page: Control
 var _backdrop: ColorRect
 var _play_tile: MenuTile
-var _train_tab: Button
-var _sandbox_tab: Button
+var _tabs := {}   ## mode -> the pill of the play page
 var _grid: GridContainer
 var _play_text: Label
 var _cards: Array[MenuTile] = []
@@ -72,6 +92,9 @@ var _level_opt: OptionButton
 var _level_info: Label
 var _lens_opt: OptionButton
 var _ambience_opt: OptionButton
+var _speed_opt: OptionButton
+var _speed_info: Label
+var _preview: MovementPreview
 var _launch: Button
 
 
@@ -95,12 +118,12 @@ func _ready() -> void:
 	_apply_prefs(prefs)
 	for o in [_mode_opt, _movement_opt, _level_opt, _lens_opt, _screens_opt, _ambience_opt]:
 		o.item_selected.connect(func(_i): _save_prefs())
-	_sandbox = return_sandbox
+	_mode = return_mode
 	match return_page:
 		"setup":
-			_open_setup(_sandbox)
+			_open_setup(_mode)
 		"play":
-			_open_play(_sandbox)
+			_open_play(_mode)
 		_:
 			_show(_home)
 	return_page = "home"
@@ -128,7 +151,10 @@ func _apply_prefs(prefs: Dictionary) -> void:
 	for m in SANDBOX_MAPS:
 		if str(m.id) == saved_map:
 			Sandbox.map = saved_map
-	for pair in [[_mode_opt, "mode"], [_movement_opt, "movement"], [_level_opt, "level"], [_lens_opt, "lens"], [_screens_opt, "screens"], [_ambience_opt, "ambience"]]:
+	var saved_drill := str(prefs.get("drill", _drill))
+	if saved_drill in ScenarioMatrix.DRILL_MOVEMENTS:
+		_drill = saved_drill
+	for pair in [[_mode_opt, "mode"], [_movement_opt, "movement"], [_level_opt, "level"], [_lens_opt, "lens"], [_screens_opt, "screens"], [_ambience_opt, "ambience"], [_speed_opt, "drill_speed"]]:
 		var o: OptionButton = pair[0]
 		var i := int(prefs.get(pair[1], 0))
 		if i >= 0 and i < o.item_count:
@@ -145,7 +171,8 @@ func _save_prefs() -> void:
 	var prefs := _load_prefs()
 	prefs.merge({"sport": _sport.id, "mode": _mode_opt.selected, "movement": _movement_opt.selected,
 			"level": _level_opt.selected, "lens": _lens_opt.selected, "screens": _screens_opt.selected, "ambience": _ambience_opt.selected, "blur": MotionBlur.level,
-			"quality": GraphicsSettings.quality, "sandbox_map": Sandbox.map}, true)
+			"quality": GraphicsSettings.quality, "sandbox_map": Sandbox.map,
+			"drill": _drill, "drill_speed": _speed_opt.selected}, true)
 	var f := FileAccess.open(PREFS_PATH, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(prefs, "\t"))
@@ -279,7 +306,7 @@ func _build_home() -> Control:
 	_play_tile = _tile("Jouer", "", Vector2(1180, 380), 52)
 	_play_tile.picture = _thumb("ski_descente")
 	_play_tile.icon_kind = ""
-	_play_tile.pressed.connect(func(): _open_play(false))
+	_play_tile.pressed.connect(func(): _open_play(TRAINING))
 	row1.add_child(_play_tile)
 	var row2 := HBoxContainer.new()
 	row2.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -344,12 +371,14 @@ func _build_play() -> Control:
 	tabs.add_theme_constant_override("separation", 0)
 	right.add_child(tabs)
 	var group := ButtonGroup.new()
-	_train_tab = _tab("Entraînement", group, true)
-	_train_tab.pressed.connect(func(): _fill_play(false))
-	tabs.add_child(_train_tab)
-	_sandbox_tab = _tab("Bac à sable", group, false)
-	_sandbox_tab.pressed.connect(func(): _fill_play(true))
-	tabs.add_child(_sandbox_tab)
+	var names := {TRAINING: "Entraînement", DRILLS: "Mouvements", SANDBOX: "Bac à sable"}
+	var modes := [TRAINING, DRILLS, SANDBOX]
+	for i in modes.size():
+		var mode: String = modes[i]
+		var b := _tab(str(names[mode]), group, -1 if i == 0 else (1 if i == modes.size() - 1 else 0))
+		b.pressed.connect(func(): _fill_play(mode))
+		tabs.add_child(b)
+		_tabs[mode] = b
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -362,13 +391,14 @@ func _build_play() -> Control:
 	return root
 
 
-## A tab of the "Training / Sandbox" switch: a pill, filled when selected.
-func _tab(text: String, group: ButtonGroup, left: bool) -> Button:
+## A tab of the mode switch: a pill, filled when selected. `pos` is -1 for the leftmost tab, +1 for
+## the rightmost, 0 for the ones in between (only their outer corners are rounded).
+func _tab(text: String, group: ButtonGroup, pos: int) -> Button:
 	var b := Button.new()
 	b.text = text
 	b.toggle_mode = true
 	b.button_group = group
-	b.custom_minimum_size = Vector2(260, 52)
+	b.custom_minimum_size = Vector2(230, 52)
 	b.add_theme_font_size_override("font_size", 22)
 	b.add_theme_font_override("font", Neon.title_font())
 	b.focus_mode = Control.FOCUS_ALL
@@ -384,59 +414,77 @@ func _tab(text: String, group: ButtonGroup, left: bool) -> Button:
 		sb.shadow_color = Color(sb.border_color, 0.4)
 		sb.shadow_size = 10 if state in ["pressed", "hover_pressed", "focus"] else 0
 		sb.set_border_width_all(2)
-		sb.corner_radius_top_left = 26 if left else 0
-		sb.corner_radius_bottom_left = 26 if left else 0
-		sb.corner_radius_top_right = 0 if left else 26
-		sb.corner_radius_bottom_right = 0 if left else 26
+		sb.corner_radius_top_left = 26 if pos < 0 else 0
+		sb.corner_radius_bottom_left = 26 if pos < 0 else 0
+		sb.corner_radius_top_right = 26 if pos > 0 else 0
+		sb.corner_radius_bottom_right = 26 if pos > 0 else 0
 		b.add_theme_stylebox_override(state, sb)
 	return b
 
 
-func _open_play(sandbox: bool) -> void:
-	_fill_play(sandbox)
+func _open_play(mode: String) -> void:
+	_fill_play(mode)
 	_show(_play)
 
 
-## Fills the grid: one card per sport (training), or the sandbox map.
-func _fill_play(sandbox: bool) -> void:
-	_sandbox = sandbox
-	_train_tab.set_pressed_no_signal(not sandbox)
-	_sandbox_tab.set_pressed_no_signal(sandbox)
+## Fills the grid: one card per sport (training), per figure (drills) or per sandbox map.
+func _fill_play(mode: String) -> void:
+	_mode = mode
+	for k in _tabs:
+		(_tabs[k] as Button).set_pressed_no_signal(k == mode)
 	for c in _grid.get_children():
 		c.queue_free()
 	_cards.clear()
-	if sandbox:
-		_play_text.text = SANDBOX_TEXT + "\n\nTouches 1 à %d : choisir un terrain." % SANDBOX_MAPS.size()
-		for m in SANDBOX_MAPS:
-			var card := _tile(str(m.name), str(m.subtitle), Vector2(420, 250), 26)
-			card.picture = _thumb(str(m.thumb))
-			card.skew = 0.0
-			card.pressed.connect(_choose_sandbox_map.bind(str(m.id)))
-			_grid.add_child(card)
-			_cards.append(card)
-	else:
-		_play_text.text = "Un sport, un parcours généré à chaque session : le drone vole tout seul (ou piloté par un 2e joueur) et tu gardes le sujet dans le cadre avec la gimbal. À la fin, une note sur 100.\n\nTouches 1 à %d : choisir un sport." % _sports.size()
-		for i in _sports.size():
-			var s := _sports[i]
-			var card := _tile(s.display_name, "", Vector2(330, 210), 24)
-			card.picture = _thumb(s.id)
-			card.skew = 0.0
-			card.badge = _dots(s.base_difficulty)
-			card.pressed.connect(_choose_sport.bind(i))
-			_grid.add_child(card)
-			_cards.append(card)
+	match mode:
+		SANDBOX:
+			_play_text.text = SANDBOX_TEXT + "\n\nTouches 1 à %d : choisir un terrain." % SANDBOX_MAPS.size()
+			for m in SANDBOX_MAPS:
+				var card := _tile(str(m.name), str(m.subtitle), Vector2(420, 250), 26)
+				card.picture = _thumb(str(m.thumb))
+				card.skew = 0.0
+				card.pressed.connect(_choose_sandbox_map.bind(str(m.id)))
+				_grid.add_child(card)
+				_cards.append(card)
+		DRILLS:
+			_play_text.text = "Une seule figure de drone, répétée du début à la fin, autour d'un sujet qui ne fait rien d'autre qu'avancer tout droit. Le but n'est pas la note mais le geste : commence sujet immobile, puis fais-le marcher, courir, filer.\n\nLes figures sont rangées de la plus simple à la plus difficile.\nTouches 1 à %d : choisir un mouvement." % ScenarioMatrix.DRILL_MOVEMENTS.size()
+			for id in ScenarioMatrix.drills_by_difficulty():
+				var lab: Array = DRILL_LABELS[id]
+				var card := _tile(str(lab[0]), str(lab[1]), Vector2(330, 210), 22)
+				card.picture = _thumb("drill_" + id)
+				card.skew = 0.0
+				card.badge = _dots(int(ScenarioMatrix.DRILL_TIER.get(id, 3)))
+				card.pressed.connect(_choose_drill.bind(str(id)))
+				_grid.add_child(card)
+				_cards.append(card)
+		_:
+			_play_text.text = "Un sport, un parcours généré à chaque session : le drone vole tout seul (ou piloté par un 2e joueur) et tu gardes le sujet dans le cadre avec la gimbal. À la fin, une note sur 100.\n\nTouches 1 à %d : choisir un sport." % _sports.size()
+			for i in _sports.size():
+				var s := _sports[i]
+				var card := _tile(s.display_name, "", Vector2(330, 210), 24)
+				card.picture = _thumb(s.id)
+				card.skew = 0.0
+				card.badge = _dots(s.base_difficulty)
+				card.pressed.connect(_choose_sport.bind(i))
+				_grid.add_child(card)
+				_cards.append(card)
 
 
 func _choose_sport(i: int) -> void:
 	_sport = _sports[i]
 	_save_prefs()
-	_open_setup(false)
+	_open_setup(TRAINING)
+
+
+func _choose_drill(id: String) -> void:
+	_drill = id
+	_save_prefs()
+	_open_setup(DRILLS)
 
 
 func _choose_sandbox_map(id: String) -> void:
 	Sandbox.map = id
 	_save_prefs()
-	_open_setup(true)
+	_open_setup(SANDBOX)
 
 
 ## The entry of SANDBOX_MAPS currently selected.
@@ -464,11 +512,16 @@ func _build_setup() -> Control:
 	_setup_picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	side.add_child(Control.new())
 	side.add_child(_setup_picture)
+	# The drills show the figure flying instead of a photo: the real planned flight, on a loop.
+	_preview = MovementPreview.new()
+	_preview.custom_minimum_size = Vector2(360, 230)
+	_preview.visible = false
+	side.add_child(_preview)
 	_setup_text = _label("", 16, 0.75)
 	_setup_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_setup_text.custom_minimum_size = Vector2(360, 0)
 	side.add_child(_setup_text)
-	_side_bottom(side, func(): _open_play(_sandbox))
+	_side_bottom(side, func(): _open_play(_mode))
 
 	var panel := PanelContainer.new()
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -494,10 +547,18 @@ func _build_setup() -> Control:
 	_screens_opt.add_item("Deux écrans  -  vue pilote sur le 2e écran" + ("" if n_screens > 1 else "  (aucun 2e écran détecté)"))
 	_movement_opt = _option_row(v, "movement", "Mouvement du drone")
 	_movement_opt.add_item("Au hasard (selon le niveau)")
-	for m in ScenarioMatrix.MOVEMENTS:
-		_movement_opt.add_item("%s   %s" % [MOVEMENT_LABELS[m.id][0], _dots(DroneDifficulty.movement_tier(m.id))])
+	# the drills are not offered here: they are played from the "Mouvements" tab, on their own
+	# subject and at a chosen subject speed
+	for m in _training_movements():
+		_movement_opt.add_item("%s   %s" % [MOVEMENT_LABELS[m][0], _dots(DroneDifficulty.movement_tier(m))])
 	_movement_opt.item_selected.connect(func(_i): _update_info())
 	_movement_info = _info(v, "movement_info")
+	_speed_opt = _option_row(v, "speed", "Vitesse du sujet")
+	for s in ScenarioMatrix.DRILL_STEPS:
+		_speed_opt.add_item("%s  -  %s" % [str(s.name),
+				"immobile" if float(s.speed) < 0.5 else "%.0f km/h" % (float(s.speed) * 3.6)])
+	_speed_opt.item_selected.connect(func(_i): _update_info())
+	_speed_info = _info(v, "speed_info")
 	_level_opt = _option_row(v, "level", "Niveau")
 	for t in LEVEL_LABELS:
 		_level_opt.add_item(t)
@@ -568,23 +629,33 @@ func _info(parent: Control, key: String) -> Label:
 	return l
 
 
-func _open_setup(sandbox: bool) -> void:
-	_sandbox = sandbox
-	if sandbox:
-		var m := _sandbox_map()
-		_setup_heading.text = "BAC À SABLE"
-		_setup_title.text = "Bac à sable  -  %s" % str(m.name)
-		_setup_picture.picture = _thumb(str(m.thumb))
-		_setup_picture.title = str(m.name)
-		_setup_picture.badge = ""
-		_setup_text.text = "Pas de chrono, pas de score. " + str(m.text)
-	elif _sport != null:
-		_setup_heading.text = "ENTRAÎNEMENT"
-		_setup_title.text = "Session d'entraînement"
-		_setup_picture.picture = _thumb(_sport.id)
-		_setup_picture.title = _sport.display_name
-		_setup_picture.badge = _dots(_sport.base_difficulty)
-		_setup_text.text = _sport.description
+func _open_setup(mode: String) -> void:
+	_mode = mode
+	_preview.visible = mode == DRILLS
+	_setup_picture.visible = mode != DRILLS
+	match mode:
+		SANDBOX:
+			var m := _sandbox_map()
+			_setup_heading.text = "BAC À SABLE"
+			_setup_title.text = "Bac à sable  -  %s" % str(m.name)
+			_setup_picture.picture = _thumb(str(m.thumb))
+			_setup_picture.title = str(m.name)
+			_setup_picture.badge = ""
+			_setup_text.text = "Pas de chrono, pas de score. " + str(m.text)
+		DRILLS:
+			var lab: Array = DRILL_LABELS[_drill]
+			_setup_heading.text = "MOUVEMENT"
+			_setup_title.text = str(lab[0])
+			_setup_text.text = str(lab[2])
+			_preview.show_movement(_drill, _level_opt.selected)
+		_:
+			if _sport != null:
+				_setup_heading.text = "ENTRAÎNEMENT"
+				_setup_title.text = "Session d'entraînement"
+				_setup_picture.picture = _thumb(_sport.id)
+				_setup_picture.title = _sport.display_name
+				_setup_picture.badge = _dots(_sport.base_difficulty)
+				_setup_text.text = _sport.description
 	_setup_picture.queue_redraw()
 	_update_info()
 	_show(_setup)
@@ -594,17 +665,28 @@ func _update_info() -> void:
 	if _mode_opt == null:
 		return
 	var duo := _two_players()
-	var training := not _sandbox
+	var training := _mode == TRAINING
+	var drill := _mode == DRILLS
 	_rows.mode.visible = training
 	_rows.mode_info.visible = training
 	_rows.movement.visible = training and not duo
 	_rows.movement_info.visible = training and not duo
-	_rows.level.visible = training and not duo
-	_rows.level_info.visible = training and not duo
+	_rows.speed.visible = drill
+	_rows.speed_info.visible = drill
+	_rows.level.visible = drill or (training and not duo)
+	_rows.level_info.visible = drill or (training and not duo)
 	# the pilot's screen only matters when someone flies the drone
-	_rows.screens.visible = duo or _sandbox
-	if _sandbox:
+	_rows.screens.visible = (duo and training) or _mode == SANDBOX
+	if _mode == SANDBOX:
 		_launch.text = "LANCER LE BAC À SABLE"
+		return
+	if drill:
+		_speed_info.text = str(ScenarioMatrix.DRILL_STEPS[_speed_opt.selected].desc)
+		_level_info.text = DroneDifficulty.describe(_drill_level())
+		if _level_opt.selected <= 1:
+			_level_info.text += "\n(Auto et Aléatoire n'ont pas de sens pour un exercice : c'est le niveau 2.)"
+		_launch.text = "LANCER L'EXERCICE"
+		_preview.show_movement(_drill, _drill_level())
 		return
 	_mode_info.text = "Manette 1 = gimbal (cadreur), manette 2 = drone en mode acro (pilote). Le sujet reste scripté. Réglage : Paramètres > Configuration manette." if duo else "Un seul joueur : le drone suit le sujet, tu gères la gimbal."
 	_launch.text = "LANCER LA SESSION À 2 JOUEURS" if duo else "LANCER LA SESSION"
@@ -629,18 +711,44 @@ func _two_players() -> bool:
 	return _mode_opt != null and _mode_opt.selected == 1
 
 
+## Level of a drill: the same row as a training session, but "Auto" (the difficulty of the sport)
+## and "Aléatoire" mean nothing here, so they become level 2.
+func _drill_level() -> int:
+	return 2 if _level_opt.selected <= 1 else _level_opt.selected - 1
+
+
+## The movements a training session may be asked for: everything but the drills.
+func _training_movements() -> Array:
+	var out: Array = []
+	for m in ScenarioMatrix.MOVEMENTS:
+		if not m.get("drill", false):
+			out.append(str(m.id))
+	return out
+
+
 func _selected_movement() -> String:
-	return "" if _movement_opt.selected <= 0 else str(ScenarioMatrix.MOVEMENTS[_movement_opt.selected - 1].id)
+	var all := _training_movements()
+	var i := _movement_opt.selected - 1
+	return "" if i < 0 or i >= all.size() else str(all[i])
 
 
 # --- Launch --------------------------------------------------------------------------------------
 
 func _launch_session() -> void:
 	Ambience.choice = str(Ambience.MENU[_ambience_opt.selected])
-	if _sandbox:
-		_start_sandbox()
-	else:
-		_start_training()
+	match _mode:
+		SANDBOX: _start_sandbox()
+		DRILLS: _start_drill()
+		_: _start_training()
+
+
+func _start_drill() -> void:
+	_save_prefs()
+	return_page = "setup"
+	return_mode = DRILLS
+	DuoSession.dual_screen = false
+	ScenarioMatrix.launch(get_tree(), ScenarioMatrix.drill_config(_drill, _speed_opt.selected,
+			_drill_level(), SessionConfig.LENSES[_lens_opt.selected]))
 
 
 func _start_training() -> void:
@@ -648,7 +756,7 @@ func _start_training() -> void:
 		return
 	_save_prefs()
 	return_page = "setup"
-	return_sandbox = false
+	return_mode = TRAINING
 	DuoSession.dual_screen = _screens_opt.selected == 1
 	var lv := _level_opt.selected  # 0 auto, 1 random, 2..7 = level 1..6
 	var level := -1 if lv == 0 else (0 if lv == 1 else lv - 1)
@@ -658,7 +766,7 @@ func _start_training() -> void:
 func _start_sandbox() -> void:
 	_save_prefs()
 	return_page = "setup"
-	return_sandbox = true
+	return_mode = SANDBOX
 	DuoSession.dual_screen = _screens_opt.selected == 1
 	Sandbox.lens_mm = SessionConfig.LENSES[_lens_opt.selected]
 	LoadingScreen.run(func(): get_tree().change_scene_to_file("res://scenarios/sandbox/sandbox.tscn"))
@@ -674,7 +782,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		match _page:
 			_setup:
-				_open_play(_sandbox)
+				_open_play(_mode)
 			_play:
 				_show(_home)
 		return
@@ -690,13 +798,22 @@ func _unhandled_input(event: InputEvent) -> void:
 		_home:
 			match event.physical_keycode:
 				KEY_R: _start_random()
-				KEY_ENTER, KEY_KP_ENTER: _open_play(false)
+				KEY_ENTER, KEY_KP_ENTER: _open_play(TRAINING)
 		_play:
 			var n: int = event.physical_keycode - KEY_1
-			if _sandbox and n >= 0 and n < SANDBOX_MAPS.size():
-				_choose_sandbox_map(str(SANDBOX_MAPS[n].id))
-			elif not _sandbox and n >= 0 and n < _sports.size():
-				_choose_sport(n)
+			if n < 0:
+				return
+			match _mode:
+				SANDBOX:
+					if n < SANDBOX_MAPS.size():
+						_choose_sandbox_map(str(SANDBOX_MAPS[n].id))
+				DRILLS:
+					var order := ScenarioMatrix.drills_by_difficulty()
+					if n < order.size():
+						_choose_drill(str(order[n]))
+				_:
+					if n < _sports.size():
+						_choose_sport(n)
 		_setup:
 			if event.physical_keycode in [KEY_ENTER, KEY_KP_ENTER]:
 				_launch_session()

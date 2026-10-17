@@ -43,6 +43,11 @@ Votre meilleur score est enregistré pour chaque sport. Vous pouvez revoir et re
 
 **Quatre optiques** : 24, 35, 50 et 85 mm. Plus l'optique est serrée, plus le cadrage est difficile.
 
+### Mouvements (exercices de figure)
+Un onglet à part, à côté d'*Entraînement* et de *Bac à sable*. Ici, **une seule figure de drone, répétée du début à la fin**, autour d'un sujet qui ne fait rien d'autre qu'avancer tout droit : tout ce qui n'est pas le geste à apprendre est enlevé. Cinq figures — **orbite**, **spirale vers l'intérieur**, **reveal tilt bas vers haut**, **flyby par derrière** (le drone rattrape le sujet en passant derrière lui et ressort de l'autre côté), **vertical tilt** (il passe juste au-dessus, presque perpendiculairement, et il faut mélanger tilt et pan).
+
+La progression se fait d'abord sur la **vitesse du sujet** : immobile, puis marche, course, 32 km/h. La figure, elle, ne change pas d'un pas à l'autre. Chaque carte montre la figure dessinée, et la page de réglages la montre **en vol, en boucle** — pas une vidéo, mais la trajectoire que le drone va réellement suivre, replanifiée quand on change de niveau. Détails : [docs/mouvements.md](fpv-gimbal-trainer/docs/mouvements.md).
+
 ### Mode 2 joueurs
 Un joueur **pilote** le drone en mode acro (manette FPV, sans stabilisation, comme en vrai). L'autre tient la **gimbal**. Le pilote voit sa vue FPV en incrustation, ou sur un second écran. Les deux sont notés, et vous obtenez un score d'équipe.
 
@@ -128,6 +133,7 @@ Quatre niveaux de qualité (Basse, Moyenne, Haute, Ultra) et un **flou de mouvem
 ## Pour aller plus loin
 
 - Ajouter un sport, régler la difficulté : [docs/ajouter_un_sport.md](fpv-gimbal-trainer/docs/ajouter_un_sport.md)
+- Les exercices de mouvement : [docs/mouvements.md](fpv-gimbal-trainer/docs/mouvements.md)
 - Le mode 2 joueurs : [docs/mode_2_joueurs.md](fpv-gimbal-trainer/docs/mode_2_joueurs.md)
 - Le bac à sable : [docs/bac_a_sable.md](fpv-gimbal-trainer/docs/bac_a_sable.md)
 - Le circuit du Nürburgring : [docs/circuit.md](fpv-gimbal-trainer/docs/circuit.md)

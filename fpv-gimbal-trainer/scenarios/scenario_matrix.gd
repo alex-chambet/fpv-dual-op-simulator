@@ -27,6 +27,50 @@ const MOVEMENTS: Array[Dictionary] = [
 	{"id": "approach_orbit", "name": "Approach + orbit", "desc": "The drone comes in from far and high and wraps into a fast orbit, again and again."},
 	{"id": "dive", "name": "Dive", "desc": "The drone climbs high ahead of the subject, dives onto it, skims past and climbs out behind."},
 	{"id": "choreo", "name": "Expert choreography", "desc": "Chained figures: approaches into an orbit, dives, head-on crossings, spirals."},
+	# Drills ("Mouvements" menu): one figure, repeated. Never drawn for a training session - they are
+	# played on purpose, on their own subject, at a chosen subject speed.
+	{"id": "spiral_in", "name": "Spirale vers l'intérieur", "drill": true,
+		"desc": "Le drone tourne autour du sujet en se rapprochant de plus en plus, puis ressort pour recommencer."},
+	{"id": "reveal_up", "name": "Reveal tilt bas vers haut", "drill": true,
+		"desc": "Le drone part haut et tout près, caméra plongeant sur le sol, puis descend en s'éloignant : le tilt remonte du sol jusqu'à l'horizon."},
+	{"id": "pass_behind", "name": "Translation flyby par derrière", "drill": true,
+		"desc": "Le drone arrive de loin, décalé en arrière, rattrape le sujet en passant derrière lui et ressort de l'autre côté pour le suivre latéralement."},
+	{"id": "vertical_pass", "name": "Vertical tilt", "drill": true,
+		"desc": "Le drone passe au-dessus du sujet, presque perpendiculairement : il entre légèrement par l'arrière et sort légèrement en avant. Mélange de tilt et de pan."},
+]
+## Ids of the drills, easiest figure first - the order the "Mouvements" menu shows them in.
+const DRILL_MOVEMENTS := ["orbit", "reveal_up", "pass_behind", "spiral_in", "vertical_pass"]
+## How hard each figure is to hold, 1 to 5. This is deliberately NOT
+## DroneDifficulty.MOVEMENT_TIER: that one also weights the random draw of a training session,
+## where an orbit is one of the harder movements among easy ones. Here it is the gentlest of five
+## hard figures, and the rating has to rank the five against each other.
+##  - orbit         one steady axis, the figure everything else is built on
+##  - reveal_up     one axis again, but tilt, and it has to arrive on time
+##  - pass_behind   fast pan with one reversal, long easy stretches either side
+##  - spiral_in     as fast, but the pan keeps accelerating: harder to anticipate
+##  - vertical_pass pan and tilt at full stretch together, right overhead
+const DRILL_TIER := {"orbit": 2, "reveal_up": 3, "pass_behind": 4, "spiral_in": 4,
+		"vertical_pass": 5}
+
+
+## The drills, easiest first.
+static func drills_by_difficulty() -> Array:
+	var out := DRILL_MOVEMENTS.duplicate()
+	out.sort_custom(func(a, b): return int(DRILL_TIER.get(a, 3)) < int(DRILL_TIER.get(b, 3)))
+	return out
+## Sheet the drills are flown around (a subject that does nothing but go straight ahead).
+const DRILL_SUBJECT := "cible"
+## Steps of a drill: the same figure around a subject that goes faster and faster. The first step
+## is a subject standing still - the figure alone, nothing else to follow.
+const DRILL_STEPS: Array[Dictionary] = [
+	{"name": "Sujet immobile", "speed": 0.01, "duration": 80.0,
+		"desc": "Le sujet ne bouge pas : il ne reste que la figure du drone à suivre."},
+	{"name": "Marche", "speed": 1.5, "duration": 85.0,
+		"desc": "Le sujet avance au pas : la figure se décale lentement, il faut recadrer en continu."},
+	{"name": "Course", "speed": 4.5, "duration": 90.0,
+		"desc": "Le sujet court : la figure et le sujet bougent tous les deux, à des vitesses différentes."},
+	{"name": "Rapide", "speed": 9.0, "duration": 90.0,
+		"desc": "Le sujet file à 32 km/h : le drone doit le rattraper pendant la figure."},
 ]
 
 ## The session being played.
@@ -95,11 +139,12 @@ static func generate(subject_id := "", movement := "", level := 0, rng: RandomNu
 		# a movement that suits the level (an orbit or a flyby is rarely drawn at level 1)
 		var allowed: Array = []
 		for m in MOVEMENTS:
-			if def.movement_ok(m.id):
+			if not m.get("drill", false) and def.movement_ok(m.id):
 				allowed.append(m.id)
 		if allowed.is_empty():
 			for m in MOVEMENTS:
-				allowed.append(m.id)
+				if not m.get("drill", false):
+					allowed.append(m.id)
 		cfg.movement = DroneDifficulty.pick_movement(allowed, cfg.level, rng)
 	cfg.seed = rng.randi() % 100000
 	cfg.side = -1.0 if rng.randf() < 0.5 else 1.0
@@ -107,8 +152,49 @@ static func generate(subject_id := "", movement := "", level := 0, rng: RandomNu
 	return cfg
 
 
+## A movement drill ("Mouvements" menu): one figure, repeated around the drill subject, at the
+## speed of `step` (DRILL_STEPS). The sheet is copied and its speed overridden, so the catalogue is
+## is never touched.
+##
+## The ground stays as good as level. A sloping field would be the only one on which the camera
+## really has to rise above the horizon to find a subject standing on it - but a gimbal holds the
+## horizon level, so a slope puts the skyline across the frame at an angle for the whole run, which
+## looks exactly like a gimbal that has stopped working. The reveal_up figure gets its tilt from
+## its own geometry instead (high and close, looking steeply down, to low and far, looking level).
+static func drill_config(movement: String, step: int, level: int, lens := 24,
+		rng: RandomNumberGenerator = null) -> SessionConfig:
+	if rng == null:
+		rng = RandomNumberGenerator.new()
+		rng.randomize()
+	var base := SubjectCatalogue.by_id(DRILL_SUBJECT)
+	if base == null:
+		return generate("", movement, level, rng, {}, lens, false)
+	var s: Dictionary = DRILL_STEPS[clampi(step, 0, DRILL_STEPS.size() - 1)]
+	var def: SubjectDefinition = base.duplicate()
+	def.overrides = base.overrides.duplicate(true)
+	def.overrides.merge({"speed_min": float(s.speed), "speed_max": float(s.speed),
+			"duration": float(s.duration)}, true)
+	def.env_overrides = base.env_overrides.duplicate(true)
+	var cfg := SessionConfig.new()
+	cfg.subject = def
+	cfg.movement = movement
+	cfg.level = clampi(level, 1, DroneDifficulty.MAX_LEVEL)
+	cfg.params = level_params(cfg.level)
+	cfg.drill_step = clampi(step, 0, DRILL_STEPS.size() - 1)
+	cfg.lens = lens
+	cfg.lock_subject = true
+	cfg.lock_movement = true
+	cfg.lock_level = true
+	cfg.seed = rng.randi() % 100000
+	cfg.side = -1.0 if rng.randf() < 0.5 else 1.0
+	cfg.ambience = Ambience.pick(rng, false)
+	return cfg
+
+
 ## A new session with the same locked choices and filters.
 static func next_session(cfg: SessionConfig) -> SessionConfig:
+	if cfg.is_drill():
+		return drill_config(cfg.movement, cfg.drill_step, cfg.level, cfg.lens)
 	return generate(cfg.subject.id if cfg.lock_subject else "",
 			cfg.movement if cfg.lock_movement else "",
 			cfg.level if cfg.lock_level else (-1 if cfg.level_auto else 0), null, cfg.filter, cfg.lens, cfg.two_player)
@@ -149,6 +235,7 @@ static func config_from_dict(d: Dictionary) -> SessionConfig:
 	cfg.side = float(d.get("side", 1.0))
 	cfg.lens = int(d.get("lens", 24))
 	cfg.two_player = bool(d.get("two_player", false))
+	cfg.drill_step = int(d.get("drill_step", -1))
 	cfg.ambience = str(d.get("ambience", "noon"))  # (sessions recorded before the ambiences: a bright day)
 	return cfg
 

@@ -31,6 +31,7 @@ static func create(style: EnvironmentStyle, host: ScenarioBase, overrides: Dicti
 		"forest": b = EnvForest.new()
 		"departementale": b = EnvDepartementale.new()
 		"circuit": b = EnvCircuit.new()
+		"drill": b = EnvDrill.new()
 		_: b = EnvGeneric.new()
 	b.setup(host, style, overrides)
 	return b

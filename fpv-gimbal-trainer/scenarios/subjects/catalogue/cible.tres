@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="SubjectDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenarios/subjects/subject_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = "cible"
+display_name = "Sujet d'entraînement"
+category = "Mouvements"
+description = "Coureur qui avance tout droit à vitesse constante sur un terrain dégagé. Sert de repère aux exercices de mouvement : la difficulté vient de la figure du drone et de la vitesse du sujet."
+in_menu = false
+archetype = "CIBLE"
+overrides = {
+"duration": 90.0,
+"speed_max": 0.01,
+"speed_min": 0.01
+}
+subject_size = 1.8
+placeholder_shape = "person"
+placeholder_gear = "none"
+placeholder_color = Color(0.95, 0.72, 0.1, 1)
+placeholder_accent = Color(0.1, 0.12, 0.16, 1)
+environment = "drill"
+env_overrides = {}
+recommended_movements = PackedStringArray("orbit", "spiral_in", "reveal_up", "pass_behind", "vertical_pass")
+base_difficulty = 1

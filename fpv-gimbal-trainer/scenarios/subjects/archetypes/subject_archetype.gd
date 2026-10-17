@@ -31,6 +31,7 @@ const PARAM_DOCS := {
 	"drone_min_height": "Minimum drone height above the ground, m.",
 	"drone_relative_height": "true: the drone height is relative to the subject (airborne subjects) instead of the ground.",
 	"drone_smoothing": "How much more the planner may smooth the drone path (1 = the usual budget). Useful for a subject whose own path is very tortuous.",
+	"drone_path_samples": "Number of points the drone flight is planned with. 0 = from the length of the subject path (the usual case); set it for a subject that barely moves, whose path is too short to sample the flight.",
 	"drone_accel_relax": "How much harder than the level allows the chase drone may work (1 = the level's limit). A racing car brakes at nearly 2 g: its chase drone has to pull as hard to stay with it, as a real FPV chase drone does.",
 	"anticipation": "How far ahead (s) the subject reads its own path. An animated athlete prepares the next change of direction that long before it happens (pole swing, rise, knees across), which is what lets the operator see it coming. 0 = no anticipation.",
 	# GLISSE_PENTE
@@ -120,7 +121,7 @@ static func common_defaults() -> Dictionary:
 		"path_length": 0.0, "duration": 55.0, "sample_step": 5.0,
 		"cornering_accel": 0.0,
 		"drone_distance_scale": 1.0, "drone_min_height": 3.0, "drone_relative_height": false,
-		"drone_smoothing": 1.0, "drone_accel_relax": 1.0,
+		"drone_smoothing": 1.0, "drone_accel_relax": 1.0, "drone_path_samples": 0.0,
 		"anticipation": 0.5,
 	}
 
@@ -138,6 +139,13 @@ func scale_for_level(p: Dictionary, lp: Dictionary) -> Dictionary:
 ## False when compute_speed() is not the default (profile + slow oscillation): the speed cannot be predicted.
 func uses_default_speed() -> bool:
 	return true
+
+
+## Lowest speed (m/s) the subject may really travel at - in a tight turn, at the bottom of its slow
+## oscillation. The default never lets a subject crawl; an archetype whose speed is the point of the
+## exercise (CIBLE) overrides it.
+func floor_speed(p: Dictionary) -> float:
+	return maxf(0.05, 0.3 * float(p.speed_min))
 
 
 ## Amplitude (m/s) of the slow oscillation of the speed (see PathSubject.default_speed).
@@ -186,7 +194,7 @@ func nominal_time(plan: Dictionary, p: Dictionary) -> float:
 		return 0.0
 	var vmin := float(p.speed_min)
 	var vmean := (vmin + float(p.speed_max)) * 0.5
-	var floor_v := maxf(0.05, 0.3 * vmin)
+	var floor_v := floor_speed(p)
 	var profile: PackedFloat32Array = plan.profile
 	var n := 200
 	var t := 0.0
@@ -252,7 +260,7 @@ func configure_subject(s: ArchetypeSubject) -> void:
 	var vmax := float(p.speed_max)
 	s.base_speed = (vmin + vmax) * 0.5
 	s.speed_variation = float(p.speed_variability) * (vmax - vmin) * 0.5
-	s.min_speed = maxf(0.05, 0.3 * vmin)
+	s.min_speed = floor_speed(p)
 	s.max_lean_deg = float(p.lean_max_deg)
 	s.lean_gain = float(p.lean_gain)
 	s.anticipation = float(p.get("anticipation", 0.5))

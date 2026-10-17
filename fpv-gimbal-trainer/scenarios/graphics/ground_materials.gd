@@ -180,6 +180,7 @@ void fragment() {
 	float slope = 1.0 - wnrm.y;
 	vec3 n_rock = wnrm;
 	float rock_w = smoothstep(rock_start, rock_end, slope + (d1 - 0.5) * 0.14 + (m_mid - 0.5) * 0.1);
+	float soft2 = 0.32 * smoothstep(30.0, 180.0, dist);
 	if (rock_w > 0.001) {
 		vec3 bw = pow(abs(wnrm), vec3(4.0));
 		bw /= (bw.x + bw.y + bw.z);
@@ -232,8 +233,8 @@ const SNOW := """
 shader_type spatial;
 render_mode cull_disabled;
 #COMMON
-uniform vec3 snow_a : source_color = vec3(0.86, 0.9, 0.97);
-uniform vec3 snow_b : source_color = vec3(0.98, 0.99, 1.0);
+uniform vec3 snow_a : source_color = vec3(0.76, 0.82, 0.93);
+uniform vec3 snow_b : source_color = vec3(0.95, 0.965, 0.99);
 uniform vec3 rock_a : source_color = vec3(0.4, 0.39, 0.38);
 uniform vec3 rock_b : source_color = vec3(0.2, 0.19, 0.19);
 uniform float rock_start = 0.42;
@@ -278,7 +279,7 @@ void fragment() {
 	float m_big = texture(macro_tex, xz * 0.003).r;
 	float m_mid = texture(macro_tex, xz * 0.015 + 0.2).r;
 	float d1 = texture(detail_tex, xz * 0.1).r;
-	float far_fade = smoothstep(15.0, 45.0, dist);
+	float far_fade = smoothstep(40.0, 220.0, dist);
 	vec4 mk = mask_at(xz);
 	float piste = mk.g;
 	vec3 col = mix(snow_a, snow_b, smoothstep(0.2, 0.8, m_mid * 0.6 + d1 * 0.4));
@@ -305,8 +306,12 @@ void fragment() {
 	float slope = 1.0 - wnrm.y;
 	float rock_w = smoothstep(rock_start, rock_end, slope + (d1 - 0.5) * 0.2);
 	// exposed rock painted by the environment (cliffs, outcrops: red of the ground mask), broken by snow
+	// the thresholds that paint the rock widen with distance: a hard threshold on a noise texture
+	// turns into salt and pepper once a texel is smaller than a pixel, which is what made the far
+	// side of the face sparkle grey
+	float soft = 0.04 + 0.4 * smoothstep(25.0, 160.0, dist);
 	if (rock_paint > 0.0) {
-		rock_w = max(rock_w, rock_paint * mk.r * smoothstep(0.32, 0.5, texture(detail_tex, xz * 0.19).r + slope * 0.5));
+		rock_w = max(rock_w, rock_paint * mk.r * smoothstep(0.32 - soft * 0.5, 0.5 + soft * 0.5, texture(detail_tex, xz * 0.19).r + slope * 0.5));
 		float beyond = smoothstep(far_rock_x, far_rock_x + 60.0, abs(xz.x));
 		{
 			// rocky sectors (snowfields between them), rock streaking down the fall line in them, more on the steep parts;
@@ -314,10 +319,11 @@ void fragment() {
 			float lo = mix(0.6, 0.5, beyond);
 			float sector = smoothstep(lo, lo + 0.12, texture(macro_tex, xz * 0.0007 + 0.37).r) * (1.0 - mk.b);
 			float streak = texture(macro_tex, vec2(xz.x * 0.004, xz.y * 0.0012)).r * 0.7 + texture(detail_tex, xz * 0.015).r * 0.3;
-			rock_w = max(rock_w, sector * smoothstep(0.6, 0.68, streak + slope * 0.35)
-					* smoothstep(0.3, 0.5, texture(detail_tex, xz * 0.19).r + slope * 0.5));
+			rock_w = max(rock_w, sector * smoothstep(0.64 - soft, 0.64 + soft, streak + slope * 0.35)
+					* smoothstep(0.4 - soft, 0.4 + soft, texture(detail_tex, xz * 0.19).r + slope * 0.5));
 		}
 	}
+	float soft2 = 0.32 * smoothstep(30.0, 180.0, dist);
 	if (rock_w > 0.001) {
 		// seen from every side (triplanar), with strata and cracks, so a cliff is not a smear
 		vec3 bw = pow(abs(wnrm), vec3(4.0));
@@ -327,10 +333,11 @@ void fragment() {
 				+ texture(detail_tex, pp.xy * vec2(1.0, 2.0)).r * bw.z;
 		float cr = texture(cell_tex, pp.zy * 2.3).r * bw.x + texture(cell_tex, pp.xz * 2.3).r * bw.y
 				+ texture(cell_tex, pp.xy * 2.3).r * bw.z;
+		cr = mix(cr, 0.5, smoothstep(40.0, 200.0, dist));   // the cracks blur out with distance
 		float strata = 0.82 + 0.3 * texture(detail_tex, vec2(wpos.y * 0.09, (wpos.x + wpos.z) * 0.004)).r;
 		vec3 rock = mix(rock_b, rock_a, smoothstep(0.25, 0.75, r)) * (0.75 + 0.35 * smoothstep(0.05, 0.4, cr)) * strata;
 		// snow stays on the ledges and in the hollows of the rock
-		rock_w *= smoothstep(0.35, 0.6, r + (1.0 - slope) * 0.3);
+		rock_w *= smoothstep(0.35 - soft2, 0.6 + soft2, r + (1.0 - slope) * 0.3);
 		col = mix(col, rock, rock_w);
 		vec2 nx = texture(normal_tex, wpos.zy * vec2(0.12, 0.25)).rg * 2.0 - 1.0;
 		vec2 nz = texture(normal_tex, wpos.xy * vec2(0.12, 0.25)).rg * 2.0 - 1.0;

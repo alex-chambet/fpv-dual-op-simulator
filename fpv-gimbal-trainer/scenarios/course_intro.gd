@@ -74,6 +74,11 @@ void fragment() {
 
 ## True when this session's flight over the course has not been seen yet.
 static func wanted(scn: ScenarioBase) -> bool:
+	# A movement drill has no course to show: the subject goes straight ahead, or stands still.
+	# What the operator needs to see is the drone figure, and the menu already plays that on the
+	# setup page - flying over the line would only keep the exercise waiting.
+	if scn.matrix != null and scn.matrix.is_drill():
+		return false
 	var id := scn.matrix.get_instance_id() if scn.matrix != null else 0
 	return id == 0 or id != last_shown_id
 
@@ -83,6 +88,9 @@ func setup(scn: ScenarioBase) -> void:
 	last_shown_id = scn.matrix.get_instance_id() if scn.matrix != null else 0
 	_sample_path(scn.subject_pts)
 	if _pts.size() < 2 or _total < 10.0:
+		# Nothing worth flying over. Stop processing before freeing: the node lives until the end
+		# of the frame, and _process would run once more on a line that was never built.
+		set_process(false)
 		queue_free()
 		return
 	_draw_time = clampf(_total / 95.0, 6.0, 16.0)
@@ -259,6 +267,8 @@ func _place_camera(s_head: float, k: float) -> void:
 
 
 func _process(delta: float) -> void:
+	if _mat == null:
+		return
 	_t += delta
 	var r := clampf((_t - LEAD_TIME) / _draw_time, 0.0, 1.0)
 	r = r * r * (3.0 - 2.0 * r) * 0.3 + r * 0.7   # slow start and end, a steady pace in between

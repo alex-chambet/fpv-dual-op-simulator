@@ -59,6 +59,7 @@ règle avec `speed_min` / `speed_max`.
 | `SAUT_ACROBATIQUE` | élan, phase aérienne (rotation, saltos), réception, plusieurs sauts | freestyle, saut à ski, skate, BMX, saut d'obstacles |
 | `FREERIDE` | freeride sur une grande face raide (environnement `freeride`) : la ligne est choisie barre rocheuse par barre rocheuse (sauter une falaise ou passer par un couloir) ; grandes courbes, moyennes, tout-droit ou virages serrés techniques entre les barres ; vitesse « skiée », jamais imposée : la pente, le frottement dans la poudreuse et l'air agissent en permanence, et le skieur ne perd de la vitesse qu'en dérapant, skis en travers (en fin de virage, dans un virage de contrôle lancé quand il va plus vite qu'il ne le veut ou après une réception, au-dessus de chaque falaise (presque à l'arrêt au-dessus d'un départ technique — bord en biais, grosse barre —, un simple contrôle au-dessus d'un départ facile qu'il prend avec de la vitesse), quand la courbe est trop serrée pour sa vitesse, et à l'arrêt), à la réception d'un saut ou quand la pente s'adoucit ; un tout-droit accélère toujours ; le rythme de ses virages suit la pente, comme dans des runs filmés en FPV (environ 0,5-0,6 s par virage court et dérapé à 45°, 1 s vers 35°, 1,5-2 s en courbes plus coupées sur 25°, qui gardent la vitesse) ; il se grandit, skis à plat, à chaque changement de carre et plante le bâton aval juste avant, s'écrase au sommet du virage ; il se laisse tomber des barres presque sans pop et contrôle sa vitesse par un dérapage juste après chaque réception. Les skis se mettent en travers juste avant le freinage (profil skid du plan, avec un nuage de neige) pour que le cadreur puisse anticiper ; sauts là où le terrain s'éloigne plus vite que la trajectoire balistique ; deux figures par descente sur les plus grosses falaises (un 360 puis un backflip) | ski freeride |
 | `DESCENTE` | course de descente : grandes courbes, virages serrés (souvent en S), schuss, sauts sur les cassures de pente ; vitesse calculée par un petit modèle physique (pente, frottement, air, freinage avant les virages serrés, vol balistique) | ski de descente |
+| `CIBLE` | **sujet d'exercice** (onglet « Mouvements », environnement `drill`) : un coureur qui avance tout droit à vitesse constante — ou qui ne bouge pas du tout — sur un terrain dégagé. Il ne sert qu'à donner un point de mire à une figure de drone répétée ; sa vitesse est la difficulté de l'exercice. Voir [docs/mouvements.md](mouvements.md) | exercices de mouvement |
 | `CIRCUIT` | **un tour complet d'un circuit fermé** (le Nürburgring Grand-Prix-Strecke, environnement `circuit`) : la trajectoire de course du circuit (large à l'entrée, à la corde, large à la sortie) et une vitesse qui sort d'une **simulation de tour** d'une vraie voiture — cercle d'adhérence avec appui aérodynamique, motricité puis puissance / vitesse, traînée, pente, et partage de l'adhérence entre virage et freinage. Le tour part et revient sur la ligne de départ, lancé. Voir [docs/circuit.md](circuit.md) | voiture de course |
 
 ### Paramètres communs (tous les archétypes)
@@ -86,6 +87,7 @@ règle avec `speed_min` / `speed_max`.
 | `drone_relative_height` | vrai/faux | vrai : hauteur du drone relative au sujet (sujets en l'air) |
 | `drone_smoothing` | × | lissage supplémentaire autorisé au planificateur du drone (1 = budget normal) ; utile pour un sujet au trajet très tortueux |
 | `drone_accel_relax` | × | combien de fois plus fort que la limite du niveau le drone de poursuite a le droit de travailler (1 = la limite du niveau). Une voiture de course freine à près de 2 g : son drone doit tirer autant pour rester avec elle, comme un vrai drone FPV de poursuite |
+| `drone_path_samples` | points | nombre de points avec lesquels le vol du drone est planifié. 0 (par défaut) = déduit de la longueur du trajet du sujet. Ne sert qu'à un sujet qui ne bouge presque pas, dont le trajet est trop court pour échantillonner le vol : il faut alors viser une dizaine de points par seconde de course, la densité pour laquelle le planificateur est fait (beaucoup plus serait pire — il parcourt sa chronologie à 50 Hz) |
 | `anticipation` | s | à quelle distance devant lui le sujet lit son propre trajet (0,5 par défaut). Un athlète animé prépare son prochain changement de direction ce temps-là à l'avance — c'est ce qui permet au cadreur de le voir venir (voir « Le skieur » plus bas). 0 = aucune anticipation |
 
 ### Paramètres propres à chaque archétype (valeur par défaut)
@@ -102,6 +104,7 @@ règle avec `speed_min` / `speed_max`.
 | `SAUT_ACROBATIQUE` | `jump_count` 3, `approach_length` 80 m (élan), `rollout_length` 45 m (distance entre une réception et le saut suivant), plus `jump_length`, `jump_height`, `flips`, `spin_deg` |
 | `FREERIDE` | `cornering_accel` 12 (accélération latérale tenue sur les carres, au-delà il dérape), `drop_share` 0,65 (part des barres rocheuses sautées par une falaise, les autres passées par un couloir ou par le côté), `snow_friction` 0,07, `air_drag` 0,0035, `jump_height` 0,8 (pop au bord d'une falaise, m/s), `drone_min_height` 5 m. La durée vient de la face elle-même (environ 1 min 20 à 1 min 50) : `duration` n'allonge pas la ligne |
 | `CIRCUIT` | `car` (identifiant de `RaceCarPhysics.CARS` : `gt3`, `gt4`, `tcr`, `historique`, `gt_route`, `safety`), `track_scale` 0,5 (échelle du circuit — longueurs **et** hauteurs, donc les pentes sont les vraies ; à mettre aussi dans `env_overrides`), `line_margin` 1,5 m (distance de la trajectoire aux lignes blanches), `line_swing` 1 (part de la largeur utilisée : 0 = l'axe), `grip` / `power` / `pace` (surchargent la voiture choisie : adhérence, kW, et à quel point le pilote est à la limite). La durée vient du circuit : `duration` ne l'allonge pas |
+| `CIBLE` | `speed_min` = `speed_max` = la vitesse de l'exercice (0,01 m/s pour un sujet immobile), `duration` 90 s, `drone_path_samples` 800. Sa méthode `floor_speed()` rend la vitesse demandée telle quelle, au lieu du plancher habituel de 0,05 m/s qui ferait marcher un sujet censé être arrêté. Le terrain est construit sur une zone de 420 m quelle que soit la longueur du chemin |
 | `DESCENTE` | `turn_frequency` 0,55 (part des virages parmi les éléments du tracé), `tight_turns` 0,4 (part des virages serrés, rayon 34 - 52 m ; les autres sont de grandes courbes de 110 - 190 m), `cornering_accel` 12 m/s² (accélération latérale max en virage), `air_drag` 0,0042 et `snow_friction` 0,035 (vitesse de pointe selon la pente), `jump_height` 1,2 (impulsion verticale au décollage, m/s), `duration` 98 s. Les sauts ne sont pas tirés au hasard : ils sont placés sur les cassures de pente du terrain (un replat qui se termine sur un mur raide), `turn_tightness` 0 (0 à 1 : tracé plus sinueux, rayons plus serrés, tout-droits plus courts, enchaînements de 3 à 4 virages serrés ; 1 pour le ski de descente, qui a aussi `tight_turns` 0,65 et `turn_frequency` 0,9) |
 
 `turn_frequency` selon l'archétype : `GLISSE_PENTE` = demi-périodes du slalom ; `COURSE_SOL_CYCLIQUE`
@@ -226,7 +229,8 @@ que les skis ne changent de direction. Les trois sports de ski en profitent sans
 
 ## L'environnement
 
-`environment` est un **tag**. Les tags `neige`, `route_montagne` et `foret` ont un constructeur dédié ;
+`environment` est un **tag**. Les tags `neige`, `descente`, `freeride`, `route_montagne`, `foret`,
+`circuit` et `drill` ont un constructeur dédié (`builder` dans leur fichier de style) ;
 tous les autres utilisent le constructeur générique configuré par un fichier de style
 `res://scenarios/environments/styles/<tag>.tres`.
 
@@ -245,6 +249,7 @@ tous les autres utilisent le constructeur générique configuré par un fichier 
 | `piste_urbaine` | asphalte et immeubles |
 | `terrain_vague` | sol bosselé et blocs |
 | `prairie` | prairie vallonnée et arbres |
+| `drill` | **terrain d'exercice** (onglet « Mouvements ») : la même prairie vallonnée, mais les décors sont placés pour ne jamais pouvoir passer entre la caméra et le sujet — couloir dégagé le long du trajet, aussi large que la figure du drone va loin ; arbres et rochers en dehors, pour la parallaxe ; à l'intérieur, seulement des buissons et des pierres de moins de 80 cm (`env_overrides` : `terrain_kind`, `slope`, `bump`, plus `clearing` pour imposer la demi-largeur du couloir). Voir [docs/mouvements.md](mouvements.md) |
 | `falaise` | paroi raide (pour grimper) |
 | `arete` | arête rocheuse et neigeuse |
 | `eau_vive` | rivière avec rochers |
@@ -292,6 +297,16 @@ un peu dans l'image, ce qui fait partie du travail du cadreur).
 
 `recommended_movements` limite les mouvements tirés au hasard pour ce sport (par exemple, pas de
 `frontal` pour un sujet qui avance très lentement si cela n'a pas de sens pour vous).
+
+### Les figures d'exercice (onglet « Mouvements »)
+
+Quatre mouvements de plus existent, marqués `"drill": true` dans `ScenarioMatrix.MOVEMENTS` :
+`spiral_in` (spirale vers l'intérieur), `reveal_up` (reveal tilt bas vers haut), `pass_behind`
+(flyby par derrière) et `vertical_pass` (vertical tilt). Ils ne sont **jamais tirés au hasard** pour
+une session d'entraînement et ne figurent pas dans la liste « Mouvement du drone » de la page de
+réglages : on les joue depuis l'onglet « Mouvements », sur leur propre sujet (`CIBLE`) et à une
+vitesse de sujet choisie. Les mettre dans `recommended_movements` d'un sport n'y changerait rien.
+Voir [mouvements.md](mouvements.md).
 
 ---
 
