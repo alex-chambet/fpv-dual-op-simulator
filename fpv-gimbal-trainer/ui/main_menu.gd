@@ -58,7 +58,7 @@ const SANDBOX_MAPS := [
 		"subtitle": "Nürburgring : 9 voitures de course, 6 classes",
 		"text": "Le Nürburgring (Grand-Prix-Strecke) à l'échelle 1/2, avec neuf voitures de six classes qui tournent à leur propre rythme : deux GT3, deux GT4, deux tourismes, une historique, une GT de route et la safety car. Elles se rattrapent et se doublent toutes seules. Retour arrière en jeu : le drone revient sur la ligne de départ."},
 ]
-const VERSION := "Version 1.6"
+const VERSION := "Version 2.0"
 const THUMBS := "res://ui/thumbs/%s.png"
 
 ## Page to open the next time the menu is shown ("home", "play", "setup"), and in which mode.

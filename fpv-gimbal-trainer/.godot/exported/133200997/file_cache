@@ -45,14 +45,14 @@ res://scenarios/subjects/catalogue/ski_freestyle.tres::cb108f255fca9d38cc0298900
 res://scenarios/subjects/catalogue/snowboard.tres::31a3c6cba63c4ad57c9d57515cba31f9::1791220608::res://.godot/exported/133200997/export-32634ece681c074eb96cf12904e3d79c-snowboard.res
 res://scenarios/subjects/catalogue/surf.tres::6f72ae11daeaa9b17f79194b21096c8d::1791220608::res://.godot/exported/133200997/export-2749cc68cc9d0dc16c0f7cc791327d83-surf.res
 res://scenarios/subjects/catalogue/tennis.tres::084dfae5906a558cabc2e2838a0c9e6a::1791220608::res://.godot/exported/133200997/export-c7306ff52aeea961f300f6a89692352f-tennis.res
-res://scenarios/subjects/catalogue/trail.tres::54e0e3cfab5c408ade117ac746d6af83::1791443950::res://.godot/exported/133200997/export-e3b1a604e6c460c5c13357397d81caf5-trail.res
+res://scenarios/subjects/catalogue/trail.tres::1de4c6d96b3a2ac1527a3102fab90c84::1792256794::res://.godot/exported/133200997/export-e3b1a604e6c460c5c13357397d81caf5-trail.res
 res://scenarios/subjects/catalogue/trottinette.tres::fa9dbcdd265bdae139b92a7f21f0f95c::1791220608::res://.godot/exported/133200997/export-5606f298aed88f1235642ccd589899a8-trottinette.res
 res://scenarios/subjects/catalogue/velo_route.tres::d2f6504a10cb06839a448cbec15a1b6b::1791220608::res://.godot/exported/133200997/export-02ae565185bf721da2cb9b47ac4563e2-velo_route.res
 res://scenarios/subjects/catalogue/voile.tres::8be2e4bedc0499a9f3bd06b3546d5661::1791220608::res://.godot/exported/133200997/export-8ce78bfc091f6213702fb769af982c20-voile.res
 res://scenarios/subjects/catalogue/voiture_rallye.tres::40bdc91a6d3f95c471a11ae6e62ce079::1791220608::res://.godot/exported/133200997/export-e1f643166e483131a11e672fe8515c04-voiture_rallye.res
 res://scenarios/subjects/catalogue/voiture_route.tres::c98636feb35071e6c8fd852fa443d3bb::1791443950::res://.godot/exported/133200997/export-f74acf2aec496f8121ee858b9b25c0b6-voiture_route.res
 res://scenarios/subjects/catalogue/vtt_cross_country.tres::c7e8f243058438a74176deb73b867fbe::1791220608::res://.godot/exported/133200997/export-16e918d563b4caafaea378f043fa1d51-vtt_cross_country.res
-res://scenarios/subjects/catalogue/vtt_descente.tres::a3cbff7489256fe099185ee390b5b022::1791443950::res://.godot/exported/133200997/export-30b42dbfba9a50b1b0049cd08b663634-vtt_descente.res
+res://scenarios/subjects/catalogue/vtt_descente.tres::fb05cd414e5d7c0f48e981070fcb8b3c::1792256794::res://.godot/exported/133200997/export-30b42dbfba9a50b1b0049cd08b663634-vtt_descente.res
 res://scenarios/subjects/catalogue/wakeboard.tres::965271085d44ec04f13bc255e7abad04::1791220608::res://.godot/exported/133200997/export-1085b5a5e41c5bc0702adf9ac5264b11-wakeboard.res
 res://scenarios/subjects/catalogue/wingsuit.tres::3e005ace991c498238f0f83ce0ebcd1b::1791220608::res://.godot/exported/133200997/export-0fd096bf3baa49cc0d3c6d2298b557da-wingsuit.res
 res://scenarios/scenario.tscn::88ef40197b9f7509db2c5ee83018c656::1791639448::res://.godot/exported/133200997/export-164b676e0df78dce56fa0c0ad8f7c57b-scenario.scn
@@ -71,3 +71,7 @@ res://scenarios/environments/styles/descente.tres::1dd19f0923868e2e7d70ed41c157e
 res://scenarios/environments/styles/freeride.tres::b60f7449be08df387178656a802f4c10::1791669697::res://.godot/exported/133200997/export-f474124186cc1f89600599c561d81f55-freeride.res
 res://scenarios/subjects/catalogue/ski_descente.tres::d41532d7d73577a1fe4193e4e4cd214e::1792012751::res://.godot/exported/133200997/export-8b2f57ea44c40a65706647b6500aa5f6-ski_descente.res
 res://scenarios/subjects/catalogue/ski_freeride.tres::b3c4d1622cd3963644cf8fe5e26b1ef0::1791713094::res://.godot/exported/133200997/export-e01cd099881a54f187723c33b1a59253-ski_freeride.res
+res://scenarios/environments/styles/circuit.tres::5856c54e299ef07771d4aa1714c3d11d::1792139721::res://.godot/exported/133200997/export-41baa992c4215dd2fa781894a0f53193-circuit.res
+res://scenarios/environments/styles/drill.tres::b85dfaaac0e3bad9812f76bbd72a3bb3::1792232051::res://.godot/exported/133200997/export-ab6f0acb36f879af4aeec455e49daf0e-drill.res
+res://scenarios/subjects/catalogue/cible.tres::4ef7ce9b746ccbb59050c6681d6cfc01::1792232013::res://.godot/exported/133200997/export-61cc30a09354dbcb4887be3648cf16f6-cible.res
+res://scenarios/subjects/catalogue/circuit_course.tres::773147c7872e702255a19217e2cf8940::1792140316::res://.godot/exported/133200997/export-040ffbdeb44321aa6d8960c3402d1ce2-circuit_course.res
