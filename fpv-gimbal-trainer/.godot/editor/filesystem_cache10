@@ -1,6 +1,6 @@
 9cad1ddce9e5a63143ba340c9520626b
-::res://::1792259413
-export_presets.cfg::TextFile::-1::1792259413::0::1::::<><><>0<>0<><>::
+::res://::1792260255
+export_presets.cfg::TextFile::-1::1792260255::0::1::::<><><>0<>0<><>::
 ski_slope.tscn::PackedScene::1215708909317113592::1791212617::0::1::::<><><>0<>0<><>::res://scenarios/ski_slope/ski_slope.gd<>res://flight/flight_path.tscn<>uid://bl20o0do6rxhw::::res://ui/camera_look.gd<>res://scenarios/ski_slope/frame_guide.gd
 ::res://assets/::1792229832
 ::res://assets/characters/::1791644314

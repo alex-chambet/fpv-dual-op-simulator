@@ -4,8 +4,21 @@ Deux ans de contenu en une version : un **circuit automobile** complet, une **tr
 
 ## Téléchargement
 
-- `FPV_DUALOP_v2.0.exe` + `FPV_DUALOP_v2.0.pck` (Windows 64 bits). **Gardez les deux fichiers dans le même dossier.**
-- Carte graphique compatible Vulkan requise (rendu Forward+).
+- **Windows 64 bits** : `FPV_DUALOP_v2.0.exe` + `FPV_DUALOP_v2.0.pck`. **Gardez les deux fichiers dans le même dossier.**
+- **macOS** : `FPV_DUALOP_v2.0_macOS.zip` — binaire universel, Intel (macOS 11+) et Apple Silicon (macOS 13+). Voir « Ouvrir sur macOS » ci-dessous.
+- Carte graphique compatible Vulkan requise (rendu Forward+). Sur Mac, le rendu passe par Metal via MoltenVK.
+
+### Ouvrir sur macOS
+
+L'application n'est pas signée avec un compte développeur Apple ni notariée : au premier lancement, macOS la refusera (« impossible de vérifier le développeur », ou « endommagée »). Deux façons de l'autoriser, après avoir décompressé l'archive :
+
+- **Clic droit sur l'application → Ouvrir**, puis confirmer. À faire une seule fois.
+- Ou, si macOS la dit endommagée, retirer la mise en quarantaine dans le Terminal :
+  ```
+  xattr -dr com.apple.quarantine /chemin/vers/fpv-gimbal-trainer.app
+  ```
+
+L'application s'appelle `fpv-gimbal-trainer.app`, comme en 1.6 : c'est le nom interne du projet. Le renommer déplacerait aussi le dossier des scores et de l'historique, donc c'est remis à une prochaine version.
 
 ---
 
@@ -90,10 +103,11 @@ En jeu, le simulateur tourne entre **141 et 377 images par seconde** selon le ni
 
 ## Configuration testée
 
-Windows 11, NVIDIA RTX 4070 Laptop, Vulkan.
+Windows 11, NVIDIA RTX 4070 Laptop, Vulkan. Le build Windows a été lancé et vérifié.
 
 ## Limites connues
 
+- **Le build macOS n'a pas été lancé sur un Mac.** Il a été produit depuis Windows et vérifié sur pièces : paquet `.app` complet, binaire universel, version 2.0.0, signature ad-hoc et bit d'exécution présents. Mais rien ne remplace un vrai démarrage — à essayer avant de le diffuser.
 - Les performances n'ont été mesurées qu'en 1080p ; en 4K elles n'ont pas été relevées sur cette version.
 - Le mode 2 joueurs et le vol acro n'ont pas été retestés avec deux manettes physiques sur cette version.
 - Le niveau Expert reste validé surtout en simulation.

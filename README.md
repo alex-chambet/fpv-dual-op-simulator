@@ -65,7 +65,7 @@ Un monde ouvert, sans chrono ni score. Deux terrains au choix :
 
 ## Ce qu'il vous faut
 
-- **Windows 64 bits**
+- **Windows 64 bits** ou **OSX**
 - Une **carte graphique compatible Vulkan** (la plupart des cartes de moins de 8 ans)
 - Une **manette**, de préférence. Le clavier fonctionne aussi. Pour jouer à deux, il faut deux manettes.
 
