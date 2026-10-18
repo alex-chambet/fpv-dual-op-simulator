@@ -88,7 +88,7 @@ Un monde ouvert, sans chrono ni score. Deux terrains au choix :
 
 Le menu se pilote aussi au clavier ou à la manette (flèches, Entrée, Échap pour revenir en arrière). Après une session, il rouvre directement la page de réglages de cette session, pour rejouer en un clic.
 
-Pour changer les réglages de manette et de graphismes : tuile **Paramètres** de l'accueil (ou Échap > Graphismes en jeu).
+Pour changer les réglages de manette, de son et de graphismes : tuile **Paramètres** de l'accueil (ou Échap > Son / Échap > Graphismes en jeu).
 
 ## Commandes
 
@@ -126,6 +126,19 @@ Quatre niveaux de qualité (Basse, Moyenne, Haute, Ultra) et un **flou de mouvem
 - **Décors vivants** : public, drapeaux et banderoles sur la descente ; fermes, champs labourés et blés mûrs sur la Départementale ; parois rocheuses et massifs sur la route de montagne ; rayons de lumière dans la forêt (qualité Ultra).
 - **Rendu caméra** : vignettage, légère aberration chromatique et grain, comme une vraie optique.
 
+## Son
+
+Le son est **calculé par le code** (aucun fichier audio dans le projet) et piloté par la vitesse du sujet.
+
+- **Le sujet** sonne depuis l'endroit où il est, en 3D, avec effet Doppler : la note du moteur **tombe au moment où
+  la voiture passe sous le drone** — c'est le signal pour lancer le panoramique. Les voitures ont une boîte
+  6 vitesses (le régime retombe à chaque rapport), les skis ont leurs carres : fin et clair en carving, large et
+  fort en dérapage, c'est-à-dire exactement quand le skieur ralentit.
+- **Le drone** n'est pas une source 3D : on est assis dessus. Ses hélices montent quand il accélère ou qu'il monte,
+  son vent suit sa vitesse. En entraînement, en 2 joueurs et au bac à sable.
+- Trois volumes séparés (général, sujet, drone) dans **Paramètres > Son** ou **Échap > Son** en jeu : on peut
+  couper le drone pour n'écouter que le sujet. Détails : [docs/son.md](fpv-gimbal-trainer/docs/son.md).
+
 ## Limites connues
 
 - Les athlètes sont des **mannequins animés**, sans visage ni vêtements détaillés.
@@ -141,6 +154,7 @@ Quatre niveaux de qualité (Basse, Moyenne, Haute, Ultra) et un **flou de mouvem
 - Le circuit du Nürburgring : [docs/circuit.md](fpv-gimbal-trainer/docs/circuit.md)
 - La Départementale : [docs/departementale.md](fpv-gimbal-trainer/docs/departementale.md)
 - Les graphismes : [docs/graphismes.md](fpv-gimbal-trainer/docs/graphismes.md)
+- Le son : [docs/son.md](fpv-gimbal-trainer/docs/son.md)
 - Performances mesurées et pistes d'optimisation : [docs/optimisation.md](fpv-gimbal-trainer/docs/optimisation.md)
 - L'historique des versions : onglet **Releases**
 

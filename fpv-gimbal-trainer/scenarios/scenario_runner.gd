@@ -67,6 +67,10 @@ func _occluder_kind() -> String:
 	return env.occluder_kind() if env != null else "trees"
 
 
+func _audio_subject() -> Array:
+	return [] if def == null or params.is_empty() else [def, params]
+
+
 func _planner_extras() -> Dictionary:
 	if params.is_empty():
 		return {}

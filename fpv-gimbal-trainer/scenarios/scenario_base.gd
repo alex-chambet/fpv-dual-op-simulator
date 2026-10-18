@@ -41,6 +41,13 @@ var world_seed := 0
 var matrix: SessionConfig
 var matrix_active := false
 var subject: PathSubject
+## The sound of the run (see SubjectVoice / DroneVoice); null until start_audio() is called, which
+## a scenario asks for by overriding _audio_subject() - one that does not runs silent.
+var _subject_voice: SubjectVoice
+var _drone_voice: DroneVoice
+## The focus of the gimbal camera (LensFocus): kept on the subject, with the real depth of field of
+## the lens this session is shot on.
+var focus: LensFocus
 var state := State.COUNTDOWN
 
 var subject_pts := PackedVector3Array()
@@ -158,6 +165,12 @@ func _extra_occlusion(_from: Vector3, _to: Vector3) -> bool:
 	return false
 
 
+## Override: [SubjectDefinition, params] for the sound of the subject; [] to run silent (a fixed
+## scenario of the old menu has no sheet to build a voice from).
+func _audio_subject() -> Array:
+	return []
+
+
 func _hud_extra() -> String:
 	return ""
 
@@ -192,6 +205,12 @@ func _ready() -> void:
 	matrix_active = matrix != null and not matrix.fixed
 	if matrix != null and not matrix.fixed:
 		flight.rig.camera.fov = SessionConfig.fov_for(matrix.lens)
+	# The lens focused on the subject: the focal length of this session, pulled every frame. It has
+	# to come after the lens is known, since the depth of field is a property of that focal length.
+	focus = LensFocus.new()
+	focus.name = "LensFocus"
+	flight.rig.camera.add_child(focus)
+	focus.setup(flight.rig.camera, matrix.lens if matrix_active else 24)
 	if matrix_active:
 		drone_drift = 0.0
 		SessionScorer.next_label = "" if replay_active else "Next random session (N)"
@@ -215,6 +234,9 @@ func _ready() -> void:
 	_subj_cum = cumulative(subject_pts)
 	_drone_cum = cumulative(drone_pts)
 	_build_ratio_map()
+	var voice: Array = _audio_subject()
+	if voice.size() == 2:
+		start_audio(voice[0], voice[1])
 	if matrix_active and matrix.two_player:
 		duo = DuoSession.new()
 		duo.setup(self)
@@ -567,6 +589,27 @@ func _set_profile(p: GimbalRig.SpeedProfile) -> void:
 	GimbalRig.save_default_profile(p)
 
 
+## Gives the run its sound: the subject as a 3D source on the subject itself, the drone as a flat
+## one because the listener (the gimbal camera) is bolted to it. Called by the scenario once the
+## subject exists; a scenario that does not call it simply runs silent.
+func start_audio(def: SubjectDefinition, params: Dictionary) -> void:
+	if def == null or subject == null or flight == null:
+		return
+	# on the node that MOVES: a PathSubject is a Path3D and stays at the origin, it is its
+	# PathFollow3D that travels along it
+	var carrier: Node3D = subject.follower if subject.follower != null else subject.model
+	if carrier == null:
+		return
+	_subject_voice = SubjectVoice.new()
+	_subject_voice.name = "SubjectVoice"
+	carrier.add_child(_subject_voice)
+	_subject_voice.setup(subject, def, params)
+	_drone_voice = DroneVoice.new()
+	_drone_voice.name = "DroneVoice"
+	flight.add_child(_drone_voice)
+	_drone_voice.setup()
+
+
 ## The overview is over: the countdown starts.
 func end_intro() -> void:
 	intro_active = false
@@ -618,6 +661,12 @@ func _process(delta: float) -> void:
 	if duo and state == State.COUNTDOWN:
 		duo.step(delta, pilot_inputs, false, false)
 	_update_framing_state()
+	# The sound follows the run, not the clock: the subject's voice only works while it is moving,
+	# the drone's is there from the countdown onwards (the operator is already on board).
+	if _drone_voice != null:
+		_drone_voice.update(delta, flight.follower.global_position)
+	if _subject_voice != null and state == State.RUNNING:
+		_subject_voice.update(delta)
 	if duo:
 		duo.update_osd()
 	if state == State.RUNNING:
@@ -719,6 +768,8 @@ func _update_framing_state() -> void:
 	guide.danger = _edge_now
 	guide.in_frame = in_guide
 	_occluded_now = is_occluded(cam.global_position, target)
+	if focus != null:
+		focus.update(get_process_delta_time(), cam.global_position.distance_to(target))
 
 ## Grid of the occluders (cell -> indices), rebuilt when occluders are added: is_occluded only looks at the cells
 ## around the line of sight (a downhill course has thousands of trees).

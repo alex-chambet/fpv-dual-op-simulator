@@ -59,6 +59,12 @@ static var saturation := 1.0    ## 0.5 .. 1.5
 static var vignette := true
 static var aberration := true
 static var grain := true
+## Depth of field (LensFocus): the real limits of the chosen lens, focused on the subject.
+static var dof := true
+## The camera's auto iris, which lags when you pan from the ground up to the sky. Off by default:
+## a drone operator locks their exposure, and a picture that keeps re-balancing hides framing
+## mistakes rather than showing them.
+static var auto_exposure := false
 
 # --- Display of the game
 static var hud_opacity := 1.0   ## 0.2 .. 1
@@ -176,8 +182,8 @@ static func save() -> void:
 		"render_scale": render_scale, "aa": aa, "aniso": aniso, "shadows": shadows, "ssao": ssao, "ssil": ssil,
 		"shafts": shafts, "trees": trees, "grass": grass, "crowd": crowd, "brightness": brightness,
 		"contrast": contrast, "saturation": saturation, "vignette": vignette, "aberration": aberration,
-		"grain": grain, "hud_opacity": hud_opacity, "hud_size": hud_size, "frame_opacity": frame_opacity,
-		"frame_colors": frame_colors,
+		"grain": grain, "dof": dof, "auto_exposure": auto_exposure, "hud_opacity": hud_opacity,
+		"hud_size": hud_size, "frame_opacity": frame_opacity, "frame_colors": frame_colors,
 	}
 	var f := FileAccess.open(PREFS_PATH, FileAccess.WRITE)
 	if f:
@@ -211,6 +217,8 @@ static func load_prefs(prefs: Dictionary) -> void:
 	vignette = bool(g.get("vignette", vignette))
 	aberration = bool(g.get("aberration", aberration))
 	grain = bool(g.get("grain", grain))
+	dof = bool(g.get("dof", dof))
+	auto_exposure = bool(g.get("auto_exposure", auto_exposure))
 	hud_opacity = clampf(float(g.get("hud_opacity", hud_opacity)), 0.2, 1.0)
 	hud_size = clampi(int(g.get("hud_size", hud_size)), 0, HUD_SCALES.size() - 1)
 	frame_opacity = clampf(float(g.get("frame_opacity", frame_opacity)), 0.3, 1.0)
@@ -250,6 +258,14 @@ static func apply(e: Environment, sun: DirectionalLight3D, vp: Viewport) -> void
 		RenderingServer.directional_soft_shadow_filter_set_quality([RenderingServer.SHADOW_QUALITY_HARD,
 				RenderingServer.SHADOW_QUALITY_HARD, RenderingServer.SHADOW_QUALITY_SOFT_LOW,
 				RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM, RenderingServer.SHADOW_QUALITY_SOFT_HIGH][sh])
+	# bokeh of the depth of field (LensFocus): a box blur on Basse, a real circle on Ultra
+	var q := clampi(quality, 0, 3)
+	RenderingServer.camera_attributes_set_dof_blur_quality([RenderingServer.DOF_BLUR_QUALITY_VERY_LOW,
+			RenderingServer.DOF_BLUR_QUALITY_LOW, RenderingServer.DOF_BLUR_QUALITY_MEDIUM,
+			RenderingServer.DOF_BLUR_QUALITY_HIGH][q], q >= 2)
+	RenderingServer.camera_attributes_set_dof_blur_bokeh_shape([RenderingServer.DOF_BOKEH_BOX,
+			RenderingServer.DOF_BOKEH_HEXAGON, RenderingServer.DOF_BOKEH_HEXAGON,
+			RenderingServer.DOF_BOKEH_CIRCLE][q])
 	var ao := clampi(ssao, 0, 3)
 	RenderingServer.environment_set_ssao_quality([RenderingServer.ENV_SSAO_QUALITY_VERY_LOW,
 			RenderingServer.ENV_SSAO_QUALITY_LOW, RenderingServer.ENV_SSAO_QUALITY_MEDIUM,

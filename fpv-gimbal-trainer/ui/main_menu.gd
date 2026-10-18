@@ -156,6 +156,7 @@ func _apply_prefs(prefs: Dictionary) -> void:
 	DronePip.enabled = bool(prefs.get("drone_pip", DronePip.enabled))
 	GraphicsSettings.load_prefs(prefs)
 	GraphicsSettings.apply_display()
+	SoundSettings.load_prefs(prefs)
 	var saved_map := str(prefs.get("sandbox_map", Sandbox.map))
 	for m in SANDBOX_MAPS:
 		if str(m.id) == saved_map:

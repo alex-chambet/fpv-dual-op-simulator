@@ -1,7 +1,7 @@
 class_name PauseMenu
 extends CanvasLayer
-## Pause menu of a session (Esc): resume, restart, graphics, gameplay (lens), back to the main menu. It keeps working while the
-## game tree is paused (process_mode ALWAYS). Esc resumes (or leaves the graphics page).
+## Pause menu of a session (Esc): resume, restart, graphics, sound, gameplay (lens), back to the main menu. It keeps
+## working while the game tree is paused (process_mode ALWAYS). Esc resumes (or leaves the sub-page).
 
 signal resume_requested
 signal restart_requested
@@ -18,6 +18,7 @@ var lens_editable := false
 
 var _main_page: Control
 var _graphics_page: Control
+var _sound_page: Control
 var _gameplay_page: Control
 var _lens_opt: OptionButton
 var _lens_note: Label
@@ -64,6 +65,7 @@ func _build() -> void:
 	_resume_button = _button(_main_page, "Reprendre (Échap)", func(): resume_requested.emit())
 	_button(_main_page, "Recommencer", func(): restart_requested.emit())
 	_button(_main_page, "Graphismes", func(): _show_page(_graphics_page))
+	_button(_main_page, "Son", func(): _show_page(_sound_page))
 	_button(_main_page, "Gameplay", func(): _show_page(_gameplay_page))
 	_button(_main_page, "Quitter vers le menu", func(): quit_requested.emit())
 
@@ -82,7 +84,7 @@ func _build() -> void:
 	_graphics_page.add_child(arow)
 	var al := Label.new()
 	al.text = "Ambiance"
-	al.custom_minimum_size.x = GraphicsPanel.LABEL_WIDTH
+	al.custom_minimum_size.x = SettingsRows.LABEL_WIDTH
 	arow.add_child(al)
 	_ambience_opt = OptionButton.new()
 	_ambience_opt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -98,6 +100,20 @@ func _build() -> void:
 	_graphics_page.add_child(scroll)
 	scroll.add_child(GraphicsPanel.new())
 	_button(_graphics_page, "Retour (Échap)", func(): _show_page(null))
+
+	_sound_page = VBoxContainer.new()
+	_sound_page.custom_minimum_size.x = 660
+	_sound_page.add_theme_constant_override("separation", 12)
+	_sound_page.visible = false
+	stack.add_child(_sound_page)
+	var stitle := Label.new()
+	stitle.text = "SON"
+	stitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	Neon.title(stitle, 44)
+	_sound_page.add_child(stitle)
+	# the volumes are buses, so they can be set by ear with the session paused behind the menu
+	_sound_page.add_child(SoundPanel.new())
+	_button(_sound_page, "Retour (Échap)", func(): _show_page(null))
 
 	_gameplay_page = VBoxContainer.new()
 	_gameplay_page.custom_minimum_size.x = 380
@@ -180,6 +196,7 @@ func _button(parent: Control, text: String, action: Callable) -> Button:
 ## Shows a sub-page (null = the main page).
 func _show_page(page: Control) -> void:
 	_graphics_page.visible = page == _graphics_page
+	_sound_page.visible = page == _sound_page
 	_gameplay_page.visible = page == _gameplay_page
 	_main_page.visible = page == null
 	if page == _gameplay_page:

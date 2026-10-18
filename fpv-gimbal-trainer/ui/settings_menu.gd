@@ -1,6 +1,7 @@
 extends Control
-## Settings: controller configuration (sub-menu) and every graphics setting (GraphicsPanel). The choices are saved at once
-## in user://menu_prefs.json (read back by the main menu and the sessions).
+## Settings: controller configuration (sub-menu), the volumes (SoundPanel) and every graphics setting
+## (GraphicsPanel). The choices are saved at once in user://menu_prefs.json (read back by the main menu and the
+## sessions).
 
 const MENU_SCENE := "res://scenes/main_menu.tscn"
 const INPUT_SCENE := "res://scenes/input_debug.tscn"
@@ -33,14 +34,19 @@ func _ready() -> void:
 	box.add_child(pad)
 	box.add_child(HSeparator.new())
 
-	box.add_child(_heading("Graphismes"))
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(640, 520)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	box.add_child(scroll)
-	scroll.add_child(GraphicsPanel.new())
+	var panels := VBoxContainer.new()
+	panels.add_theme_constant_override("separation", 10)
+	scroll.add_child(panels)
+	panels.add_child(SoundPanel.new())
+	panels.add_child(HSeparator.new())
+	panels.add_child(_heading("Graphismes"))
+	panels.add_child(GraphicsPanel.new())
 	var hint := Label.new()
-	hint.text = "Ces réglages sont aussi accessibles en jeu (Échap > Graphismes)."
+	hint.text = "Ces réglages sont aussi accessibles en jeu (Échap > Graphismes, Échap > Son)."
 	hint.add_theme_color_override("font_color", Neon.TEXT_DIM)
 	box.add_child(hint)
 	box.add_child(HSeparator.new())

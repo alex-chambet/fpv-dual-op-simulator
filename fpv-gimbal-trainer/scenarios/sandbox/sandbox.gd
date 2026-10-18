@@ -33,6 +33,10 @@ var sky: SkyTraffic
 var fauna: SandboxFauna
 var drone: FpvDrone
 var rig: GimbalRig
+## Props and airflow of the drone (DroneVoice); the sandbox has no subject, so nothing else sounds.
+var _voice: DroneVoice
+## Focus of the gimbal camera (LensFocus), on the ground at the centre of the frame.
+var _focus: LensFocus
 var grass: GrassField
 ## Drone mode: "auto", "acro" or "assisted".
 var mode := "auto"
@@ -185,6 +189,18 @@ func _build_drone() -> void:
 	rig.camera.fov = SessionConfig.fov_for(lens_mm)
 	rig.camera.far = 9000.0
 	rig.camera.add_child(MotionBlur.new())
+	# the lens, focused on whatever the gimbal is pointed at (there is no subject here, so the focus
+	# follows the ground under the centre of the frame)
+	_focus = LensFocus.new()
+	_focus.name = "LensFocus"
+	rig.camera.add_child(_focus)
+	_focus.setup(rig.camera, lens_mm)
+	# the drone the operator is sitting on: props and airflow, here driven by the pilot rather than
+	# by a planned path (there is no subject in the sandbox, so there is no subject voice)
+	_voice = DroneVoice.new()
+	_voice.name = "DroneVoice"
+	_body.add_child(_voice)
+	_voice.setup()
 	mode = "acro" if ControllerInput.has_pilot_device() else "auto"
 	_reset_drone()
 
@@ -225,7 +241,8 @@ func _build_hud() -> void:
 	_pause.lens_editable = true  # nothing is scored in the sandbox
 	_pause.lens_changed.connect(func(mm: int):
 		lens_mm = mm
-		rig.camera.fov = SessionConfig.fov_for(mm))
+		rig.camera.fov = SessionConfig.fov_for(mm)
+		_focus.set_lens(mm))
 	_pause.guide_changed.connect(_guide.queue_redraw)
 	add_child(_pause)
 	_pause.resume_requested.connect(_close_pause)
@@ -235,6 +252,25 @@ func _build_hud() -> void:
 	_pause.quit_requested.connect(func():
 		get_tree().paused = false
 		get_tree().change_scene_to_file(MENU_SCENE))
+
+
+## What the gimbal is pointed at, in metres: the ground under the centre of the frame, found by
+## walking the view ray in steps that grow with the distance (coarse far away, fine close by, where
+## the depth of field is actually narrow). Pointed at the sky, it returns a distance past which
+## nothing is blurred any more.
+func _focus_distance() -> float:
+	var cam := rig.camera
+	var from := cam.global_position
+	var dir := -cam.global_transform.basis.z
+	if dir.y > -0.01:
+		return LensFocus.MAX_FAR
+	var t := 2.0
+	while t < 900.0:
+		var p := from + dir * t
+		if p.y <= world.ground(p.x, p.z):
+			return t
+		t += maxf(t * 0.08, 1.0)
+	return LensFocus.MAX_FAR
 
 
 func _obstacle_push(pos: Vector3, r: float) -> Vector3:
@@ -260,6 +296,8 @@ func _process(delta: float) -> void:
 			drone.armed = true
 		drone.step(delta, inp)
 	_body.global_position = drone.position
+	_voice.update(delta, drone.position)
+	_focus.update(delta, _focus_distance())
 	_tilt_hud.step_keys(drone, delta)
 	_view.set_shown(mode == "acro")
 	_update_hud()
