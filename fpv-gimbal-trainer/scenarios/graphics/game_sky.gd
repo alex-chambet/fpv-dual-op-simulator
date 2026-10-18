@@ -81,7 +81,10 @@ void sky() {
 static var _shader: Shader
 static var _clouds: NoiseTexture2D
 
-
+## A photographed sky (HDRI) was measured against this one in October 2026 and rejected: see
+## docs/graphismes.md. Short version - the painted sky is tuned to each ambience's exposure, fog and
+## colours, and a panorama fights all three. At the horizon, which is where the drone looks, the
+## HDRI came out a flat grey band where this shader has a gradient and clouds.
 static func make(style: EnvironmentStyle) -> ShaderMaterial:
 	if _shader == null:
 		_shader = Shader.new()

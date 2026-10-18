@@ -79,6 +79,9 @@ func _init() -> void:
 	_opt("Flou de mouvement", MotionBlur.LABELS, MotionBlur.level, func(i):
 		MotionBlur.level = i
 		MotionBlur.save_level())
+	_note("Le flou est celui du temps de pose de la caméra, pas celui du jeu : l'angle d'obturation. "
+			+ "La règle des 180° (obturateur ouvert sur un demi-tour) est ce qui donne son mouvement "
+			+ "au cinéma — c'est 1/60 s pour une image livrée en 30 i/s.")
 
 	_heading("Interface en jeu")
 	_slider("Opacité des infos", 0.2, 1.0, 0.05, GraphicsSettings.hud_opacity, func(v): return "%d %%" % roundi(v * 100.0), func(v):

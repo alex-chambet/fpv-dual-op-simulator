@@ -1,0 +1,23 @@
+Textures de sol — détail photographique
+=======================================
+
+asphalt.png, snow.png, grass.png sont dérivées de trois sets PBR d'ambientCG
+(https://ambientcg.com), publiés sous Creative Commons CC0 1.0 (domaine public) :
+
+  asphalt.png  <- Asphalt033  (https://ambientcg.com/view?id=Asphalt033)
+  snow.png     <- Snow010A    (https://ambientcg.com/view?id=Snow010A)
+  grass.png    <- Grass004    (https://ambientcg.com/view?id=Grass004)
+
+Chaque fichier d'origine (1024 x 1024, JPG) a été réduit à 512 x 512 et ses trois
+cartes utiles empaquetées dans une seule image RGBA :
+
+  R  = variation de luminance de l'albédo, centrée sur 0,5 (0,5 = pas de changement)
+  G  = rugosité
+  B  = normale X   (convention OpenGL, +Y vers le haut)
+  A  = normale Y
+
+Elles ne remplacent pas la couleur du terrain : le shader les utilise comme couche
+de DÉTAIL par-dessus la couleur procédurale (scenarios/graphics/ground_materials.gd),
+pour que les teintes des styles et des ambiances continuent de fonctionner.
+
+CC0 1.0 : aucune attribution n'est exigée. Elle est donnée ici par correction.

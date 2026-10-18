@@ -124,7 +124,13 @@ Quatre niveaux de qualité (Basse, Moyenne, Haute, Ultra) et un **flou de mouvem
 - **Ambiances** : plein jour, matin, fin de journée, temps couvert, chute de neige (sur la neige), ou au hasard. Elles se choisissent sur la page de réglages de la session (ligne « Ambiance »).
 - **Athlètes animés** : le coureur passe de la marche au sprint, le vététiste pédale sur un vrai VTT. Le **skieur** est posé image par image à partir du virage qu'il fait et de **celui qui arrive** : il s'écrase et s'angule dans la courbe, puis se grandit, balance le bâton en avant et traverse les genoux une bonne demi-seconde **avant** que ses skis ne changent de direction — de quoi anticiper le virage rien qu'en le regardant.
 - **Décors vivants** : public, drapeaux et banderoles sur la descente ; fermes, champs labourés et blés mûrs sur la Départementale ; parois rocheuses et massifs sur la route de montagne ; rayons de lumière dans la forêt (qualité Ultra).
-- **Rendu caméra** : vignettage, légère aberration chromatique et grain, comme une vraie optique.
+- **Rendu caméra** : vignettage, légère aberration chromatique, grain et **profondeur de champ**, comme une vraie
+  optique. Le flou n'est pas décoratif : ce sont les vraies limites de netteté de l'optique choisie, à f/2. À 85 mm
+  le sujet se détache du fond ; à 24 mm tout est net à partir de 6 m et rien ne se détache jamais — c'est la vraie
+  raison de changer d'optique. La mise au point est *tirée* vers le sujet, comme un pointeur suit sa molette.
+- **Sols photographiés** : par-dessus les couleurs procédurales, une couche de détail tirée de sets PBR CC0
+  (ambientCG). La neige a enfin une croûte ; sur l'asphalte le gain est marginal, le procédural y faisait déjà le
+  travail.
 
 ## Son
 
@@ -163,5 +169,7 @@ Le code source est dans le dossier `fpv-gimbal-trainer/` (projet Godot 4.7).
 ## Crédits
 
 - Mannequin animé des athlètes : « Universal Animation Library » de [Quaternius](https://quaternius.com), licence CC0 (domaine public).
+- Détail des sols : sets PBR Asphalt033, Snow010A et Grass004 d'[ambientCG](https://ambientcg.com), licence CC0
+  (domaine public), réduits et empaquetés en une image par surface (voir `assets/ground/LICENSE_ambientCG_CC0.txt`).
 - Tracé du circuit : d'après le plan « Nürburgring - Grand-Prix-Strecke » de [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:N%C3%BCrburgring_-_Grand-Prix-Strecke.svg), aplati puis re-parcouru à courbure bornée (voir [docs/circuit.md](fpv-gimbal-trainer/docs/circuit.md)).
 - Moteur : [Godot Engine](https://godotengine.org) (licence MIT).

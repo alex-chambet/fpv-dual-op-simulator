@@ -92,6 +92,11 @@ static func set_preset(q: int) -> void:
 	trees = p[6]
 	grass = p[7]
 	crowd = p[8]
+	# The depth of field is a full-screen pass: measured at +3.0 ms in 4K on an RTX 4070 laptop
+	# (13.7 -> 16.7 ms), and the bokeh quality changes nothing, so the only levers are the render
+	# scale and this switch. Off on the lowest preset, on everywhere else; the player can override
+	# it in Image either way (it is not part of what makes a preset "Personnalisé").
+	dof = quality >= 1
 	custom = false
 
 

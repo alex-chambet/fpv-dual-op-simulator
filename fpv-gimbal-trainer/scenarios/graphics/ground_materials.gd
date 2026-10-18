@@ -65,6 +65,49 @@ vec4 parcel(vec2 xz) {
 	return vec4(hash12(best * 1.37 + 4.1), (sqrt(d2) - sqrt(d1)) * field_size * 0.5, cos(ang), sin(ang));
 }
 
+// --- Photographed surface detail (ambientCG, CC0) ---------------------------------------------
+// One RGBA texture per surface: R = albedo variation around 0.5, G = roughness, BA = normal XY.
+// It is a DETAIL layer, not a replacement: it varies what the procedural colour already decided,
+// so every colour uniform and every ambience tint keeps working. The point is correlation - noise
+// gives albedo and normal that have nothing to do with each other, which reads as fuzz; a photo
+// gives a stone whose bump and whose dark side are the same stone. That only matters up close, so
+// it fades out with distance and the procedural macro variation carries the far field alone.
+uniform sampler2D detail_pbr : filter_linear_mipmap, repeat_enable;
+uniform float pbr_scale = 1.0;        // tiles per metre
+uniform float pbr_strength = 1.0;     // 0 = no photographic detail at all
+uniform float pbr_near = 35.0;        // full strength up to here, gone by pbr_far
+uniform float pbr_far = 110.0;
+
+float detail_fade(float dist) {
+	return (1.0 - smoothstep(pbr_near, pbr_far, dist)) * pbr_strength;
+}
+
+// A metre-scale texture sampled with WORLD coordinates: on the circuit those run to 600 m, and a
+// float32 UV of 600 has lost so much precision that the gradient the GPU derives from it is
+// garbage - it then picks the smallest mip and the texture averages away to a flat grey. (That is
+// exactly what happened the first time: the uniforms were right and the picture did not move.)
+// So the coordinate is wrapped close to zero before sampling, and the gradient is handed over
+// explicitly, computed from the unwrapped value where the subtraction is still meaningful.
+vec4 detail_tap(vec2 uv) {
+	vec2 dx = dFdx(uv);
+	vec2 dy = dFdy(uv);
+	return textureGrad(detail_pbr, uv - floor(uv), dx, dy);
+}
+
+// x = albedo multiplier (1 = unchanged), y = roughness delta, zw = normal XY offset (world space).
+// Two octaves a third of a decade apart, so the metre-sized tile never reads as a grid.
+vec4 surface_detail(vec2 xz, float fade, float scale) {
+	if (fade <= 0.002) {
+		return vec4(1.0, 0.0, 0.0, 0.0);
+	}
+	vec4 a = detail_tap(xz * scale);
+	vec4 b = detail_tap(xz * scale * 0.29 + vec2(0.37, 0.11));
+	float lum = (a.r - 0.5) * 1.3 + (b.r - 0.5) * 0.5;
+	vec2 nrm = ((a.ba - 0.5) * 1.2 + (b.ba - 0.5) * 0.4) * 2.0;
+	float rg = mix(a.g, b.g, 0.3) - 0.5;
+	return vec4(1.0 + lum * 1.5 * fade, rg * 0.45 * fade, nrm.x * fade, nrm.y * fade);
+}
+
 // world-space detail normal (for surfaces facing up), returned in view space
 vec3 detail_normal(vec3 n_world, vec2 xz, float strength, mat4 view) {
 	vec2 a = texture(normal_tex, xz * 0.31).rg * 2.0 - 1.0;
@@ -177,6 +220,13 @@ void fragment() {
 	float fr = clamp(mk.b * (0.75 + 0.5 * d1), 0.0, 1.0);
 	col = mix(col, fringe_color * (0.8 + 0.4 * fine), fr * 0.85);
 
+	// real grass seen from 5 m: the blades, their shadows and their sheen, all the same blades
+	float pfade = detail_fade(dist);
+	vec4 det = surface_detail(xz, pfade, pbr_scale);
+	col *= det.x;
+	rough = clamp(rough + det.y, 0.2, 1.0);
+	nstr *= 1.0 - 0.45 * pfade;   // the photographed normal replaces part of the noise one
+
 	float slope = 1.0 - wnrm.y;
 	vec3 n_rock = wnrm;
 	float rock_w = smoothstep(rock_start, rock_end, slope + (d1 - 0.5) * 0.14 + (m_mid - 0.5) * 0.1);
@@ -225,7 +275,8 @@ void fragment() {
 	ALBEDO = col;
 	ROUGHNESS = rough;
 	SPECULAR = 0.35;
-	NORMAL = detail_normal(normalize(n_rock), xz, nstr * (1.0 - far_fade * 0.7), VIEW_MATRIX);
+	n_rock = normalize(n_rock + vec3(det.z, 0.0, det.w) * 0.7 * (1.0 - rock_w));
+	NORMAL = detail_normal(n_rock, xz, nstr * (1.0 - far_fade * 0.7), VIEW_MATRIX);
 }
 """
 
@@ -293,15 +344,20 @@ void fragment() {
 	float edge_l = 1.0 - smoothstep(0.0, 0.05 + fwidth(lane_x), abs(fract(lane_x) - 0.03));
 	col *= 1.0 - piste * (0.025 * hash12(vec2(lane, 3.0)) + 0.04 * edge_l);
 
+	// the grain of real snow up close: crust, crystals, the little shadows between them
+	float pfade = detail_fade(dist);
+	vec4 det = surface_detail(xz, pfade, pbr_scale);
+	col *= det.x;
+
 	// normal: wind ripples off the piste, groomer corduroy (along the fall line) on it
 	vec2 rip = ((texture(normal_tex, xz * vec2(0.09, 0.22)).rg * 2.0 - 1.0) * 0.55
-			+ (texture(normal_tex, xz * 0.6).rg * 2.0 - 1.0) * 0.25) * ripple;
+			+ (texture(normal_tex, xz * 0.6).rg * 2.0 - 1.0) * 0.25) * ripple * (1.0 - 0.4 * pfade);
 	float ph = xz.x * 6.2832 / groom_spacing;
 	float aa = clamp(1.0 - fwidth(ph) * 0.6, 0.0, 1.0);
 	float wobble = (texture(detail_tex, xz * vec2(0.05, 0.01)).r - 0.5) * 6.0;
 	float cord = cos(ph + wobble) * aa;
 	vec2 dn = mix(rip, vec2(cord * 0.25 * (1.0 - smoothstep(4.0, 14.0, dist)), 0.0) + rip * 0.3, piste) * (1.0 - far_fade * 0.75);
-	vec3 n = normalize(wnrm + vec3(dn.x, 0.0, dn.y));
+	vec3 n = normalize(wnrm + vec3(dn.x + det.z * 0.8, 0.0, dn.y + det.w * 0.8));
 
 	float slope = 1.0 - wnrm.y;
 	float rock_w = smoothstep(rock_start, rock_end, slope + (d1 - 0.5) * 0.2);
@@ -349,7 +405,7 @@ void fragment() {
 	float sp = texture(cell_tex, xz * 7.3).r;
 	float glint = smoothstep(0.93, 0.99, sp) * (1.0 - far_fade) * (1.0 - rock_w);
 	ALBEDO = col;
-	ROUGHNESS = mix(0.62, 0.9, rock_w) - glint * 0.4;
+	ROUGHNESS = clamp(mix(0.62, 0.9, rock_w) - glint * 0.4 + det.y * (1.0 - rock_w), 0.15, 1.0);
 	SPECULAR = 0.5 + glint * 0.5;
 	SSS_STRENGTH = 0.25 * (1.0 - rock_w);
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
@@ -405,10 +461,16 @@ void fragment() {
 	float rag = (texture(detail_tex, xz * 0.9).r - 0.5) * 0.5 + (grain2 - 0.5) * 0.3;
 	float gravel = 1.0 - smoothstep(0.0, edge_crumble, e + rag * edge_crumble);
 	col = mix(col, gravel_color * (0.8 + 0.4 * grain), gravel);
+	// the aggregate of real asphalt: the stones in the bitumen, and the way the polished ones catch
+	// the light. This is the surface the drone flies 5 m above for a whole lap.
+	float pfade = detail_fade(dist);
+	vec4 det = surface_detail(xz, pfade, pbr_scale);
+	col *= det.x;
 	ALBEDO = col;
-	ROUGHNESS = mix(0.86, 0.72, track) + grain * 0.08;
+	ROUGHNESS = clamp(mix(0.86, 0.72, track) + grain * 0.08 + det.y, 0.3, 1.0);
 	SPECULAR = 0.4;
-	NORMAL = detail_normal(vec3(0.0, 1.0, 0.0), xz * 3.0, 0.18 * (1.0 - far_fade), VIEW_MATRIX);
+	NORMAL = detail_normal(normalize(vec3(det.z * 0.8, 1.0, det.w * 0.8)), xz * 3.0,
+			0.18 * (1.0 - far_fade) * (1.0 - 0.5 * pfade), VIEW_MATRIX);
 }
 """
 
@@ -434,6 +496,72 @@ void fragment() {
 }
 """
 
+## Painted run-off of a modern circuit: sealed grey asphalt, laid in batches, cracked where it is
+## old, painted green towards its edges and worn back to the grey by the cars that run wide. It is
+## the second biggest surface in frame after the track itself and the drone flies five metres over
+## it, so it is a full ground shader and not a flat colour. UV.x runs across the band - which end is
+## the track side depends on which side of the circuit the band is, so everything across is
+## symmetric about the middle.
+const RUNOFF := """
+shader_type spatial;
+render_mode cull_disabled;
+#COMMON
+uniform vec3 grey : source_color = vec3(0.285, 0.285, 0.295);
+uniform vec3 pale : source_color = vec3(0.355, 0.355, 0.36);
+uniform vec3 green : source_color = vec3(0.17, 0.33, 0.17);
+uniform vec3 dust : source_color = vec3(0.45, 0.42, 0.34);
+
+void vertex() {
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	wnrm = vec3(0.0, 1.0, 0.0);
+}
+
+void fragment() {
+	vec2 xz = wpos.xz;
+	float dist = length(VERTEX);
+	float far_fade = smoothstep(20.0, 90.0, dist);
+	float edge = abs(UV.x - 0.5) * 2.0;
+
+	// Grain of the sealed asphalt: two octaves a third of a decade apart. One octave repeats with
+	// its own texture, and a metre-sized tile over a surface this big reads as a regular grid.
+	float n1 = texture(detail_tex, xz * 0.55).r;
+	float n2 = texture(detail_tex, xz * 0.16 + vec2(0.23, 0.61)).r;
+	float n = clamp(0.5 + (n1 - 0.5) * 0.76 + (n2 - 0.5) * 0.54, 0.0, 1.0);
+	// The chippings, about 4 cm: gone by 26 m, before they fall under the pixel and turn to pepper.
+	// They stay the smaller half of the mix - on their own they read as granite, not as asphalt.
+	float chip = mix(texture(cell_tex, xz * 0.9).r, 0.5, smoothstep(8.0, 26.0, dist));
+	vec3 col = mix(grey, pale, smoothstep(0.22, 0.85, n * 0.72 + chip * 0.28));
+	// laid in batches, a few tens of metres at a time, each one a slightly different grey
+	col *= 0.9 + 0.2 * smoothstep(0.35, 0.65, texture(macro_tex, xz * 0.02 + 0.13).r);
+
+	// green paint towards both edges, worn back to the grey where the cars run over it
+	float wear = smoothstep(0.42, 0.78, n * 0.65 + texture(macro_tex, xz * 0.09 + 0.5).r * 0.35);
+	float paint = smoothstep(0.55, 0.95, edge) * (1.0 - 0.5 * wear);
+	col = mix(col, green * (0.82 + 0.4 * n), paint);
+
+	// cracks: thin lines along the contours of a noise, only where the surface is old
+	float cn = texture(macro_tex, xz * 0.1).r;
+	float crack = (1.0 - smoothstep(0.0, 0.005 + fwidth(cn) * 1.2, abs(cn - 0.5)))
+			* smoothstep(0.6, 0.74, texture(macro_tex, xz * 0.012 + 0.5).r);
+	col *= 1.0 - crack * 0.3 * (1.0 - far_fade);
+
+	// grit blown against the very edge, where the band meets the ground
+	float grit = smoothstep(0.86, 1.0, edge) * smoothstep(0.4, 0.75, texture(macro_tex, xz * 0.06).r + 0.1);
+	col = mix(col, dust * (0.82 + 0.36 * chip), grit * 0.55);
+
+	// the stones in the bitumen, seen from five metres
+	float pfade = detail_fade(dist);
+	vec4 det = surface_detail(xz, pfade, pbr_scale);
+	col *= det.x;
+	ALBEDO = col;
+	// fresh paint is smoother than the asphalt it covers
+	ROUGHNESS = clamp(mix(0.93, 0.74, paint) + (n - 0.5) * 0.08 + det.y, 0.3, 1.0);
+	SPECULAR = 0.4;
+	NORMAL = detail_normal(normalize(vec3(det.z * 0.8, 1.0, det.w * 0.8)), xz * 2.2,
+			0.2 * (1.0 - far_fade) * (1.0 - 0.5 * pfade), VIEW_MATRIX);
+}
+"""
+
 ## Gravel / dust shoulder: UV.x across.
 const GRAVEL := """
 shader_type spatial;
@@ -453,18 +581,33 @@ void fragment() {
 	float dist = length(VERTEX);
 	float far_fade = smoothstep(15.0, 70.0, dist);
 	float x = abs(UV.x - 0.5) * 2.0 * half_width;
-	float st = mix(texture(cell_tex, xz * 6.0).r, 0.5, far_fade);
-	float n = texture(detail_tex, xz * 0.7).r;
+	// The grain of the gravel: two octaves of the detail noise a third of a decade apart. A single
+	// octave repeats with its own texture, and here it carried the whole colour on its own: a 1.4 m
+	// tile, across a run-off that fills the frame, reads as a regular grid from about 20 m. The
+	// second octave is what makes that repeat disappear (same trick as surface_detail above).
+	float n1 = texture(detail_tex, xz * 0.7).r;
+	float n2 = texture(detail_tex, xz * 0.203 + vec2(0.37, 0.11)).r;
+	float n = clamp(0.5 + (n1 - 0.5) * 0.78 + (n2 - 0.5) * 0.52, 0.0, 1.0);
+	// The stones, about 3 cm across. Sampled at xz * 6.0 they were 5 mm wide, under the pixel from
+	// 2 m onwards, so they averaged into a flat grey everywhere and left the grain above alone.
+	// At their real size they have to be gone before they fall under the pixel again, hence a fade
+	// over 8 to 26 m rather than the far_fade of the rest of the surface.
+	float st = mix(texture(cell_tex, xz * 1.1).r, 0.5, smoothstep(8.0, 26.0, dist));
 	vec3 col = mix(dark, gravel, smoothstep(0.2, 0.8, st * 0.6 + n * 0.4));
 	// tufts of grass towards the outer edge, and a ragged border
 	float out_d = half_width - x;
 	float g = smoothstep(1.4, 0.3, out_d + (n - 0.5) * 1.2) * smoothstep(0.3, 0.6, texture(macro_tex, xz * 0.08).r + 0.15);
 	col = mix(col, grass * (0.8 + 0.4 * st), g);
+	// the run-off of a circuit is the second biggest surface in frame after the track itself
+	float pfade = detail_fade(dist);
+	vec4 det = surface_detail(xz, pfade, pbr_scale);
+	col *= det.x;
 	ALBEDO = col;
-	ROUGHNESS = 0.95;
+	ROUGHNESS = clamp(0.95 + det.y, 0.4, 1.0);
 	ALPHA = 1.0 - smoothstep(0.0, 0.5, -(out_d - 0.6 + (n - 0.5) * 1.0));
 	ALPHA_SCISSOR_THRESHOLD = 0.5;
-	NORMAL = detail_normal(vec3(0.0, 1.0, 0.0), xz * 3.5, 0.35 * (1.0 - far_fade), VIEW_MATRIX);
+	NORMAL = detail_normal(normalize(vec3(det.z * 0.9, 1.0, det.w * 0.9)), xz * 3.5,
+			0.35 * (1.0 - far_fade) * (1.0 - 0.4 * pfade), VIEW_MATRIX);
 }
 """
 
@@ -498,16 +641,25 @@ void fragment() {
 	float lit = smoothstep(0.55, 0.75, texture(macro_tex, xz * 0.5).r) * smoothstep(0.2, 0.9, abs(x) / half_width);
 	col = mix(col, litter * (0.8 + 0.4 * n), lit * 0.7);
 	float edge = half_width - abs(x) + (n - 0.5) * 0.7 + (st - 0.5) * 0.25;
+	float pfade = detail_fade(dist);
+	vec4 det = surface_detail(xz, pfade, pbr_scale);
+	col *= det.x;
 	ALBEDO = col;
-	ROUGHNESS = 0.97;
+	ROUGHNESS = clamp(0.97 + det.y, 0.4, 1.0);
 	ALPHA = smoothstep(0.0, 0.25, edge);
 	ALPHA_SCISSOR_THRESHOLD = 0.5;
-	NORMAL = detail_normal(vec3(0.0, 1.0, 0.0), xz * 2.5, 0.5 * (1.0 - far_fade), VIEW_MATRIX);
+	NORMAL = detail_normal(normalize(vec3(det.z * 0.9, 1.0, det.w * 0.9)), xz * 2.5,
+			0.5 * (1.0 - far_fade) * (1.0 - 0.4 * pfade), VIEW_MATRIX);
 }
 """
 
 static var _shaders := {}
 static var _tex := {}
+## How much of the photographed detail to mix in; one extra texture fetch per ground pixel, so the
+## lowest quality preset turns it off. Read when a material is built, i.e. at the next session.
+static var detail_strength := 1.0
+## Multiplies every PBR scale at once (tuning; 1 = the values in PBR).
+static var detail_scale := 1.0
 
 
 static func _noise_tex(key: String, type: int, freq: float, octaves: int, size: int, normal := false,
@@ -550,6 +702,31 @@ static func noise(key: String) -> NoiseTexture2D:
 	return _noise_tex("detail", FastNoiseLite.TYPE_SIMPLEX_SMOOTH, 0.03, 4, 512)
 
 
+## Photographed detail per surface: the file to use and how many tiles per metre. A tile is about a
+## metre of real ground, so the scale is what decides whether a stone is a stone or a pebble.
+## The scale is not "what the photo was shot at": it is what is RESOLVABLE from where the drone
+## flies. At 1 tile per metre the asphalt aggregate lands under the pixel at 5 m and averages back
+## to flat grey - measured, not guessed. Tiling larger brings the decimetre structure into view,
+## which is what the eye reads as a real surface from 5 to 30 m.
+const PBR := {
+	"terrain": ["grass", 0.8],
+	"snow": ["snow", 0.6],
+	"asphalt": ["asphalt", 0.55],
+	"runoff": ["asphalt", 0.6],
+	"gravel": ["asphalt", 0.7],
+	"trail": ["grass", 0.9],
+}
+const PBR_DIR := "res://assets/ground/%s.png"
+
+
+## The packed detail texture of a surface, loaded once (R albedo, G roughness, BA normal XY).
+static func detail_map(name: String) -> Texture2D:
+	var key := "pbr_" + name
+	if not _tex.has(key):
+		_tex[key] = load(PBR_DIR % name) if ResourceLoader.exists(PBR_DIR % name) else null
+	return _tex[key]
+
+
 static func _material(key: String, code: String) -> ShaderMaterial:
 	if not _shaders.has(key):
 		var sh := Shader.new()
@@ -559,6 +736,11 @@ static func _material(key: String, code: String) -> ShaderMaterial:
 	m.shader = _shaders[key]
 	for t in ["macro", "detail", "cell", "normal"]:
 		m.set_shader_parameter(t + "_tex", noise(t))
+	if PBR.has(key):
+		var tex := detail_map(str(PBR[key][0]))
+		m.set_shader_parameter("detail_pbr", tex)
+		m.set_shader_parameter("pbr_scale", float(PBR[key][1]) * detail_scale)
+		m.set_shader_parameter("pbr_strength", detail_strength if tex != null else 0.0)
 	return m
 
 
@@ -584,6 +766,11 @@ static func asphalt(params := {}) -> ShaderMaterial:
 
 static func paint(params := {}) -> ShaderMaterial:
 	return _with(_material("paint", PAINT), params)
+
+
+## Painted run-off of a circuit: grey / pale / green / dust.
+static func runoff(params := {}) -> ShaderMaterial:
+	return _with(_material("runoff", RUNOFF), params)
 
 
 static func gravel(params := {}) -> ShaderMaterial:

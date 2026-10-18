@@ -6,10 +6,15 @@ extends Node
 ## The length of the blur is the motion during the shutter time (not the frame time), so it looks the same at 60 or
 ## 144 fps. Needs the Forward+ renderer (nothing happens without a RenderingDevice, e.g. headless runs).
 
-## 0 off, 1 light (shutter 1/120 s), 2 realistic (1/60 s), 3 strong (1/30 s). Chosen in the pause menu > Graphismes.
+## 0 off, 1 light (shutter 1/120 s), 2 cinema (1/60 s), 3 strong (1/30 s). Chosen in the pause menu > Graphismes.
+## The labels name the shutter ANGLE as well, because that is how it is set on a camera: angle = 360 x shutter x the
+## frame rate the footage is shot at. The 180-degree rule (half a turn open) is what gives film its motion, so 1/60 s
+## is what a 30 fps delivery looks like and 1/120 s a 60 fps one. The shutter here does not follow the display rate:
+## it is the camera's, so the picture looks the same whether the game runs at 60 or 144 i/s.
 static var level := 1
 const SHUTTERS := [0.0, 1.0 / 120.0, 1.0 / 60.0, 1.0 / 30.0]
-const LABELS := ["Désactivé", "Léger (1/120)", "Réaliste (1/60)", "Fort (1/30)"]
+const LABELS := ["Désactivé", "Léger — 1/120 s (180° à 60 i/s)", "Cinéma — 1/60 s (180° à 30 i/s)",
+		"Fort — 1/30 s (360° à 30 i/s)"]
 
 ## Remembers the chosen level in the menu preferences file (the main menu reads it back).
 static func save_level() -> void:

@@ -207,6 +207,11 @@ static func _box(parent: Node3D, size: Vector3, pos: Vector3, mat: Material) -> 
 	parent.add_child(mi)
 
 
+## Points per 90-degree corner of a section. At 3 the body showed its facets along the shoulder line
+## from 10 m, which is most of what made the car read as made of boxes; at 5 it is smooth, and a car
+## is still only a few hundred triangles, so the nine of the sandbox circuit cost nothing.
+const CORNER_STEPS := 5
+
 ## Rounded rectangle section at z: from y0 to y1, half widths w0 (bottom) / w1 (top), corner radius r.
 static func _ring(z: float, y0: float, y1: float, w0: float, w1: float, r: float) -> PackedVector3Array:
 	var pts := PackedVector3Array()
@@ -215,8 +220,8 @@ static func _ring(z: float, y0: float, y1: float, w0: float, w1: float, r: float
 	for c in corners:
 		var cx: float = c[0] - signf(c[0]) * r
 		var cy: float = c[1] - signf(c[1] - (y0 + y1) * 0.5) * r
-		for k in 3:
-			var a: float = c[2] + PI * 0.5 * k / 2.0
+		for k in CORNER_STEPS:
+			var a: float = c[2] + PI * 0.5 * k / float(CORNER_STEPS - 1)
 			pts.append(Vector3(cx + cos(a) * r, cy + sin(a) * r, z))
 	return pts
 
@@ -339,20 +344,39 @@ static func _slab(st: SurfaceTool, c: Vector3, size: Vector3) -> void:
 		st.add_vertex(verts[i] + c)
 
 
+## Sides around a wheel. A wheel is the one perfectly round thing in the picture and the drone often
+## passes within a few metres of it: at 16 its silhouette was a visible polygon.
+const WHEEL_SIDES := 28
+
 ## Tyre with a light alloy rim and five dark holes (so the rotation shows); axle along local Y.
+## The tyre is not a cylinder but a barrel: the tread is widest at the centre line and falls away to
+## the shoulders, so the edge catches the light along a curve instead of a hard ring.
 static func _wheel_mesh() -> ArrayMesh:
 	if _cache.has("wheel"):
 		return _cache["wheel"]
 	var r := 0.33
 	var w := 0.22
 	var mesh := ArrayMesh.new()
-	var tyre := CylinderMesh.new()
-	tyre.top_radius = r
-	tyre.bottom_radius = r
-	tyre.height = w
-	tyre.radial_segments = 16
+	# profile of half the tyre, from the centre line outwards: [y / (w/2), radius / r]
+	var profile := [[0.0, 1.0], [0.62, 0.995], [0.88, 0.965], [1.0, 0.89], [1.0, 0.68]]
+	var rings := []
+	for side in [-1.0, 1.0]:
+		var half := profile.duplicate()
+		if side < 0.0:
+			half.reverse()
+		for p in half:
+			var ring := PackedVector3Array()
+			for k in WHEEL_SIDES:
+				# -sin, not +sin: _loft wants the section wound the same way round as the body's
+				# sections are, and the body advances along +Z while a wheel advances along +Y.
+				# With +sin the tyre comes out inside-out and simply vanishes.
+				var a := TAU * k / WHEEL_SIDES
+				ring.append(Vector3(cos(a) * r * float(p[1]), side * w * 0.5 * float(p[0]), -sin(a) * r * float(p[1])))
+			rings.append(ring)
+	# both halves share the centre ring: drop the duplicate at the join
+	rings.remove_at(profile.size())
 	var st := SurfaceTool.new()
-	st.append_from(tyre, 0, Transform3D.IDENTITY)
+	_loft(st, rings)
 	st.commit(mesh)
 	var rim := SurfaceTool.new()
 	rim.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -361,11 +385,11 @@ static func _wheel_mesh() -> ArrayMesh:
 	for side in [-1.0, 1.0]:
 		var y: float = side * (w * 0.5 + 0.004)
 		var n := Vector3(0, side, 0)
-		_disc(rim, Vector3(0, y, 0), r * 0.66, n, 16)
+		_disc(rim, Vector3(0, y, 0), r * 0.69, n, WHEEL_SIDES)
 		for k in 5:
 			var a := TAU * k / 5.0
-			_disc(holes, Vector3(cos(a) * r * 0.4, y + side * 0.003, sin(a) * r * 0.4), r * 0.13, n, 8)
-		_disc(holes, Vector3(0, y + side * 0.003, 0), r * 0.1, n, 8)
+			_disc(holes, Vector3(cos(a) * r * 0.4, y + side * 0.003, sin(a) * r * 0.4), r * 0.13, n, 10)
+		_disc(holes, Vector3(0, y + side * 0.003, 0), r * 0.1, n, 10)
 	rim.commit(mesh)
 	holes.commit(mesh)
 	mesh.surface_set_material(0, _flat("tyre", Color(0.04, 0.04, 0.04), 0.9))

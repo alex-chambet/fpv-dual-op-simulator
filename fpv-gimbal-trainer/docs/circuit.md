@@ -107,7 +107,7 @@ centile**), et le sujet n'est caché que **0,3 s par tour**.
 ## Les décors (`scenarios/circuit/circuit_scenery.gd`)
 
 Asphalte et lignes blanches, **vibreurs rouge et blanc** à la corde de chaque virage et en sortie,
-**dégagements** (bande peinte puis gravier) qui s'élargissent à l'extérieur des courbes, **rails de
+**dégagements** (bande d'asphalte peint, gris à bord vert) qui s'élargissent à l'extérieur des courbes, **rails de
 sécurité** doublés d'un **grillage pare-débris**, **panneaux publicitaires**, **postes de
 commissaires**, **bâtiment des stands** et sa **voie des stands** le long de la ligne droite de
 départ, **tribunes** avec public à la Mercedes-Arena et aux grands virages, **portique de départ**,
@@ -119,6 +119,24 @@ joue verticale à l'extérieur, avec des bandes rouges et blanches d'un mètre p
 coordonnée de texture. La **trajectoire de course** laisse une trace de gomme sombre de 3 m de large
 sur l'asphalte, estompée sur ses bords. Des **murs de pneus** sont empilés là où le dégagement
 atteint plus de la moitié de sa largeur maximale.
+
+Le **dégagement** est un vrai sol, pas un aplat : `GroundMaterials.runoff()`, de l'asphalte scellé
+gris posé par lots, fissuré, avec ses gravillons jusqu'à 26 m et le détail photographié par-dessus,
+peint en vert vers ses bords et usé par les voitures. C'est la deuxième surface de l'image après la
+piste et le drone vole à cinq mètres au-dessus. Coût mesuré **dans le même processus** (le même
+cadrage à 30 m, 600 images chacun, matériau échangé à chaud) : la différence avec l'aplat d'avant
+reste **sous le bruit de mesure** — ±0,15 ms sur 2,5 à 3,5 ms par image, alors que d'un lancement à
+l'autre l'horloge GPU fait bouger le total d'une milliseconde entière.
+
+**Le sens des triangles d'une bande plate** (`_band`, `_s_band`) : le quadrilatère est donné dans
+l'ordre (intérieur i, extérieur i, intérieur j, extérieur j), et une seule des deux diagonales
+oriente ses triangles **vers le haut**. Avec l'autre, ils regardent le sol : un décor dont le
+matériau ne dit pas `cull_disabled` ne dessine alors **rien du tout** vu d'un drone. C'est ce qui a
+tenu hors de l'image le **dégagement**, les **lignes blanches de rive**, la **ligne
+de départ** et les **emplacements de la grille** — tout ce qui est en `GroundMaterials.paint()` —
+pendant que l'asphalte et le terrain, eux, s'en tiraient parce que leurs shaders ont `cull_disabled`.
+Constaté par capture : bande seule → visible ; bande dans la scène → zéro pixel ; matériau passé en
+`cull_disabled` → visible de nouveau.
 
 Les **grillages pare-débris** ne sont montés que **devant les tribunes et le long de la ligne des
 stands** — partout ailleurs il n'y a que le rail, comme sur le vrai circuit. Un grillage posé tout

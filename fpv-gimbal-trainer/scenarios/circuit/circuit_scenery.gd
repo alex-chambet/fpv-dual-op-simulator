@@ -179,8 +179,8 @@ func _surface() -> void:
 	for i in n:
 		ro_in[i] = -hw - layout.runoff_l[i]
 		ro_out[i] = hw + layout.runoff_r[i]
-	_band(ro_in, _const_offsets(-hw), 0.015, _runoff_mat(), 0.09, -1, -1, "RunoffLeft")
-	_band(_const_offsets(hw), ro_out, 0.015, _runoff_mat(), 0.09, -1, -1, "RunoffRight")
+	_band(ro_in, _const_offsets(-hw), 0.015, GroundMaterials.runoff(), 0.09, -1, -1, "RunoffLeft")
+	_band(_const_offsets(hw), ro_out, 0.015, GroundMaterials.runoff(), 0.09, -1, -1, "RunoffRight")
 	# asphalt
 	_band(_const_offsets(-hw), _const_offsets(hw), 0.05, GroundMaterials.asphalt({"half_width": hw}), 0.1,
 			-1, -1, "Asphalt")
@@ -248,7 +248,11 @@ func _band(inner: PackedFloat32Array, outer: PackedFloat32Array, y: float, mat: 
 		var seg := layout.centre[i].distance_to(layout.centre[j])
 		var uv := [Vector2(0.0, run * uv_per_m), Vector2(1.0, run * uv_per_m),
 				Vector2(0.0, (run + seg) * uv_per_m), Vector2(1.0, (run + seg) * uv_per_m)]
-		for idx in [0, 2, 1, 1, 2, 3]:
+		# The quad is (inner i, outer i, inner j, outer j), and THIS is the diagonal order that makes
+		# its two triangles face up. The other one faces them down, and a band whose material does
+		# not say cull_disabled then draws nothing at all seen from the air: that is what kept the
+		# run-off and the white lines of this track off the screen entirely.
+		for idx in [0, 1, 2, 1, 3, 2]:
 			st.set_normal(Vector3.UP)
 			st.set_uv(uv[idx])
 			st.add_vertex(quad[idx])
@@ -354,7 +358,7 @@ func _s_band(s0: float, s1: float, lat0: float, lat1: float, y: float, mat: Mate
 			var p := layout.point_at(pair[0])
 			var nrm := layout.normal_at(pair[0])
 			quad.append(Vector3(p.x + nrm.x * pair[1], p.y + y, p.z + nrm.y * pair[1]))
-		for idx in [0, 2, 1, 1, 2, 3]:
+		for idx in [0, 1, 2, 1, 3, 2]:   # facing up, as in _band
 			st.set_normal(Vector3.UP)
 			st.set_uv(Vector2(0.0, 0.0))
 			st.add_vertex(quad[idx])
@@ -966,27 +970,6 @@ void fragment() {
 	var m := ShaderMaterial.new()
 	m.shader = sh
 	_mats["kerb"] = m
-	return m
-
-
-## Grey asphalt run-off with a green tint at its outer edge (the painted run-off of a modern circuit).
-static func _runoff_mat() -> ShaderMaterial:
-	if _mats.has("runoff"):
-		return _mats["runoff"]
-	var sh := Shader.new()
-	sh.code = """
-shader_type spatial;
-void fragment() {
-	float edge = abs(UV.x - 0.5) * 2.0;
-	vec3 grey = vec3(0.30, 0.30, 0.31);
-	vec3 green = vec3(0.17, 0.33, 0.17);
-	ALBEDO = mix(grey, green, smoothstep(0.55, 0.95, edge));
-	ROUGHNESS = 0.92;
-}
-"""
-	var m := ShaderMaterial.new()
-	m.shader = sh
-	_mats["runoff"] = m
 	return m
 
 
