@@ -83,6 +83,114 @@ temporel pour ne pas sauter sur un rocher brun.
 | changement de côté dans le cadre | toutes les 0,64 s | toutes les 0,52 s |
 | place dans l'image | u 0,46 / v 0,39 | u 0,48 / v 0,49 |
 
+## Le rendu, calé sur les rushs
+
+Cinq autres fichiers servent de référence : `DRONE_FPV.mov` (3 min de vol, grand angle) et
+`LIGNE_1..4.mov` (téléobjectifs sur la face). Le réglage n'a pas été fait à l'œil : un script
+(`scratchpad/couleurs.py`) classe les pixels d'une image en ciel / neige au soleil / neige à l'ombre
+/ rocher, et donne la couleur moyenne de chaque classe. On mesure le réel, on mesure le rendu, on
+corrige l'écart. Ce que ça a donné :
+
+| | rushs | rendu avant | rendu après |
+|---|---|---|---|
+| ciel, haut du cadre | R110 G140 B178 | R80 G118 B181 | R103 G134 B175 |
+| ciel, vers l'horizon | R136 G162 B184 | R100 G132 B184 | R133 G153 B180 |
+| neige au soleil | R210 G217 B223 | R205 G208 B217 | R212 G213 B215 |
+| neige à l'ombre | R161 G175 B190 | R145 G160 B193 | R153 G166 B187 |
+| rocher | R74 G83 B92 | R64 G81 B120 | R81 G94 B116 |
+
+Trois corrections, toutes dictées par ces chiffres :
+
+1. **Le ciel était un bleu cobalt** (B − R = +100) là où le vrai ciel d'altitude est un bleu acier
+   (+68) qui pâlit juste au-dessus des crêtes. Comme l'ambiante est prise du ciel, le dé-saturer a
+   réparé du même coup le **rocher, qui virait franchement au bleu**.
+2. **Le mouchetis.** Le seuil de rocher du shader était à 43° : sur une face qui ondule autour de 31°,
+   il est franchi partout et chaque bosse devenait une tache grise, alors que les téléobjectifs
+   montrent de la neige lisse et quelques îlots noirs francs. Remonté à **50°**, il ne reste que 6 %
+   du terrain — les barres et les ressauts. Et les deux blancs de la neige ont été rapprochés : le
+   shader les mélange avec un bruit de 70 m qui moutonnait toute la face, alors que l'albédo de la
+   neige est uniforme.
+3. **La brume mangeait tout** : divisée par deux (une crête à 3 km est encore franche sur les rushs),
+   et elle ne blanchit plus le ciel. Nuages retirés — il n'y en avait pas ce jour-là.
+
+Le MNT, lui, est passé par une **surface de neige** : fermeture morphologique de 7 m puis lissage.
+Le lidar est levé en été, c'est la surface du rocher ; la neige comble les clefts étroits (jusqu'à
+15 m dans les plus marquées) et arrondit le reste. L'effet est faible en moyenne (2 cm) mais il
+divise par trois le bruit résiduel au mètre.
+
+### Ce que le MNT seul ne donne pas : les stries et les blocs
+
+Deux choses des rushs ne sont dans aucun modèle de terrain, et ont été ajoutées par-dessus.
+
+**Les stries de vent**, gravées dans la carte de hauteurs (`add_flutes` dans `export3.py`) : la neige
+soufflée s'organise en côtes et en gouttières dans la ligne de pente. Elles sont **gravées** et pas
+seulement peintes dans la normale du shader, parce que celui-ci les efface au-delà de 220 m alors
+qu'en vrai on les voit sur toute la face. 70 cm de creux pour 19 m d'écartement, plus une ondulation
+secondaire de 16 cm : **larges et pas seulement hautes**, parce qu'à amplitude égale des côtes
+serrées ajoutent beaucoup de pente locale et remettraient le mouchetis de rocher. Pour la même
+raison elles s'effacent dès 40° — les pentes raides sont de toute façon soufflées ou rocheuses.
+Vérifié : la répartition des pentes est inchangée au dixième de point près.
+
+**Les parois à facettes** (`facet_rock.gd` + `_build_rocks` dans `test_level.gd`) : à la maille du
+mètre, une barre est une marche propre, alors que sur place c'est de la roche **cassée**. Les rochers
+du jeu (`Rocks`) ne convenaient pas : ce sont des galets, une sphère subdivisée deux fois puis
+déformée par du bruit, donc des formes molles. D'où un générateur à part — un icosaèdre **non
+subdivisé** (12 sommets, 20 faces), chaque sommet poussé ou tiré au hasard, aplati selon le litage,
+la base tranchée, et surtout des **normales par face** : c'est ce qui fait lire une arête.
+
+Ils sont posés par **parois** et non un par un : deux à six bancs empilés selon un même litage —
+incliné entre la pente et l'horizontale — et étagés le long de la barre, ce qui crée les vires où la
+neige se pose. 1 302 bancs et ~3 000 pierres roulées (celles-là restent les rochers du jeu, c'est la
+bonne forme pour des blocs tombés), là où la pente dépasse 46° **mesurée sur 12 m** — à 4 m, les
+stries gravées suffiraient à franchir le seuil et on sèmerait des blocs en pleine pente.
+
+Quatre réglages trouvés en comparant aux rushs :
+
+- `Vegetation.snow_cover` à **0,42** et non 0,9 : à 0,9 le shader enneige toute face tournée vers le
+  haut et les blocs ressortaient en **points blancs**, alors qu'ils sont noirs sur les rushs, avec de
+  la neige seulement sur leurs vires les plus plates.
+- **Un shader à échelle réglable** (`facet_rock.gdshader`, copie de celui du jeu) : son motif était
+  figé à `wpos * 0.55`, soit une répétition tous les 1,8 m — le bon réglage pour un caillou de deux
+  mètres, qui s'étale en **peau de léopard** sur une paroi de douze. L'échelle est maintenant choisie
+  par tranche de taille (0,55 / 0,36 / 0,23 / 0,15), ce qui a permis de passer de 5 m à **16 m** :
+  la taille d'une paroi suit la raideur, 3 m sur une cassure à 46°, jusqu'à 16 m sur une vraie paroi
+  à 64°. La force de la normale baisse avec la taille, elle brouillait les arêtes.
+- Roche **plus sombre et plus contrastée** que celle du jeu, sinon les facettes ne se détachent pas.
+  Mesuré : R81 G94 B116 contre R80 G93 B103 sur les rushs.
+- **Le rocher peint vient du masque de sol, plus du seuil de pente.** Le shader de neige lit la pente
+  **à 1 m** — donc la moindre bosse — alors que les parois se posent sur la pente **à 12 m**, celle
+  des vraies barres : deux zones différentes, d'où des taches grises sans un bloc dessus. Un
+  `GroundMask` (le mécanisme qu'utilise déjà la face freeride du jeu) peint le rouge là où la pente
+  large dépasse 54°, et le seuil de pente est repoussé à 68° pour ne plus servir que sur les
+  presque-verticales. Le rocher peint et le rocher en volume coïncident enfin.
+
+### Entailler les barres en gradins : essayé, abandonné
+
+Idée suivante, et elle était juste sur le principe : une barre n'est pas une rampe mais un escalier,
+des vires presque plates séparées par des ressauts presque verticaux. On l'obtient en aimantant
+l'altitude sur une famille de plans parallèles, dans les zones raides. Codé (`terrace` dans
+`export3.py`, gardé mais **désactivé**), essayé à deux échelles, abandonné :
+
+- **le pas est contraint par le bas.** Sur une pente à 50°, un gradin de H mètres n'occupe que
+  0,84 × H à l'horizontale. À 1,6 m il tient dans une seule maille : ce n'est plus un escalier, c'est
+  un crénelage. Il faut au moins 4 m pour qu'une vire fasse quatre mailles de large.
+- **il est contraint par le haut par l'aspect.** À 4,5 m, une barre portait dix vires et
+  l'alternance rocher (ressaut) / neige (vire) se dithérait dès qu'on s'éloignait : la face prenait
+  un air de tôle ondulée. À 10 m, les vires alignaient les bancs posés dessus et l'ensemble lisait
+  comme des nattes rayées. Entre les deux, rien ne marche.
+- et de toute façon **une carte de hauteurs ne sait pas représenter un surplomb**, qui est justement
+  ce qui fait une paroi.
+
+Conclusion : le relief d'une barre doit venir de **maillages posés par-dessus** — les parois à
+facettes — et non d'une quantification du MNT. Ce qui a été gardé de l'essai : les bancs d'une même
+paroi sont maintenant légèrement de travers les uns par rapport aux autres, parce qu'alignés ils
+dessinaient eux aussi des rayures.
+
+Les bancs disparaissent au-delà de 260 à 800 m selon leur taille, les pierres au-delà de 150 m et
+sans ombre portée. Mesuré au chronomètre sur 2,5 s : **60 img/s avec ou sans**, c'est-à-dire que ça
+ne coûte rien (et non les « 19 img/s » qu'affichait `get_frames_per_second`, qui ne se rafraîchit
+qu'une fois par seconde et mentait sur des poses de 0,3 s).
+
 **Les lignes** (`dem/lignes.json`) ne sont pas un relevé GPS : les fichiers n'en portent aucun.
 Ce sont des **reconstitutions** : le skieur descend par le calcul en visant la ligne de plus grande
 pente du relief réel, écartée alternativement à gauche et à droite **au rythme mesuré**, pendant la

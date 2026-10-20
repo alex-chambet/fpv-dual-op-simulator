@@ -10,6 +10,7 @@ extends Node3D
 ## réel sur 4 km, pour que l'horizon soit la vraie vallée et non un anneau inventé.
 
 const DemMap := preload("res://test/dem_map.gd")
+const FacetRock := preload("res://test/facet_rock.gd")
 const NEAR := "res://test/dem/face_wnw"
 const FAR := "res://test/dem/face_wnw_far"
 const HORIZON := "res://test/dem/face_wnw_horizon"
@@ -31,7 +32,10 @@ const HORIZON_RADIUS := 9000.0
 ## nappe blanche sans forme.
 const SUN_AZIMUTH_TRUE := 205.0
 const SUN_ELEVATION := 24.0
-const AMBIENT_ENERGY := 0.5
+const AMBIENT_ENERGY := 0.62
+## Plafond du nombre de blocs posés un par un sur les barres (les petites pierres, elles, passent
+## toutes dans un MultiMesh et ne coûtent presque rien).
+const MAX_BLOCKS := 2200
 
 ## Points de vue (F1 à F4). Chaque Vector3 est (x, hauteur AU-DESSUS DU SOL, z) : la hauteur est
 ## résolue sur le terrain, pour qu'un point de vue reste bon quel que soit le relief importé.
@@ -74,20 +78,37 @@ func _ready() -> void:
 		return
 	var world_env: WorldEnvironment = $WorldEnvironment
 	var sun: DirectionalLight3D = $Sun
-	var style := load(STYLE) as EnvironmentStyle
+	# Copie du style de la face inventée, recalée sur les rushs réels (voir _tune_style) : le fichier
+	# du jeu n'est pas touché, c'est cette copie qui est appliquée.
+	var style := (load(STYLE) as EnvironmentStyle).duplicate() as EnvironmentStyle
+	_tune_style(style)
 	var looks := EnvironmentBuilder.new()
 	looks.style = style
 	looks.apply_to_scene(world_env, sun)
 	_place_sun(sun)
-	world_env.environment.ambient_light_energy = AMBIENT_ENERGY
-	world_env.environment.fog_density = 0.00008   # l'air d'altitude porte loin, mais voile les 9 km
+	# air d'altitude : sur les rushs, une crête à 3 km est encore franche — deux fois moins de brume
+	# que ce que j'avais mis, et l'horizon à 9 km reste tout de même voilé
+	world_env.environment.fog_density = 0.00004
 	GraphicsSettings.apply(world_env.environment, sun, get_viewport())
 
-	# le rocher sort à partir de ~43° (1 - cos 43 = 0.27) et domine vers 58° : sur cette face, ça
-	# dessine exactement les barres et les ressauts que la donnée contient (15 % du terrain est
-	# entre 40 et 50°, 5 % au-delà)
-	var mat := GroundMaterials.snow({"rock_a": Color(0.44, 0.41, 0.38), "rock_b": Color(0.2, 0.19, 0.18),
-			"rock_start": 0.27, "rock_end": 0.47, "ripple": 0.8})
+	# Le rocher PEINT par le shader ne sort qu'à partir de ~56° (1 - cos 56 = 0.44). Deux raisons :
+	#  - à 43°, la face se couvrait de mouchetis — elle ondule autour de 31°, donc un seuil bas est
+	#    franchi partout et chaque bosse devenait une tache grise ;
+	#  - et de près, cette peinture est le point faible du rendu : son mélange se dithère en taches
+	#    grises floues, là où les rushs montrent des cailloux nets avec de la neige autour.
+	# Le rocher visible est donc porté par la GÉOMÉTRIE (les parois à facettes), la peinture ne
+	# servant plus que sur les presque-verticales où aucun bloc ne tiendrait.
+	# Neige et rocher repris des rushs : la neige au soleil est très légèrement plus chaude que le
+	# bleu du style (R210 G217 B223 mesuré), et les stries de vent sont partout sur place, d'où un
+	# `ripple` plus fort.
+	# Le rocher est volontairement plus chaud que sa couleur vraie : à l'ombre il ne reçoit que la
+	# lumière du ciel, et sans ce correctif il vire au bleu (mesuré B - R = +41 contre +18 sur place).
+	# Les deux blancs de la neige sont volontairement très proches : le shader les mélange avec un
+	# bruit de 70 m, ce qui moutonnait la face en taches claires et sombres. La vraie neige a un
+	# albédo uniforme — ce qu'on voit d'elle, c'est son relief et ses stries de vent, pas sa couleur.
+	var mat := GroundMaterials.snow({"snow_a": Color(0.875, 0.91, 0.935), "snow_b": Color(0.915, 0.945, 0.97),
+			"rock_a": Color(0.47, 0.445, 0.42), "rock_b": Color(0.19, 0.18, 0.17),
+			"rock_start": 0.58, "rock_end": 0.74, "ripple": 2.0, "old_tracks": 0.6})
 	var rect: Rect2 = _near.rect()
 	var t0 := Time.get_ticks_msec()
 	var mi := MeshInstance3D.new()
@@ -117,7 +138,9 @@ func _ready() -> void:
 	# les deux anneaux s'appellent "FarTerrain" : le second est renommé pour s'y retrouver
 	get_child(get_child_count() - 1).name = "HorizonTerrain"
 	_snow_material = mat
+	_paint_bands(mat, rect)
 	_build_ortho_material()
+	_build_rocks()
 	_build_lines()
 
 	_cam = Camera3D.new()
@@ -128,6 +151,38 @@ func _ready() -> void:
 	_build_hud()
 	_set_view(0)
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+
+## Recale le style sur les rushs tournés sur place (DRONE_FPV + les quatre téléobjectifs).
+##
+## Mesuré sur les images réelles, puis sur le rendu, en classant les pixels (ciel / neige au soleil /
+## neige à l'ombre / rocher) — `scratchpad/couleurs.py`. Deux écarts sautaient aux yeux des chiffres :
+##   - le ciel du jeu est un bleu cobalt (B - R = +100) là où le vrai ciel d'altitude est un bleu
+##     acier bien moins saturé (B - R = +68), et il pâlit plus vite vers l'horizon ;
+##   - le rocher du jeu virait franchement au bleu (R 69 G 84 B 121) alors qu'il est neutre sur place
+##     (R 74 G 83 B 92) : c'est l'ambiante, prise du ciel, qui le teintait.
+## Dé-saturer le ciel corrige les deux d'un coup, puisque c'est lui qui éclaire les ombres.
+func _tune_style(s: EnvironmentStyle) -> void:
+	s.sky_top_color = Color(0.22, 0.38, 0.70)
+	s.sky_horizon_color = Color(0.72, 0.80, 0.88)
+	# le bleu profond descend bas et ne pâlit que juste au-dessus des crêtes (sur les rushs au grand
+	# angle, le haut du cadre est presque marine) ; et le ciel était vide ce jour-là
+	s.sky_curve = 0.06
+	s.cloud_coverage = 0.04
+	s.ground_horizon_color = Color(0.74, 0.80, 0.87)
+	s.ground_bottom_color = Color(0.80, 0.85, 0.90)
+	s.ambient_energy = AMBIENT_ENERGY
+	s.adjustment_saturation = 1.0      # la scène réelle est bleu-blanc-gris, sans autre couleur
+	# la vraie image a plus d'écart entre le soleil et l'ombre que le style du jeu (mesuré : 225 contre
+	# 136 sur un plan à contre-jour, là où je plafonnais à 207 / 163)
+	s.adjustment_contrast = 1.08
+	s.exposure = 0.89
+	s.fog_color = Color(0.78, 0.83, 0.90)
+	s.fog_sun_scatter = 0.18
+	# la brume ne doit pas blanchir le ciel : sur les rushs il reste franc jusqu'au ras de l'horizon
+	s.fog_sky_affect = 0.08
+	s.glow_intensity = 0.35
+	s.glow_bloom = 0.02
 
 
 ## Matériau « orthophoto » : la vraie photo aérienne IGN plaquée sur le relief (touche O). Il sert à
@@ -164,6 +219,123 @@ func _build_ortho_material() -> void:
 	var o: Array = _near.info.origin_l93
 	m.set_shader_parameter("l93_origin", Vector2(float(o[0]), float(o[1])))
 	_ortho_material = m
+
+
+## Peint le rocher des barres dans le masque de sol, au lieu de le laisser au seuil de pente.
+##
+## Le shader de neige tire le rocher de deux sources : la pente de la maille, ou le rouge du
+## `GroundMask` — c'est ce second mécanisme qu'utilise la face freeride du jeu pour ses barres.
+## Par la pente, le rocher tombait aux mauvais endroits : le shader lit la pente **à 1 m**, donc la
+## moindre bosse, pendant que les parois à facettes se posent sur la pente **à 12 m**, celle des
+## vraies barres. Deux zones différentes, d'où des taches grises sans un bloc dessus. Avec le
+## masque, les deux coïncident : le rocher peint est exactement là où les parois se dressent.
+func _paint_bands(mat: ShaderMaterial, rect: Rect2) -> void:
+	var t0 := Time.get_ticks_msec()
+	var mask := GroundMask.new()
+	mask.setup(rect, 0.7)
+	var red := Color(1, 0, 0)
+	var n := 0
+	var z := rect.position.y + 5.0
+	while z < rect.end.y - 5.0:
+		var x := rect.position.x + 5.0
+		while x < rect.end.x - 5.0:
+			if _slope_wide(x, z) > 54.0:
+				mask.add_disc(Vector2(x, z), 3.6, red)
+				n += 1
+			x += 6.0
+		z += 6.0
+	add_child(mask)
+	mask.bind(mat)
+	mat.set_shader_parameter("rock_paint", 1.0)
+	print("[TEST] barres peintes : %d disques en %d ms" % [n, Time.get_ticks_msec() - t0])
+
+
+## Des blocs posés sur les barres rocheuses.
+##
+## La maille du MNT est le mètre : une barre y est une marche propre, alors que sur les rushs c'est
+## de la roche cassée, avec des blocs qui dépassent et de la neige accrochée sur leurs vires. Les
+## rochers du jeu (`Rocks`) savent justement se couvrir de neige sur leurs faces hautes, d'où
+## `Vegetation.snow_cover`.
+##
+## Ils ne sont posés que là où la pente dépasse 46° **mesurée sur 12 m** : à 4 m, les stries de vent
+## gravées dans la neige suffiraient à franchir le seuil et on sèmerait des blocs en pleine pente.
+func _build_rocks() -> void:
+	var t0 := Time.get_ticks_msec()
+	# 0,3 et pas 0,9 : à 0,9 le shader enneige toute face tournée vers le haut et les blocs
+	# ressortaient en points blancs. Sur les rushs ils sont noirs, avec de la neige seulement sur
+	# leurs vires les plus plates.
+	Vegetation.snow_cover = 0.42
+	Rocks.moss_amount = 0.0
+	var root := Node3D.new()
+	root.name = "Rochers"
+	add_child(root)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 918
+	var rect: Rect2 = _near.rect()
+	var grounds := PackedVector3Array()
+	var sizes := PackedFloat32Array()
+	var big := 0
+	var z := rect.position.y + 6.0
+	while z < rect.end.y - 6.0:
+		var x := rect.position.x + 6.0
+		while x < rect.end.x - 6.0:
+			var sl := _slope_wide(x, z)
+			var p := rng.randf()
+			if sl > 46.0:
+				var k := clampf((sl - 46.0) / 18.0, 0.0, 1.0)
+				if p < 0.09 + 0.30 * k and big < MAX_BLOCKS:
+					# Une paroi, pas un bloc isolé : les bancs s'empilent selon un même litage,
+					# incliné entre la pente et l'horizontale, et s'étagent LE LONG de la barre.
+					# La taille suit la raideur : 2 m sur une cassure à 46°, jusqu'à 15 m sur une
+					# vraie paroi à 64°. C'est ce qui demandait une copie du shader des rochers à
+					# échelle réglable (`facet_rock.gdshader`) : au-delà de 5 m, celui du jeu étale
+					# son motif et la roche tourne à la peau de léopard. Bien enfoncés, sinon ils ont
+					# l'air posés sur la neige au lieu d'en sortir.
+					var s := (3.2 + 9.5 * k) * rng.randf_range(0.8, 1.25)
+					var bx := x + rng.randf_range(-1.4, 1.4)
+					var bz := z + rng.randf_range(-1.4, 1.4)
+					var nrm := _normal_wide(bx, bz)
+					var up := nrm.lerp(Vector3.UP, 0.35).normalized()
+					var strike := Vector3(-nrm.z, 0.0, nrm.x).normalized()
+					big += FacetRock.add_wall(root, Vector3(bx, ground(bx, bz) - s * 0.45, bz),
+							up, strike, s, rng)
+				elif p < 0.42:
+					var ss := rng.randf_range(0.5, 1.4)
+					grounds.append(Vector3(x, ground(x, z) - ss * 0.3, z))
+					sizes.append(ss)
+			elif sl > 28.0 and p < 0.004:
+				# quelques pierres isolées en pleine pente, comme sur les rushs - rares, sinon la
+				# face se couvre de points
+				var s2 := rng.randf_range(0.5, 1.2)
+				grounds.append(Vector3(x, ground(x, z) - s2 * 0.3, z))
+				sizes.append(s2)
+			x += 3.0
+		z += 3.0
+	var before := root.get_child_count()
+	Rocks.scatter(root, grounds, sizes, 4100)
+	# les pierres de moins d'un mètre : ni ombre portée (invisible de toute façon sous elles), ni
+	# existence au-delà de 150 m
+	for i in range(before, root.get_child_count()):
+		var mm := root.get_child(i) as GeometryInstance3D
+		if mm != null:
+			mm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			mm.visibility_range_end = 150.0
+			mm.visibility_range_end_margin = 30.0
+	print("[TEST] rochers : %d blocs + %d pierres en %d ms" % [big, grounds.size(), Time.get_ticks_msec() - t0])
+
+
+## Normale du terrain sur 12 m : l'assiette de la barre, dont on tire le litage des bancs.
+func _normal_wide(x: float, z: float) -> Vector3:
+	var gx := (ground_any(x + 6.0, z) - ground_any(x - 6.0, z)) / 12.0
+	var gz := (ground_any(x, z + 6.0) - ground_any(x, z - 6.0)) / 12.0
+	return Vector3(-gx, 1.0, -gz).normalized()
+
+
+## Pente locale mesurée sur 12 m : celle de la barre, pas celle des stries de neige.
+func _slope_wide(x: float, z: float) -> float:
+	var gx := (ground_any(x + 6.0, z) - ground_any(x - 6.0, z)) / 12.0
+	var gz := (ground_any(x, z + 6.0) - ground_any(x, z - 6.0)) / 12.0
+	return rad_to_deg(atan(Vector2(gx, gz).length()))
 
 
 ## Les deux descentes filmées : la trace au sol et un skieur qui la parcourt à la vraie vitesse.
@@ -269,6 +441,10 @@ func set_ortho(on: bool) -> void:
 		var mi: MeshInstance3D = get_node_or_null(NodePath(n))
 		if mi != null:
 			mi.material_override = _ortho_material if on else _snow_material
+	# en mode orthophoto on compare un motif à une image : les blocs posés gêneraient
+	var rocks := get_node_or_null(^"Rochers")
+	if rocks != null:
+		(rocks as Node3D).visible = not on
 
 
 ## Pose le soleil à son vrai azimut. Le style, lui, range le soleil avec `sun_azimuth`, dont la
