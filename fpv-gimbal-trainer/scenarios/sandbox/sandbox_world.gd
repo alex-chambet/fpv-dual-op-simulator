@@ -70,22 +70,33 @@ func grass_params() -> Dictionary:
 
 # --- Build --------------------------------------------------------------------------------------------
 
+## Spread over several frames (each `await` yields one) so the loading screen's "..." keeps animating while this
+## runs instead of the engine freezing for the whole, otherwise one-shot, build. The caller must not use the world
+## (or let anything else touch the scene) until this finishes: see Sandbox.build_complete.
 func build(host: Node3D) -> void:
 	_host = host
 	_rng.seed = SEED
 	_make_roads()
+	await host.get_tree().process_frame
 	_build_terrain()
+	await host.get_tree().process_frame
 	_build_roads()
+	await host.get_tree().process_frame
 	_build_village()
+	await host.get_tree().process_frame
 	_build_farms()
+	await host.get_tree().process_frame
 	_build_vegetation()
+	await host.get_tree().process_frame
 	_build_furniture()
+	await host.get_tree().process_frame
 	FarScenery.build_into(host, Callable(self, "far_height"), SEED, Rect2(-HALF, -HALF, 2.0 * HALF, 2.0 * HALF),
 			terrain_material, {"ring_radius": 2600.0, "ring_cell": 40.0,
 				"hills": {"height": 170.0, "r0": 2800.0, "r1": 7000.0, "frequency": 0.0006,
 					"forest": Color(0.1, 0.18, 0.07), "grass": Color(0.3, 0.38, 0.15)},
 				"trees": {"kind": "broadleaf", "count": 1800, "r0": 820.0, "r1": 2200.0, "colour": Color(0.2, 0.42, 0.12),
 					"grove": 0.15}})
+	await host.get_tree().process_frame
 	_build_grid()
 
 

@@ -134,12 +134,16 @@ Quatre niveaux de qualité (Basse, Moyenne, Haute, Ultra) et un **flou de mouvem
 
 ## Son
 
-Le son est **calculé par le code** (aucun fichier audio dans le projet) et piloté par la vitesse du sujet.
+Le son est fait de **boucles empilées et mélangées en direct**, pilotées par ce que fait le sujet. Une seule prise
+étirée au pitch sonne toujours comme une seule prise étirée : ici le moteur fond trois boucles l'une dans l'autre
+selon le régime, le vent du drone en superpose trois selon la vitesse. Chaque boucle vient d'un fichier
+(`assets/audio/`) s'il y en a un, sinon d'une boucle calculée — le jeu tourne donc sans aucun fichier audio.
 
 - **Le sujet** sonne depuis l'endroit où il est, en 3D, avec effet Doppler : la note du moteur **tombe au moment où
   la voiture passe sous le drone** — c'est le signal pour lancer le panoramique. Les voitures ont une boîte
-  6 vitesses (le régime retombe à chaque rapport), les skis ont leurs carres : fin et clair en carving, large et
-  fort en dérapage, c'est-à-dire exactement quand le skieur ralentit.
+  6 vitesses, et comme les trois boucles moteur suivent ce régime, c'est le timbre qui retombe à chaque rapport,
+  pas seulement la hauteur. Les skis ont leurs carres : fin et clair en carving, large et fort en dérapage,
+  c'est-à-dire exactement quand le skieur ralentit.
 - **Le drone** n'est pas une source 3D : on est assis dessus. Ses hélices montent quand il accélère ou qu'il monte,
   son vent suit sa vitesse. En entraînement, en 2 joueurs et au bac à sable.
 - Trois volumes séparés (général, sujet, drone) dans **Paramètres > Son** ou **Échap > Son** en jeu : on peut

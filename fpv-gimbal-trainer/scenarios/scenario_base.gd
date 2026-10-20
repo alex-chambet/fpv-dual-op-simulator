@@ -12,6 +12,16 @@ extends Node3D
 
 enum State { COUNTDOWN, RUNNING, FINISHED }
 
+## Turbulence during the countdown: a real quad never hovers perfectly still, so the drone already sways a
+## little while the operator frames up and waits for "go" (reverts to the smooth in-flight values below once
+## RUNNING starts).
+const HOVER_TURB_POS := 0.22
+const HOVER_TURB_TILT_DEG := 2.2
+## The drone flies smoothly once RUNNING: only a hint of turbulence (the camera is stabilised, so it is its
+## position that counts).
+const RUN_TURB_POS := 0.05
+const RUN_TURB_TILT_DEG := 0.5
+
 @export_group("Run")
 @export_range(0.0, 10.0, 0.5, "suffix:s") var countdown_time := 4.0
 
@@ -187,9 +197,8 @@ func _ready() -> void:
 	guide.fraction = frame_fraction
 	SessionScorer.frame_fraction = frame_fraction
 	flight.rig.camera.add_child(MotionBlur.new())
-	# The drone flies smoothly: only a hint of turbulence (the camera is stabilised, so it is its position that counts).
-	flight.turbulence_pos = 0.05
-	flight.turbulence_tilt_deg = 0.5
+	flight.turbulence_pos = HOVER_TURB_POS
+	flight.turbulence_tilt_deg = HOVER_TURB_TILT_DEG
 
 	SessionScorer.next_label = ""
 	replay = SessionStore.replay_record
@@ -197,6 +206,10 @@ func _ready() -> void:
 	replay_active = not replay.is_empty()
 	if replay_active:
 		countdown_time = 0.0
+		# No hover phase in a replay: it reproduces the flight as recorded, i.e. the smooth in-flight turbulence
+		# from the very first frame (the state machine that switches it over never runs for a replay).
+		flight.turbulence_pos = RUN_TURB_POS
+		flight.turbulence_tilt_deg = RUN_TURB_TILT_DEG
 	matrix = ScenarioMatrix.current
 	if matrix == null:
 		matrix = _default_config()
@@ -638,6 +651,8 @@ func _process(delta: float) -> void:
 			_banner.go()
 			# The run starts in this very frame (so the recording covers every simulated frame).
 			state = State.RUNNING
+			flight.turbulence_pos = RUN_TURB_POS
+			flight.turbulence_tilt_deg = RUN_TURB_TILT_DEG
 			SessionScorer.start_run(flight.rig, subject.torso_position, scenario_id)
 			if duo:
 				duo.start_run()
@@ -657,7 +672,10 @@ func _process(delta: float) -> void:
 		just_finished = subject.finished
 	elif state == State.FINISHED:
 		if not duo:
-			flight.external_ratio = 1.0
+			# Keep easing towards the end of the path the same way it was followed during the run (the low-pass
+			# in _drone_ratio), instead of snapping external_ratio to 1.0: the drone glides to a stop rather than
+			# teleporting there the instant the subject finishes.
+			flight.external_ratio = _drone_ratio(delta)
 	if duo and state == State.COUNTDOWN:
 		duo.step(delta, pilot_inputs, false, false)
 	_update_framing_state()

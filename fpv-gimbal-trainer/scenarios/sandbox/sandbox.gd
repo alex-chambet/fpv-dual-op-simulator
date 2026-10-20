@@ -14,6 +14,10 @@ extends Node3D
 const MENU_SCENE := "res://scenes/main_menu.tscn"
 const PROFILE_NAMES := ["Slow", "Medium", "Fast"]
 
+## The world is built over several frames (see SandboxWorld.build): LoadingScreen waits for this before it
+## hides, so the player never sees the half-built map.
+signal build_complete
+
 ## Lens of the gimbal camera (mm), set by the menu.
 static var lens_mm := 24
 ## Which map to fly: "campagne" (the Départementale countryside) or "circuit" (the Nürburgring
@@ -57,20 +61,23 @@ var _vel := Vector3.ZERO
 
 
 func _ready() -> void:
+	# The build below is spread over several frames; nothing must touch this half-built scene meanwhile.
+	set_process(false)
+	set_process_unhandled_input(false)
 	get_tree().paused = false
 	Vegetation.snow_cover = 0.0
 	Rocks.moss_amount = 0.25
 	_build_environment()
 	if map == "circuit":
 		world = CircuitWorld.new()
-		world.build(self)
+		await world.build(self)
 		circuit = CircuitTraffic.new()
 		circuit.name = "CircuitTraffic"
 		add_child(circuit)
 		circuit.setup(world)
 	else:
 		world = SandboxWorld.new()
-		world.build(self)
+		await world.build(self)
 		traffic = SandboxTraffic.new()
 		traffic.name = "Traffic"
 		add_child(traffic)
@@ -94,6 +101,9 @@ func _ready() -> void:
 	add_child(grass)
 	grass.setup(world.grass_params(), TerrainBuilder.last_info, world.mask, rig.camera)
 	apply_graphics()
+	set_process(true)
+	set_process_unhandled_input(true)
+	build_complete.emit()
 
 
 func _build_environment() -> void:

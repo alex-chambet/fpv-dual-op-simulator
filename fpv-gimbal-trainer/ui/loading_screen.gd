@@ -67,6 +67,11 @@ func run(action: Callable) -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	action.call()
+	# Some scenes (e.g. the sandbox) build themselves over several frames instead of in one shot, precisely so this
+	# screen's "..." keeps animating while they do; wait for them to actually finish before warming up / hiding.
+	var cs := get_tree().current_scene
+	if cs != null and cs.has_signal("build_complete"):
+		await cs.build_complete
 	await _warm_up()
 	visible = false
 

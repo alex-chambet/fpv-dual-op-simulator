@@ -16,6 +16,16 @@ const SHOW_ADVICE := false
 const TRAINING := "training"
 const DRILLS := "drills"
 const SANDBOX := "sandbox"
+## A fourth tab, TEST, appears next to them from the editor only: a bench for things being tried out
+## (a real mountain imported from an elevation model, for now). Everything it needs lives in
+## res://test/, which no build contains - see test/README.md. A card launches its scene straight
+## away: no setup page, nothing scored, nothing saved.
+const TEST := "test"
+const TEST_LEVELS := [
+	{"id": "face_wnw", "name": "Face WNW", "scene": "res://test/test_level.tscn",
+		"subtitle": "45°37'06.81\"N 6°54'01.87\"E  ·  LIDAR HD 50 cm",
+		"text": "Une face réelle de Tarentaise, construite sur le lidar de l'IGN : 760 × 1120 m, de 2 510 m sur la crête à 1 965 m au pied, 31° de pente moyenne et des barres à plus de 60°. Maillée au mètre, avec le vrai relief jusqu'à 9 km pour l'horizon.\n\nVol libre, pas de sujet ni de drone : c'est le rendu du terrain qu'on regarde."},
+]
 
 ## The movement drills ("Mouvements"): name, subtitle of the card, and what the operator has to do.
 const DRILL_LABELS := {
@@ -394,8 +404,10 @@ func _build_play() -> Control:
 	tabs.add_theme_constant_override("separation", 0)
 	right.add_child(tabs)
 	var group := ButtonGroup.new()
-	var names := {TRAINING: "Entraînement", DRILLS: "Mouvements", SANDBOX: "Bac à sable"}
+	var names := {TRAINING: "Entraînement", DRILLS: "Mouvements", SANDBOX: "Bac à sable", TEST: "TEST"}
 	var modes := [TRAINING, DRILLS, SANDBOX]
+	if _test_available():
+		modes.append(TEST)
 	for i in modes.size():
 		var mode: String = modes[i]
 		var b := _tab(str(names[mode]), group, -1 if i == 0 else (1 if i == modes.size() - 1 else 0))
@@ -450,8 +462,21 @@ func _open_play(mode: String) -> void:
 	_show(_play)
 
 
-## Fills the grid: one card per sport (training), per figure (drills) or per sandbox map.
+## True when the TEST tab may be shown: from the editor, and with res://test/ actually there. Both
+## have to hold, so a build can show it neither by mistake nor if its files ever slipped into one.
+static func _test_available() -> bool:
+	if not OS.has_feature("editor") or TEST_LEVELS.is_empty():
+		return false
+	for t in TEST_LEVELS:
+		if not ResourceLoader.exists(str(t.scene)):
+			return false
+	return true
+
+
+## Fills the grid: one card per sport (training), per figure (drills), per sandbox map or per test level.
 func _fill_play(mode: String) -> void:
+	if mode == TEST and not _test_available():
+		mode = TRAINING
 	_mode = mode
 	for k in _tabs:
 		(_tabs[k] as Button).set_pressed_no_signal(k == mode)
@@ -459,6 +484,17 @@ func _fill_play(mode: String) -> void:
 		c.queue_free()
 	_cards.clear()
 	match mode:
+		TEST:
+			_play_text.text = "Banc d'essai, hors du jeu : ces terrains ne sont dans aucun build et ne comptent dans aucun score.\n\n" \
+					+ ("Touche 1 : lancer l'essai." if TEST_LEVELS.size() == 1 else "Touches 1 à %d : lancer un essai." % TEST_LEVELS.size())
+			for t in TEST_LEVELS:
+				_play_text.text += "\n\n%s\n%s" % [str(t.name), str(t.text)]
+				var tcard := _tile(str(t.name), str(t.subtitle), Vector2(420, 250), 26)
+				tcard.skew = 0.0
+				tcard.badge = "TEST"
+				tcard.pressed.connect(_start_test.bind(str(t.id)))
+				_grid.add_child(tcard)
+				_cards.append(tcard)
 		SANDBOX:
 			_play_text.text = SANDBOX_TEXT + "\n\nTouches 1 à %d : choisir un terrain." % SANDBOX_MAPS.size()
 			for m in SANDBOX_MAPS:
@@ -834,6 +870,20 @@ func _start_sandbox() -> void:
 	LoadingScreen.run(func(): get_tree().change_scene_to_file("res://scenarios/sandbox/sandbox.tscn"))
 
 
+## Launches a test level straight from its card: no setup page, no session, nothing saved.
+func _start_test(id: String) -> void:
+	for t in TEST_LEVELS:
+		if str(t.id) != id:
+			continue
+		if not ResourceLoader.exists(str(t.scene)):
+			return
+		return_page = "play"
+		return_mode = TEST
+		var scene := str(t.scene)
+		LoadingScreen.run(func(): get_tree().change_scene_to_file(scene))
+		return
+
+
 func _start_random() -> void:
 	return_page = "home"
 	ScenarioMatrix.launch(get_tree(), ScenarioMatrix.generate())
@@ -866,6 +916,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			if n < 0:
 				return
 			match _mode:
+				TEST:
+					if n < TEST_LEVELS.size():
+						_start_test(str(TEST_LEVELS[n].id))
 				SANDBOX:
 					if n < SANDBOX_MAPS.size():
 						_choose_sandbox_map(str(SANDBOX_MAPS[n].id))

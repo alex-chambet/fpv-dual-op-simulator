@@ -1,0 +1,10 @@
+{
+ "cell": 25.0,
+ "w": 721,
+ "h": 721,
+ "x0": -9000.0,
+ "z0": -8500.0,
+ "min": -1768.2,
+ "max": 956.5,
+ "source": "IGN ELEVATION.ELEVATIONGRIDCOVERAGE a 25 m (RGE ALTI + SRTM hors de France), licence Etalab 2.0"
+}

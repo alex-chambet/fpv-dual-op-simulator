@@ -1,0 +1,22 @@
+{
+ "name": "Face WNW - 45\u00b037'06.81\"N 6\u00b054'01.87\"E",
+ "source": "IGN LIDAR HD, MNT 50 cm (Geoplateforme), licence Etalab 2.0",
+ "lat": 45.61855833333333,
+ "lon": 6.900519444444445,
+ "origin_l93": [
+  1003842,
+  6509620
+ ],
+ "origin_altitude": 2509.49,
+ "down_azimuth": 295.0,
+ "x_azimuth": 205.0,
+ "convergence_deg": 2.8302,
+ "cell": 1.0,
+ "w": 761,
+ "h": 1121,
+ "x0": -380.0,
+ "z0": -60.0,
+ "filter": "aucun : moyenne de 4 points du lidar 50 cm par texel de 1 m",
+ "min": -544.02,
+ "max": 5.35
+}
