@@ -11,6 +11,7 @@ extends Node3D
 
 const DemMap := preload("res://test/dem_map.gd")
 const FacetRock := preload("res://test/facet_rock.gd")
+const SkiRun := preload("res://test/ski_run.gd")
 const NEAR := "res://test/dem/face_wnw"
 const FAR := "res://test/dem/face_wnw_far"
 const HORIZON := "res://test/dem/face_wnw_horizon"
@@ -35,7 +36,10 @@ const SUN_ELEVATION := 24.0
 const AMBIENT_ENERGY := 0.62
 ## Plafond du nombre de blocs posés un par un sur les barres (les petites pierres, elles, passent
 ## toutes dans un MultiMesh et ne coûtent presque rien).
-const MAX_BLOCKS := 2200
+## Porté de 2200 à 3600 : à 2200 la réserve était épuisée avant le bas de la face, et surtout une
+## barre franche n'avait droit qu'à quatre ou cinq parois — le reste de son nez n'était que du
+## rocher PEINT, qui sur une face à 55° s'étire en traînées verticales et ne ressemble à rien.
+const MAX_BLOCKS := 3600
 
 ## Points de vue (F1 à F4). Chaque Vector3 est (x, hauteur AU-DESSUS DU SOL, z) : la hauteur est
 ## résolue sur le terrain, pour qu'un point de vue reste bon quel que soit le relief importé.
@@ -45,7 +49,8 @@ const VIEWS := [
 	{"name": "Barres du milieu", "from": Vector3(140, 70, 760), "to": Vector3(-10, 30, 480)},
 	{"name": "Vue d'ensemble", "from": Vector3(-150, 540, 1700), "to": Vector3(0, 90, 480)},
 	{"name": "Ligne FREERIDE_3", "from": Vector3(-40, 80, 320), "to": Vector3(-160, 5, 210)},
-	{"name": "Ligne FREERIDE_5", "from": Vector3(110, 45, 640), "to": Vector3(20, 5, 560)},
+	# cadré sur la double barre entaillée (x -22, z 251), d'en dessous et à 30 m comme le drone
+	{"name": "Double barre, FREERIDE_5", "from": Vector3(-2, 14, 272), "to": Vector3(-22, 4, 252)},
 ]
 
 var _near: DemMap
@@ -108,7 +113,7 @@ func _ready() -> void:
 	# albédo uniforme — ce qu'on voit d'elle, c'est son relief et ses stries de vent, pas sa couleur.
 	var mat := GroundMaterials.snow({"snow_a": Color(0.875, 0.91, 0.935), "snow_b": Color(0.915, 0.945, 0.97),
 			"rock_a": Color(0.47, 0.445, 0.42), "rock_b": Color(0.19, 0.18, 0.17),
-			"rock_start": 0.58, "rock_end": 0.74, "ripple": 2.0, "old_tracks": 0.6})
+			"rock_start": 0.58, "rock_end": 0.74, "ripple": 1.25, "old_tracks": 0.6})
 	var rect: Rect2 = _near.rect()
 	var t0 := Time.get_ticks_msec()
 	var mi := MeshInstance3D.new()
@@ -283,7 +288,7 @@ func _build_rocks() -> void:
 			var p := rng.randf()
 			if sl > 46.0:
 				var k := clampf((sl - 46.0) / 18.0, 0.0, 1.0)
-				if p < 0.09 + 0.30 * k and big < MAX_BLOCKS:
+				if p < 0.09 + 0.62 * k and big < MAX_BLOCKS:
 					# Une paroi, pas un bloc isolé : les bancs s'empilent selon un même litage,
 					# incliné entre la pente et l'horizontale, et s'étagent LE LONG de la barre.
 					# La taille suit la raideur : 2 m sur une cassure à 46°, jusqu'à 15 m sur une
@@ -291,7 +296,7 @@ func _build_rocks() -> void:
 					# échelle réglable (`facet_rock.gdshader`) : au-delà de 5 m, celui du jeu étale
 					# son motif et la roche tourne à la peau de léopard. Bien enfoncés, sinon ils ont
 					# l'air posés sur la neige au lieu d'en sortir.
-					var s := (3.2 + 9.5 * k) * rng.randf_range(0.8, 1.25)
+					var s := (2.4 + 8.0 * k) * rng.randf_range(0.75, 1.3)
 					var bx := x + rng.randf_range(-1.4, 1.4)
 					var bz := z + rng.randf_range(-1.4, 1.4)
 					var nrm := _normal_wide(bx, bz)
@@ -357,44 +362,79 @@ func _build_lines() -> void:
 		if pts.size() < 2:
 			continue
 		var col := Color(float(item.color[0]), float(item.color[1]), float(item.color[2]))
-		var trace := MeshInstance3D.new()
+		var air: Array = item.get("air", [])
+		var trace := _ski_trace(pts, air)
 		trace.name = "Trace_" + str(item.id)
-		trace.mesh = _ribbon(pts, 1.6, 0.75)
-		trace.material_override = _flat(col, 0.9)
-		trace.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		root.add_child(trace)
-		var marker := MeshInstance3D.new()
-		marker.name = "Skieur_" + str(item.id)
-		var caps := CapsuleMesh.new()
-		caps.radius = 0.38
-		caps.height = 1.75
-		marker.mesh = caps
-		marker.material_override = _flat(col, 1.0)
-		root.add_child(marker)
+		# le vrai skieur du jeu, lancé sur la trajectoire reconstituée : c'est `PathSubject` qui
+		# calcule l'inclinaison du virage, celle qui vient et l'accélération du terrain, et
+		# `AthleteModel` qui en tire la gestuelle
+		var run := SkiRun.new()
+		run.name = "Skieur_" + str(item.id)
+		run.setup(pts, float(item.dt), Callable(self, "ground_any"))
+		run.set_air_spans(air, pts)
+		root.add_child(run)
 		_lines.append({"name": str(item.name), "points": pts, "dt": float(item.dt),
-				"marker": marker, "note": str(item.get("note", "")),
-				"turns": item.get("turns", [])})
+				"run": run, "trace": trace, "segments": pts.size() - 1,
+				"note": str(item.get("note", "")), "turns": item.get("turns", [])})
 	print("[TEST] %d descentes chargées" % _lines.size())
 
 
 ## Ruban plat posé sur la trace, `half` mètres de part et d'autre, `drop` mètres sous les points
 ## (qui sont au centre du skieur, 90 cm au-dessus de la neige).
-func _ribbon(pts: PackedVector3Array, half: float, drop: float) -> ArrayMesh:
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+## La trace des deux skis, en MultiMesh : deux sillons de 12 cm écartés de 26 cm, un morceau par
+## segment de la ligne. Le MultiMesh permet de n'en montrer que ce qui est DÉJÀ skié
+## (`visible_instance_count`) : sans ça le skieur descendrait sur une piste déjà tracée.
+func _ski_trace(pts: PackedVector3Array, air: Array = []) -> MultiMeshInstance3D:
+	const GAP := 0.13
+	const DROP := 0.87      # les points sont au centre du skieur, 90 cm au-dessus de la neige
+	# pas de sillon sous un saut : les points y sont en l'air, et un morceau tendu du décollage à la
+	# réception tracerait une rampe dans le vide
+	var flying := {}
+	for s in air:
+		for i in range(int(s[0]) - 1, int(s[1]) + 1):
+			flying[i] = true
+	var piece := BoxMesh.new()
+	piece.size = Vector3(0.12, 0.02, 1.0)   # la longueur est mise à l'échelle par instance
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = piece
+	mm.instance_count = (pts.size() - 1) * 2
+	var k := 0
 	for i in pts.size() - 1:
-		var a := pts[i] - Vector3(0, drop, 0)
-		var b := pts[i + 1] - Vector3(0, drop, 0)
+		var a := pts[i] - Vector3(0, DROP, 0)
+		var b := pts[i + 1] - Vector3(0, DROP, 0)
 		var d := b - a
-		d.y = 0.0
-		if d.length() < 0.001:
-			continue
+		var len := d.length()
+		if len < 0.001:
+			d = Vector3.FORWARD
+			len = 0.01
 		d = d.normalized()
-		var s := Vector3(-d.z, 0, d.x) * half
-		for v in [a - s, a + s, b - s, b + s, b - s, a + s]:
-			st.set_normal(Vector3.UP)
-			st.add_vertex(v)
-	return st.commit()
+		var n := Vector3(-d.z, 0, d.x).normalized()
+		var up := n.cross(d).normalized()
+		for side in [-1.0, 1.0]:
+			# la 3e colonne EST l'axe local z du morceau : on l'allonge directement, parce que
+			# Basis.scaled() mettrait à l'échelle sur les axes du monde et laisserait des trous
+			var basis := Basis(n, up, d * (len * 1.2))
+			if flying.has(i):
+				basis = basis.scaled_local(Vector3.ZERO)
+			mm.set_instance_transform(k, Transform3D(basis, (a + b) * 0.5 + n * (side * GAP)))
+			k += 1
+	mm.visible_instance_count = 0
+	var mi := MultiMeshInstance3D.new()
+	mi.multimesh = mm
+	mi.material_override = _groove_material()
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return mi
+
+
+## La neige tassée d'un sillon : un peu plus sombre et plus bleue que celle d'à côté.
+func _groove_material() -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color(0.74, 0.79, 0.88)
+	m.roughness = 0.92
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	return m
 
 
 func _flat(col: Color, alpha: float) -> StandardMaterial3D:
@@ -409,27 +449,17 @@ func _flat(col: Color, alpha: float) -> StandardMaterial3D:
 
 ## Avance les skieurs des deux descentes (en boucle, avec une pause entre deux passages).
 func _step_lines(delta: float) -> void:
-	if _lines.is_empty():
+	if _lines.is_empty() or not _play:
 		return
-	var longest := 0.0
+	_line_t += delta
 	for l in _lines:
-		longest = maxf(longest, (l.points as PackedVector3Array).size() * float(l.dt))
-	if _play:
-		_line_t = fmod(_line_t + delta, longest + 2.5)
-	for l in _lines:
-		var pts: PackedVector3Array = l.points
-		var k := int(_line_t / float(l.dt))
-		var marker: MeshInstance3D = l.marker
-		if k >= pts.size() - 1:
-			marker.visible = false
-			continue
-		marker.visible = true
-		var p := pts[k].lerp(pts[k + 1], fmod(_line_t / float(l.dt), 1.0))
-		marker.position = p
-		var d := pts[mini(k + 2, pts.size() - 1)] - pts[k]
-		if d.length() > 0.01:
-			marker.look_at(p + d, Vector3.UP)
-			marker.rotate_object_local(Vector3.RIGHT, PI * 0.5)   # la capsule est debout
+		var run := l.run as Node
+		run.call("step", delta)
+		# la trace ne se dessine que derrière lui
+		var mi := l.trace as MultiMeshInstance3D
+		var segs := int(l.segments)
+		var k := int(clampf(float(run.get("progress_ratio")), 0.0, 1.0) * segs)
+		mi.multimesh.visible_instance_count = mini(k * 2, mi.multimesh.instance_count)
 
 
 ## Bascule entre la neige du jeu et l'orthophoto.
@@ -522,6 +552,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				_play = not _play
 			KEY_R:
 				_line_t = 0.0
+				for l in _lines:
+					(l.run as Node).call("restart")
 
 
 func _process(delta: float) -> void:

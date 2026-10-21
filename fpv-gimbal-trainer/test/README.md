@@ -138,11 +138,33 @@ déformée par du bruit, donc des formes molles. D'où un générateur à part �
 subdivisé** (12 sommets, 20 faces), chaque sommet poussé ou tiré au hasard, aplati selon le litage,
 la base tranchée, et surtout des **normales par face** : c'est ce qui fait lire une arête.
 
+**Vingt facettes suffisent à un caillou, pas à une paroi.** À dix mètres, un bloc d'un mètre n'en
+montre que trois ou quatre ; une paroi de douze mètres remplit le cadre et ses vingt grands plans se
+lisent comme un polyèdre de carton — c'est le « trop lisse » du dernier retour. D'où les **passes de
+cassure** (`LOD` dans `facet_rock.gd`) : chaque face est coupée en quatre sur ses milieux et les
+nouveaux sommets sont repoussés **ou enfoncés** le long de leur rayon, l'amplitude divisée par deux à
+chaque passe comme un bruit fractal. Repoussé, un sommet fait un angle saillant ; enfoncé, un dièdre
+rentrant — c'est le mélange des deux qui donne de la roche cassée et non une boule bosselée. 20
+facettes jusqu'à 3 m, 80 jusqu'à 7 m, 320 au-delà, soit des plans de la taille d'un homme sur une
+paroi de douze mètres, comme sur les téléobjectifs.
+
+Et une **deuxième octave de relief** dans le shader (`bump_coarse`), de longueur d'onde quatre fois
+plus grande, qui monte avec la taille là où `bump` descend : le relief fin est moyenné par les
+mipmaps dès vingt mètres de distance et la grande paroi redevenait lisse justement à la distance où
+on la regarde. S'y ajoutent les grandes plages claires et sombres (bancs mouillés, faces fraîchement
+cassées) et l'assombrissement du fond des diaclases, qui ne voit pas le ciel.
+
 Ils sont posés par **parois** et non un par un : deux à six bancs empilés selon un même litage —
 incliné entre la pente et l'horizontale — et étagés le long de la barre, ce qui crée les vires où la
-neige se pose. 1 302 bancs et ~3 000 pierres roulées (celles-là restent les rochers du jeu, c'est la
+neige se pose. 3 600 bancs et ~2 800 pierres roulées (celles-là restent les rochers du jeu, c'est la
 bonne forme pour des blocs tombés), là où la pente dépasse 46° **mesurée sur 12 m** — à 4 m, les
 stries gravées suffiraient à franchir le seuil et on sèmerait des blocs en pleine pente.
+
+Le plafond a été porté de 2 200 à **3 600** bancs, et la probabilité de poser une paroi passe de
+0,09 à **0,71** entre 46° et 64° (au lieu de 0,39) : à l'ancien réglage, une barre franche n'avait
+droit qu'à quatre ou cinq parois et le reste de son nez n'était que du rocher **peint**, qui sur une
+face à 55° s'étire en traînées verticales et ne ressemble à rien. Les blocs sont du même coup un peu
+plus petits (2,4 à 10 m au lieu de 3,2 à 15), donc plus nombreux sur la même surface.
 
 Quatre réglages trouvés en comparant aux rushs :
 
@@ -190,6 +212,96 @@ Les bancs disparaissent au-delà de 260 à 800 m selon leur taille, les pierres 
 sans ombre portée. Mesuré au chronomètre sur 2,5 s : **60 img/s avec ou sans**, c'est-à-dire que ça
 ne coûte rien (et non les « 19 img/s » qu'affichait `get_frames_per_second`, qui ne se rafraîchit
 qu'une fois par seconde et mentait sur des poses de 0,3 s).
+
+### Le skieur
+
+`ski_run.gd` hérite de **`PathSubject`**, la classe que suivent tous les sujets du jeu : elle avance
+le long d'une courbe, calcule l'inclinaison que le virage demande (`lean_deg`), **celle qu'il
+demandera une demi-seconde plus tard** (`lean_soon_deg`) et l'accélération verticale du terrain
+(`heave_g`). `AthleteModel` lit ces trois nombres et en tire toute la gestuelle : les genoux qui
+traversent, le bâton qui part en avant, l'extension, le planter, l'angulation, l'absorption. Le
+skieur du TEST est donc exactement celui du jeu — rien n'a été réécrit, et la fiche `ski_freeride`
+est juste copiée pour lui mettre la veste rouge du rush.
+
+Ce qu'on impose, c'est la trajectoire et le **tempo** : les points de `lignes.json` sont espacés d'un
+pas de temps fixe, donc leur écartement **est** la vitesse, qu'on repasse en profil de vitesse. La
+trace au sol est un MultiMesh dont on ne montre que la partie déjà skiée — sinon le skieur descend
+sur une piste déjà faite.
+
+**Vérifié après coup**, en laissant tourner la descente : **17,0 s** et un changement de carre toutes
+les **0,53 s**, contre **0,52 s** mesurées sur FREERIDE_5. Deux bogues trouvés par cette mesure :
+
+- le générateur avançait à la vitesse voulue **à l'horizontale**, donc sur une pente à 50° le skieur
+  parcourait une fois et demie trop de chemin le long de la neige, et la descente se jouait d'autant
+  plus vite ;
+- `Basis.scaled()` met à l'échelle sur les axes du **monde**, pas sur ceux de l'objet : les morceaux
+  de trace sortaient en pointillés et les bancs rocheux étaient aplatis selon la verticale au lieu de
+  leur litage. C'est `scaled_local()` qu'il faut.
+
+### La double barre
+
+Sur FREERIDE_5, à **9 s** de rush, le skieur ne traverse pas une barre : il en saute **deux à la
+suite**, avec une touche de neige entre les deux, et il **freine fortement** avant. Découpé image
+par image (`scratchpad/jump/`, planches de contact) :
+
+| | |
+|---|---|
+| freinage en dérapage, gros nuage de poudreuse | 9,6 → 10,3 s (**0,7 s**) |
+| premier vol | 10,38 → 10,74 s (**0,36 s**) |
+| touche de neige | 10,74 → 10,82 s (**0,10 s**) |
+| deuxième vol | 10,82 → 10,92 s (**0,16 s**) |
+| réception écrasée | à partir de 10,92 s |
+
+**Il a fallu entailler la barre dans le MNT** (`test/tools/barre.py`). Pourquoi : les deux ressauts
+font 3,4 m et 1,1 m, séparés d'une vire de 2,5 m — or la surface de **neige** qu'on tire du LIDAR
+(fermeture morphologique à 7 m puis trois passes binomiales, `export3.py`) lisse par construction
+tout ce qui est plus petit que la dizaine de mètres. C'est ce qui enlève le bruit de mesure sous la
+neige, et ça enlève les ressauts avec. Vérifié en balayant toute la face : les seules pentes qui
+dépassent 55° sur 12 m sont les **grandes parois de 60 à 70°**, où un skieur ne passe pas ; partout
+ailleurs la face lissée n'a plus une seule cassure franche à l'échelle d'un saut. Deux essais
+l'avaient montré avant :
+
+- sur la grande barre du bas (x −9, z 436, 60-64°), le skieur saute bien, mais il atterrit au milieu
+  d'un **pierrier** entièrement peint en rocher — exactement le reproche « on dirait qu'il ski dans
+  les cailloux » ;
+- sur la plus forte cassure que la ligne croise en neige (51° à x −24, z 247), il n'y a **aucun nez
+  visible** : un simple roulis blanc, et le saut semble sorti de nulle part.
+
+La barre est donc écrite **dans le `.f32`**, et non posée côté Godot : comme ça le terrain, le
+générateur de la ligne et le placement des rochers voient tous les trois la même chose, et la barre
+se couvre toute seule de parois à facettes (> 46°) et de rocher peint (> 54°) par les règles déjà en
+place. Le profil, le long de la descente :
+
+- au-dessus, le terrain est **relevé** de D1 + D2 et ce relèvement s'efface sur 80 m vers le haut —
+  ce qui donne le bombé convexe qui annonce la barre, au lieu d'un mur surgi de la pente ;
+- **première marche** 3,4 m en 1,5 m ; **vire** de 2,5 m, *aplatie* (on lui rajoute exactement ce que
+  le terrain perd, sinon elle tombe à 45° et les deux marches se fondent en une seule rampe) ;
+  **deuxième marche** 1,1 m plus le rattrapage de la vire ;
+- en dessous, le terrain d'origine, inchangé ;
+- 36 m de large, fondue sur ses bords — et surtout **elle serpente** (±3,9 m) et sa hauteur varie le
+  long d'elle (±26 %) : une barre tirée au cordeau est ce qui trahit le plus sûrement une barre
+  fabriquée. La phase est calée pour qu'elle soit un peu **plus haute là où il saute**.
+
+Côté ligne (`lignes.py`), une machine à états : *ski → freinage → vol 1 → touche → vol 2 → ski*,
+déclenchée par la première pente > 50° rencontrée après 5 s. Pendant le freinage la vitesse tombe de
+55 % ; en vol, les points suivent la **corde décollage-réception** bombée du `pop` du jeu, et leurs
+indices sont écrits dans `lignes.json` (`air`). Côté Godot, `ski_run.set_air_spans()` les traduit en
+fractions de courbe (un point sur deux cents n'est pas une fraction sur deux cents : les points sont
+à pas de temps constant, donc d'autant plus écartés qu'il va vite, et un saut est justement l'endroit
+où il va le plus vite), avec un demi-segment de marge de chaque côté — sans elle il passait une ou
+deux images en pose de ski à quatre mètres du sol. `current_jump()` est la **convention du jeu** :
+`AthleteModel` la lit déjà pour poser le skieur en l'air (jambes ramassées, bâtons rentrés, aucun
+planter) et `PathSubject._in_air()` pour cesser de coller le modèle au sol. On y ajoute la réception
+écrasée (`tuck` à 0,95 pendant une demi-seconde) et l'absence de sillon sous le saut.
+
+**Vérifié au rendu** : 0,40 s de vol, 0,10 s de touche, 0,20 s de vol (le pas de 0,05 s du
+générateur arrondit vers le haut), jusqu'à **4,1 m au-dessus du sol**, à 9,2 s de descente contre
+9 s sur le rush.
+
+**Le départ de FREERIDE_5 a été redescendu** de la crête (x 8, z 12) à l'épaule (x −70, z 170). De la
+crête, la ligne mettait 30 s à atteindre quoi que ce soit de raide, soit le double de ce que durent
+les rushs. On garde donc le **temps mesuré**, qui est ce qu'on sait, plutôt qu'un point de départ
+estimé — et la position latérale de la ligne reste, comme avant, à confirmer par celui qui a filmé.
 
 **Les lignes** (`dem/lignes.json`) ne sont pas un relevé GPS : les fichiers n'en portent aucun.
 Ce sont des **reconstitutions** : le skieur descend par le calcul en visant la ligne de plus grande
