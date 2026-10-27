@@ -107,6 +107,8 @@ Dans le bac à sable : **M** change de mode de vol (auto, clavier, acro), **Reto
 
 **Configurer ses manettes** : menu « Paramètres » → « Configuration manette ». Vous pouvez y choisir la manette de la gimbal et celle du pilote, affecter chaque axe, inverser, régler la zone morte et l'expo.
 
+**Radios RC (manettes USB génériques) sur macOS** : macOS peut confisquer une radio pour son propre système de manettes (GameController / MFi), qui l'empêche de répondre bien qu'elle apparaisse dans la liste. Le build macOS exporté désactive ce comportement automatiquement (aucune manip). Si vous lancez le projet depuis l'éditeur Godot — toujours **en fenêtre séparée** : la fenêtre de jeu intégrée à l'éditeur ne reçoit pas les manettes sur macOS — faites une fois, dans un Terminal, `launchctl setenv SDL_JOYSTICK_MFI 0`, puis relancez l'éditeur.
+
 **Vue d'ensemble avant chaque niveau** (1 ou 2 joueurs) : une caméra vole juste au-dessus du terrain, derrière la tête d'un trait animé qui se dessine le long du chemin que va suivre le sujet (départ, arrivée, sauts ; le reste de la ligne apparaît en transparence), pour comprendre la ligne à filmer. Elle dure de 10 à 20 secondes selon la longueur du parcours ; **Entrée** la passe. Elle n'est pas rejouée quand on recommence le même niveau.
 
 **Compte à rebours** : le 3 - 2 - 1 avant le départ s'affiche en grand au milieu de l'écran (puis « GO »), pour que le cadreur soit prêt.
