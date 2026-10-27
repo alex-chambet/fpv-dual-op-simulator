@@ -5,7 +5,27 @@ extends CanvasLayer
 ## run() shows a full-screen loading screen, waits for it to actually be on screen, performs the scene change, then
 ## hides it again. Being an autoload, it lives under /root and is never freed by the scene change it wraps.
 
+## A rotating ring (no GIF needed: Godot doesn't decode those anyway) next to "CHARGEMENT...", so there is always
+## something visibly moving for the player to read as "it's working", even on frames where the dots haven't ticked
+## over to their next stage yet.
+class _Spinner extends Control:
+	var angle := 0.0
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		custom_minimum_size = Vector2(36, 36)
+		size = Vector2(36, 36)
+
+	func _draw() -> void:
+		var c := size * 0.5
+		var r := size.x * 0.5 - 3.0
+		draw_arc(c, r, 0.0, TAU, 28, Color(Neon.CYAN, 0.18), 4.0, true)
+		draw_arc(c, r, angle, angle + TAU * 0.6, 28, Neon.CYAN, 4.0, true)
+
+const SPIN_SPEED := TAU * 0.9   ## rad/s
+
 var _dots: Label
+var _spinner: _Spinner
 var _t := 0.0
 
 
@@ -44,12 +64,19 @@ func _init() -> void:
 	_dots.size = Vector2(60, 50)
 	bg.add_child(_dots)
 
+	_spinner = _Spinner.new()
+	_spinner.set_anchors_preset(Control.PRESET_CENTER, true)
+	_spinner.position = Vector2(-270, -53)
+	bg.add_child(_spinner)
+
 
 func _process(delta: float) -> void:
 	if not visible:
 		return
 	_t += delta
 	_dots.text = ".".repeat(1 + int(_t / 0.35) % 3)
+	_spinner.angle = fmod(_t * SPIN_SPEED, TAU)
+	_spinner.queue_redraw()
 
 
 ## At most this many frames are drawn behind the loading screen after the scene change, and a frame
