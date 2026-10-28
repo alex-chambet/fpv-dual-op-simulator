@@ -5,9 +5,9 @@ extends Node
 ## This is not decoration. At 85 mm the background detaches from the subject and at 24 mm it does
 ## not — that difference *is* the lesson of the four lenses, and it is the single thing that most
 ## makes a shot read as filmed rather than rendered. So the limits here are the real ones, not a
-## nice-looking blur: the hyperfocal distance of the chosen focal length at f/2.0, on the sensor
-## this game's field of view implies (60° vertical at 24 mm ⇒ 27.7 mm high, so the full-frame
-## circle of confusion, 0.03 mm).
+## nice-looking blur: the hyperfocal distance of the chosen focal length at f/2.0, on the full-frame
+## sensor the field of view is computed for (SessionConfig.SENSOR_HEIGHT_MM), so the full-frame
+## circle of confusion, 0.03 mm.
 ##
 ## The focus is *pulled*, not snapped: it follows the subject over a few tenths of a second, like a
 ## focus puller riding the wheel. A cut to a new distance therefore passes through a soft moment,
