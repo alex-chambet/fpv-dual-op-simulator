@@ -12,13 +12,15 @@ extends Node3D
 
 enum State { COUNTDOWN, RUNNING, FINISHED }
 
-## Turbulence during the countdown: a real quad never hovers perfectly still, so the drone already sways a
-## little while the operator frames up and waits for "go" (reverts to the smooth in-flight values below once
-## RUNNING starts).
-const HOVER_TURB_POS := 0.22
-const HOVER_TURB_TILT_DEG := 2.2
-## The drone flies smoothly once RUNNING: only a hint of turbulence (the camera is stabilised, so it is its
-## position that counts).
+## The pilot's small corrections (FlightPath airframe: wander of the line held / up-down pumping, m). A hover
+## is never still in FPV, so the drone drifts more while the operator frames up and waits for "go", then
+## holds its line more tightly once RUNNING starts. The same at every level: the level is about the movement,
+## the axes and the distance only.
+const HOVER_WANDER := 0.5
+const HOVER_PUMP := 0.35
+const RUN_WANDER := 0.3
+const RUN_PUMP := 0.22
+## Fine turbulence of the frame (m, deg), on top of the airframe.
 const RUN_TURB_POS := 0.05
 const RUN_TURB_TILT_DEG := 0.5
 
@@ -197,8 +199,11 @@ func _ready() -> void:
 	guide.fraction = frame_fraction
 	SessionScorer.frame_fraction = frame_fraction
 	flight.rig.camera.add_child(MotionBlur.new())
-	flight.turbulence_pos = HOVER_TURB_POS
-	flight.turbulence_tilt_deg = HOVER_TURB_TILT_DEG
+	flight.turbulence_pos = RUN_TURB_POS
+	flight.turbulence_tilt_deg = RUN_TURB_TILT_DEG
+	flight.inertia = true
+	flight.wander = HOVER_WANDER
+	flight.pump = HOVER_PUMP
 
 	SessionScorer.next_label = ""
 	replay = SessionStore.replay_record
@@ -206,18 +211,19 @@ func _ready() -> void:
 	replay_active = not replay.is_empty()
 	if replay_active:
 		countdown_time = 0.0
-		# No hover phase in a replay: it reproduces the flight as recorded, i.e. the smooth in-flight turbulence
-		# from the very first frame (the state machine that switches it over never runs for a replay).
-		flight.turbulence_pos = RUN_TURB_POS
-		flight.turbulence_tilt_deg = RUN_TURB_TILT_DEG
+		# No hover phase in a replay: it starts on the first frame of the run, so with the in-flight values (the
+		# state machine that switches them over never runs for a replay). A run recorded before the airframe
+		# existed (flight model < 3) replays on the bare path, as it was flown.
+		flight.wander = RUN_WANDER
+		flight.pump = RUN_PUMP
+		flight.inertia = int(replay.get("flight", 1)) >= 3
 	matrix = ScenarioMatrix.current
 	if matrix == null:
 		matrix = _default_config()
 	if matrix != null:
 		world_seed = matrix.seed
 	matrix_active = matrix != null and not matrix.fixed
-	if matrix != null and not matrix.fixed:
-		flight.rig.camera.fov = SessionConfig.fov_for(matrix.lens)
+	flight.rig.camera.fov = SessionConfig.fov_for(matrix.lens if matrix_active else 24)
 	# The lens focused on the subject: the focal length of this session, pulled every frame. It has
 	# to come after the lens is known, since the depth of field is a property of that focal length.
 	focus = LensFocus.new()
@@ -240,6 +246,7 @@ func _ready() -> void:
 	subject.curve = make_curve(subject_pts)
 	add_child(subject)
 	flight.curve = make_curve(drone_pts)
+	flight.ground_fn = _clearance_fn()
 	flight.externally_driven = true
 	flight.loop_path = false
 	flight.playing = true
@@ -651,8 +658,8 @@ func _process(delta: float) -> void:
 			_banner.go()
 			# The run starts in this very frame (so the recording covers every simulated frame).
 			state = State.RUNNING
-			flight.turbulence_pos = RUN_TURB_POS
-			flight.turbulence_tilt_deg = RUN_TURB_TILT_DEG
+			flight.wander = RUN_WANDER
+			flight.pump = RUN_PUMP
 			SessionScorer.start_run(flight.rig, subject.torso_position, scenario_id)
 			if duo:
 				duo.start_run()
@@ -879,6 +886,8 @@ func _begin_replay() -> void:
 	var rig := flight.rig
 	rig.restore_state(init.angles, init.velocities, init.filtered)
 	flight._t = float(init.flight_t)
+	if flight.inertia and init.has("airframe"):
+		flight.restore_airframe(init.airframe)
 	flight.set_process(false)
 	if duo and init.has("drone"):
 		duo.restore(init.drone)

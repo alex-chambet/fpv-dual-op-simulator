@@ -293,9 +293,11 @@ static func _build(g: Dictionary, k_dist: float, sig_mul: float, time_mul: float
 
 	# Distances (m)
 	var sf := clampf(pow(float(g.v) / 8.0, 0.3), 0.85, 1.4)
+	var cl := float(lp.clearance)
+	var sw := float(lp.swing_clearance)
 	var d_floor: float = 1.4 * float(g.size) + 0.8
-	var d0 := maxf(float(REF_DISTANCE[movement]) * float(lp.proximity) * ds * sf * k_dist, 1.6 * d_floor)
-	var d_min := maxf(7.0 * float(lp.proximity) * ds * sf, d_floor)
+	var d0 := maxf(float(REF_DISTANCE[movement]) * float(lp.proximity) * ds * sf * k_dist, 1.6 * d_floor * cl)
+	var d_min := maxf(7.0 * float(lp.proximity) * ds * sf, d_floor * cl)
 
 	# Low-passed copy of the subject path (cached per smoothing)
 	var key := snappedf(sig_mul, 0.001)
@@ -307,10 +309,10 @@ static func _build(g: Dictionary, k_dist: float, sig_mul: float, time_mul: float
 	# The subject swings around the smoothed path: keep clear of it when it can swing towards the drone.
 	var swing: float = cache[key][1]
 	if movement == "orbit" or movement == "lateral" or movement == "reveal" or movement in DRILLS:
-		d0 = maxf(d0, 1.25 * swing + 1.4 * d_floor)
+		d0 = maxf(d0, maxf(1.25 * sw, 1.0) * swing + 1.4 * d_floor * cl)
 	if movement == "flyby":
-		d0 = maxf(d0, 1.25 * swing + 2.2 * d_floor)
-		d_min = maxf(d_min, 1.1 * swing + 1.4 * d_floor)
+		d0 = maxf(d0, maxf(1.25 * sw, 1.0) * swing + 2.2 * d_floor * cl)
+		d_min = maxf(d_min, maxf(1.1 * sw, 1.0) * swing + 1.4 * d_floor * cl)
 	# The offsets are applied in a slowly turning frame; the farther the drone, the slower the frame turns
 	# (a far drone swinging round at the end of a long arm would need a lot of acceleration).
 	var h_sigma := HEADING_SIGMA * sig_mul * clampf(d0 / 18.0, 1.0, 4.0)
@@ -579,7 +581,9 @@ static func _build_figures(g: Dictionary, k_dist: float, sig_mul: float, time_mu
 	var C_far: PackedVector3Array = cache[ckey][2]
 
 	# Distances (m), speed of the legs (m/s, relative to the subject), time scale of the figures
-	var r_close := maxf(12.0 * float(lp.proximity) * u * k_dist, maxf(1.6 * d_floor, 1.25 * swing + 1.4 * d_floor))
+	var cl := float(lp.clearance)
+	var r_close := maxf(12.0 * float(lp.proximity) * u * k_dist,
+			maxf(1.6 * d_floor * cl, maxf(1.25 * float(lp.swing_clearance), 1.0) * swing + 1.4 * d_floor * cl))
 	var r_far := maxf(clampf(36.0 * u, 24.0, 50.0 * maxf(u, 0.6)) * float(g.get("far_k", 1.0)), 3.0 * r_close)
 	var r_orbit := 1.1 * r_close
 	g["far_from"] = 2.5 * r_close

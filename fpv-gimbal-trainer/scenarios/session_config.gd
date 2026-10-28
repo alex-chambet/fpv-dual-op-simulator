@@ -10,7 +10,7 @@ var level := 3
 ## speed_scale, turn_scale, occlusion (0..1), aggression (0..1) - derived from the level.
 var params := {}
 var seed := 0
-## Focal length (mm, full-frame equivalent) of the lens: 24 is the original wide view of the simulator.
+## Focal length (mm, full-frame) of the lens, see SENSOR_HEIGHT_MM.
 var lens := 24
 ## 2-player session: a pilot flies the drone (FPV, acro) with a second controller, the gimbal operator films.
 var two_player := false
@@ -40,9 +40,14 @@ func is_drill() -> bool:
 
 
 const LENSES := [24, 35, 50, 85]
-## Vertical field of view (degrees) of a lens; 24 mm is the 60 degrees the camera always had.
+## Height (mm) of the recorded image on a full-frame sensor filming 16:9 (36 x 20.25 mm, e.g. Sony FX3 / FX6,
+## A7S III): the reference the focal lengths are quoted against. A 16:9 window then shows exactly what that
+## camera records (24 mm: 73.7 deg wide, 45.8 deg high). The game used to give 60 deg high at 24 mm, i.e. a
+## 27.7 mm-high sensor that does not exist: every lens looked ~1.4x wider than the real one.
+const SENSOR_HEIGHT_MM := 20.25
+## Vertical field of view (degrees) of a lens (Camera3D keeps the height: KEEP_HEIGHT).
 static func fov_for(mm: int) -> float:
-	return rad_to_deg(2.0 * atan(tan(deg_to_rad(30.0)) * 24.0 / float(mm)))
+	return rad_to_deg(2.0 * atan(SENSOR_HEIGHT_MM * 0.5 / float(mm)))
 
 
 func movement_name() -> String:

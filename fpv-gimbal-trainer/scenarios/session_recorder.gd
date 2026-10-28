@@ -21,6 +21,7 @@ func start(rig: GimbalRig, flight: FlightPath) -> void:
 		"velocities": rig.velocities.duplicate(),
 		"filtered": rig.filtered.duplicate(),
 		"flight_t": flight._t,
+		"airframe": flight.airframe_state(),
 	}
 
 

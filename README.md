@@ -41,9 +41,11 @@ Votre meilleur score est enregistré pour chaque sport. Vous pouvez revoir et re
 
 **Six niveaux de difficulté.** Plus le niveau monte, plus le drone est proche et plus il va vite. Le niveau 1 ne demande qu'un seul axe à la fois (pan ou tilt). À partir du niveau 3, il faut gérer les deux ensemble. Le drone vole toujours de façon fluide : la difficulté vient du mouvement, pas de coups de volant.
 
-**Le niveau 6 – Expert** est conçu comme un vrai entraînement de cadreur : le drone s'éloigne puis revient à toute vitesse pour s'enrouler autour du sujet, plonge dessus, le croise face à face, enchaîne les figures. Le sujet passe de minuscule à plein cadre en quelques secondes.
+**Un drone qui vole comme un vrai.** Le drone a une masse : il prend du retard et déborde un peu quand la trajectoire change vite, s'incline pour accélérer, s'enfonce légèrement dans les virages serrés avant que le pilote ne le rattrape, et n'est jamais exactement sur sa ligne (les petites corrections permanentes d'un pilote FPV). En attendant le départ, il fait du stationnaire, jamais parfaitement immobile.
 
-**Quatre optiques** : 24, 35, 50 et 85 mm. Plus l'optique est serrée, plus le cadrage est difficile.
+**Le niveau 6 – Expert** est conçu comme un vrai entraînement de cadreur : le drone s'éloigne puis revient à toute vitesse pour s'enrouler autour du sujet, plonge dessus, le croise face à face, enchaîne les figures, et passe à quelques mètres du sujet. Le sujet passe de minuscule à plein cadre en quelques secondes.
+
+**Quatre optiques** : 24, 35, 50 et 85 mm, avec le vrai champ de vision d'un capteur plein format filmant en 16:9 (36 × 20,25 mm, type Sony FX3 / FX6) : 24 mm = 74° × 46°, 35 mm = 54° × 32°, 50 mm = 40° × 23°, 85 mm = 24° × 14°. Plus l'optique est serrée, plus le cadrage est difficile.
 
 ### Mouvements (exercices de figure)
 Un onglet à part, à côté d'*Entraînement* et de *Bac à sable*. Ici, **une seule figure de drone, répétée du début à la fin**, autour d'un sujet qui ne fait rien d'autre qu'avancer tout droit : tout ce qui n'est pas le geste à apprendre est enlevé. Cinq figures — **orbite**, **spirale vers l'intérieur**, **reveal tilt bas vers haut**, **flyby par derrière** (le drone rattrape le sujet en passant derrière lui et ressort de l'autre côté), **vertical tilt** (il passe juste au-dessus, presque perpendiculairement, et il faut mélanger tilt et pan).
