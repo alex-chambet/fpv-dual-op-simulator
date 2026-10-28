@@ -13,7 +13,9 @@ extends RefCounted
 
 ## Version of the drone flight model. A training session recorded with an older model cannot be replayed
 ## (the drone flew differently); the guided courses keep the same geometry and still replay.
-const FLIGHT_VERSION := 2
+## 3: closer level 6, and the airframe (FlightPath.inertia: the drone chases its line with inertia and the
+## pilot's small corrections; runs recorded before replay without it).
+const FLIGHT_VERSION := 3
 
 ## Highest level (Expert).
 const MAX_LEVEL := 6
@@ -30,7 +32,13 @@ const MOVEMENT_TIER := {"pursuit": 1, "lateral": 1, "frontal": 2, "reveal": 3, "
 		"spiral_in": 4, "reveal_up": 3, "pass_behind": 4, "vertical_pass": 5}
 
 ## Distance of the drone, relative to the level 3 distance (bigger = farther = easier).
-const PROXIMITY := [1.45, 1.22, 1.0, 0.82, 0.68, 0.56]
+const PROXIMITY := [1.45, 1.22, 1.0, 0.82, 0.68, 0.40]
+## Safety margins of the planner around the subject (MovementPlanner): the share kept of the size-based floor,
+## and of the room left for the subject swinging towards the drone (a slalom skier). They bind before
+## PROXIMITY does once the drone is close, so level 6 tightens them too; the swing share never goes below
+## 1.0 x swing, so ~3 m stay between the drone and a person swinging fully towards it.
+const CLEARANCE := [1.0, 1.0, 1.0, 1.0, 1.0, 0.65]
+const SWING_CLEARANCE := [1.0, 1.0, 1.0, 1.0, 1.0, 0.84]
 ## Sway of the drone around its base position, as an angle seen from the subject: it makes the
 ## camera pan (azimuth) and tilt (elevation). Single axis at levels 1-2, both axes from level 3.
 const PAN_AMP_DEG := [12.0, 17.0, 14.0, 19.0, 25.0, 30.0]
@@ -44,8 +52,10 @@ const SWEEP_TIME := [9.0, 8.0, 7.0, 6.0, 5.0, 4.0]
 ## Safety limits of the flight plan: 95th percentile of the pan / tilt speed of the subject in the
 ## image (deg/s), 99th percentile of the drone acceleration (m/s²). The planner moves the drone away
 ## and smooths its path until they are respected.
-const PAN_CAP := [16.0, 24.0, 34.0, 46.0, 60.0, 78.0]
-const TILT_CAP := [10.0, 14.0, 20.0, 28.0, 38.0, 50.0]
+## Level 6 is flown much closer than level 5 (PROXIMITY), so its limits are raised with it: the image speeds
+## grow as 1 / distance, and with the level-5 style limits the planner would just move the drone back out.
+const PAN_CAP := [16.0, 24.0, 34.0, 46.0, 60.0, 110.0]
+const TILT_CAP := [10.0, 14.0, 20.0, 28.0, 38.0, 70.0]
 const ACCEL_CAP := [3.5, 4.0, 4.5, 5.2, 6.0, 9.0]
 ## Figures (expert movements): speed of the drone relative to the subject on the long legs (m/s), and
 ## time multiplier of the figures (bigger = slower). A figure flown below the Expert level is calmer.
@@ -75,6 +85,8 @@ static func params(level: float) -> Dictionary:
 	return {
 		"level": level,
 		"proximity": at(PROXIMITY, level),
+		"clearance": at(CLEARANCE, level),
+		"swing_clearance": at(SWING_CLEARANCE, level),
 		"pan_amp": deg_to_rad(at(PAN_AMP_DEG, level)),
 		"pan_period": at(PAN_PERIOD, level),
 		"tilt_amp": deg_to_rad(at(TILT_AMP_DEG, level)),
