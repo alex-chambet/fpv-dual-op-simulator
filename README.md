@@ -6,7 +6,7 @@ Sur un tournage en drone, deux personnes travaillent ensemble : le **pilote** vo
 
 Vous tenez une manette, un drone vole autour d'un sujet (un skieur, une voiture, un vététiste…), et votre travail est de le garder bien cadré, de façon fluide.
 
-> Projet réalisé avec le moteur Godot 4.7. Pour Windows 64 bits.
+> Projet réalisé avec le moteur Godot 4.7. Pour Windows 64 bits et macOS.
 
 ---
 
@@ -67,11 +67,13 @@ Un monde ouvert, sans chrono ni score. Deux terrains au choix :
 
 ## Ce qu'il vous faut
 
-- **Windows 64 bits** ou **OSX**
-- Une **carte graphique compatible Vulkan** (la plupart des cartes de moins de 8 ans)
+- **Windows 64 bits**, ou **macOS** 11+ sur Intel et 13+ sur Apple Silicon (binaire universel)
+- Une **carte graphique compatible Vulkan** (la plupart des cartes de moins de 8 ans). Sur Mac, le rendu passe par Metal via MoltenVK.
 - Une **manette**, de préférence. Le clavier fonctionne aussi. Pour jouer à deux, il faut deux manettes.
 
 ## Installation
+
+### Windows
 
 1. Téléchargez les deux fichiers de la dernière version dans l'onglet **Releases** :
    `FPV_DUALOP_vX.Y.exe` et `FPV_DUALOP_vX.Y.pck`.
@@ -79,6 +81,15 @@ Un monde ouvert, sans chrono ni score. Deux terrains au choix :
 3. Lancez le fichier `.exe`. Il n'y a rien d'autre à installer.
 
 > Windows peut afficher un avertissement « SmartScreen » au premier lancement, car le programme n'est pas signé. Cliquez sur « Informations complémentaires » puis « Exécuter quand même ».
+
+### macOS
+
+1. Téléchargez `FPV_DUALOP_vX.Y_macOS.zip` et décompressez-le.
+2. L'application n'étant ni signée avec un compte développeur Apple ni notariée, macOS la refusera au premier lancement : **clic droit sur l'application → Ouvrir**, puis confirmer. À faire une seule fois.
+3. Si macOS la dit « endommagée », retirez la mise en quarantaine dans un Terminal :
+   `xattr -dr com.apple.quarantine /chemin/vers/fpv-gimbal-trainer.app`
+
+> L'application s'appelle `fpv-gimbal-trainer.app` : c'est le nom interne du projet, et le renommer déplacerait le dossier des scores et de l'historique.
 
 ## Premiers pas
 
@@ -155,6 +166,7 @@ selon le régime, le vent du drone en superpose trois selon la vitesse. Chaque b
 
 ## Limites connues
 
+- **La licence des douze sons enregistrés n'est pas réglée pour une distribution publique** : ils viennent d'un abonnement de musique de production, qui couvre en général les vidéos et pas l'intégration dans un logiciel diffusé. À vérifier avant toute diffusion hors cercle privé — le jeu fonctionne sans eux, chaque son repassant sur sa boucle calculée (voir [assets/audio/README.md](fpv-gimbal-trainer/assets/audio/README.md)).
 - Les athlètes sont des **mannequins animés**, sans visage ni vêtements détaillés.
 - Le vol acro à deux manettes n'a pas encore été testé sur tous les modèles de manette.
 - Le niveau Expert a surtout été validé en simulation. Vos retours sont les bienvenus.
@@ -179,5 +191,6 @@ Le code source est dans le dossier `fpv-gimbal-trainer/` (projet Godot 4.7).
 - Mannequin animé des athlètes : « Universal Animation Library » de [Quaternius](https://quaternius.com), licence CC0 (domaine public).
 - Détail des sols : sets PBR Asphalt033, Snow010A et Grass004 d'[ambientCG](https://ambientcg.com), licence CC0
   (domaine public), réduits et empaquetés en une image par surface (voir `assets/ground/LICENSE_ambientCG_CC0.txt`).
+- Sons enregistrés : douze boucles tirées de prises Epidemic Sound (abonnement de l'auteur) — **licence à vérifier avant toute distribution publique**, voir `assets/audio/README.md`. Tous les autres sons sont calculés par le code.
 - Tracé du circuit : d'après le plan « Nürburgring - Grand-Prix-Strecke » de [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:N%C3%BCrburgring_-_Grand-Prix-Strecke.svg), aplati puis re-parcouru à courbure bornée (voir [docs/circuit.md](fpv-gimbal-trainer/docs/circuit.md)).
 - Moteur : [Godot Engine](https://godotengine.org) (licence MIT).
