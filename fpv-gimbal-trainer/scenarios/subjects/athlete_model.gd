@@ -349,7 +349,7 @@ func _ski_gear(def: SubjectDefinition) -> void:
 		var att := BoneAttachment3D.new()
 		sk.add_child(att)
 		att.bone_name = "DEF-foot." + sd
-		_box(att, Vector3(0.13, 0.22, 0.17), Vector3(0, 0.06, 0.0), dark)
+		_box(att, Vector3(0.125, 0.31, 0.15), Vector3(0, 0.1, 0.0), dark)  # the shell, over the whole foot
 	# poles (placed every frame)
 	var pole_mat := _mat(Color(0.75, 0.76, 0.8), 0.3)
 	pole_mat.metallic = 0.7
@@ -365,13 +365,85 @@ func _ski_gear(def: SubjectDefinition) -> void:
 		_char.add_child(rod)
 		_poles.append(rod)
 	_helmet(def.placeholder_accent, true)
+	_ski_clothes(def, dark)
+
+
+## Ski wear, built round the bones: a jacket, trousers, mittens and the cuffs of the boots. The
+## mannequin underneath is a bare anatomical figure - sculpted muscles, which is what it looked like
+## from the drone. Every piece hangs from one bone (whose Y axis runs along the limb, towards the next
+## joint), so it follows the pose and the IK without any skinning; ski clothes are bulky enough for
+## tubes and rounded shells to read as cloth.
+func _ski_clothes(def: SubjectDefinition, dark: Material) -> void:
+	var jacket := _mat(def.placeholder_color, 0.85)
+	var trousers := _mat(def.placeholder_accent.darkened(0.45), 0.85)
+	var white := _mat(Color(0.95, 0.95, 0.93), 0.8)
+	# trunk: overlapping shells up the spine, the hem of the jacket over the hips
+	_shell("DEF-hips", Vector3(0.185, 0.13, 0.145), Vector3(0.0, 0.0, 0.0), trousers)
+	_shell("DEF-hips", Vector3(0.2, 0.1, 0.155), Vector3(0.0, 0.12, 0.0), jacket)
+	_shell("DEF-spine.001", Vector3(0.195, 0.12, 0.15), Vector3(0.0, 0.07, 0.0), jacket)
+	_shell("DEF-spine.002", Vector3(0.205, 0.13, 0.155), Vector3(0.0, 0.08, 0.0), jacket)
+	_shell("DEF-spine.003", Vector3(0.225, 0.135, 0.155), Vector3(0.0, 0.085, 0.0), jacket)
+	_sleeve("DEF-neck", 0.07, 0.075, 0.062, jacket, -0.02)   # collar
 	# a race bib on the chest and the back: a bright mark for the operator to keep in frame
-	var chest := BoneAttachment3D.new()
-	sk.add_child(chest)
-	chest.bone_name = "DEF-spine.003"
-	_box(chest, Vector3(0.24, 0.2, 0.01), Vector3(0.0, 0.03, 0.128), _mat(Color(0.95, 0.95, 0.93), 0.8))
-	_box(chest, Vector3(0.24, 0.035, 0.012), Vector3(0.0, 0.115, 0.129), _mat(def.placeholder_accent, 0.6))
-	_box(chest, Vector3(0.24, 0.2, 0.01), Vector3(0.0, 0.03, -0.118), _mat(Color(0.95, 0.95, 0.93), 0.8))
+	var chest: Node3D = _bone("DEF-spine.003")
+	_box(chest, Vector3(0.24, 0.19, 0.012), Vector3(0.0, 0.07, 0.153), white)
+	_box(chest, Vector3(0.24, 0.035, 0.014), Vector3(0.0, 0.15, 0.154), _mat(def.placeholder_accent, 0.6))
+	_box(chest, Vector3(0.24, 0.19, 0.012), Vector3(0.0, 0.07, -0.153), white)
+	for sd in ["L", "R"]:
+		# arms: shoulder, sleeve, elbow, sleeve, mitten
+		_shell("DEF-upper_arm." + sd, Vector3.ONE * 0.088, Vector3.ZERO, jacket)
+		_sleeve("DEF-upper_arm." + sd, 0.274, 0.082, 0.066, jacket)
+		_shell("DEF-forearm." + sd, Vector3.ONE * 0.067, Vector3.ZERO, jacket)
+		_sleeve("DEF-forearm." + sd, 0.273, 0.066, 0.056, jacket)
+		_shell("DEF-hand." + sd, Vector3(0.052, 0.115, 0.07), Vector3(0.0, 0.09, 0.0), dark)
+		# legs: trousers to below the knee, then the cuff of the boot
+		_sleeve("DEF-thigh." + sd, 0.4, 0.108, 0.083, trousers)
+		_shell("DEF-shin." + sd, Vector3.ONE * 0.084, Vector3.ZERO, trousers)
+		_sleeve("DEF-shin." + sd, 0.3, 0.083, 0.086, trousers)
+		_sleeve("DEF-shin." + sd, 0.17, 0.076, 0.07, dark, 0.27)
+
+
+var _bones := {}
+
+
+## The attachment that follows a bone (one per bone, shared by everything hung from it).
+func _bone(bone: String) -> BoneAttachment3D:
+	if not _bones.has(bone):
+		var att := BoneAttachment3D.new()
+		sk.add_child(att)
+		att.bone_name = bone
+		_bones[bone] = att
+	return _bones[bone]
+
+
+## A rounded shell (an ellipsoid of half sizes `half`) at `pos` in the space of a bone.
+func _shell(bone: String, half: Vector3, pos: Vector3, mat: Material) -> void:
+	var sph := SphereMesh.new()
+	sph.radius = 1.0
+	sph.height = 2.0
+	sph.radial_segments = 14
+	sph.rings = 7
+	var mi := MeshInstance3D.new()
+	mi.mesh = sph
+	mi.material_override = mat
+	mi.position = pos
+	mi.scale = half
+	_bone(bone).add_child(mi)
+
+
+## A tapered tube along a bone, from `from` to `from + length` (radius r0 at the start, r1 at the end).
+func _sleeve(bone: String, length: float, r0: float, r1: float, mat: Material, from := 0.0) -> void:
+	var cyl := CylinderMesh.new()
+	cyl.bottom_radius = r0
+	cyl.top_radius = r1
+	cyl.height = length
+	cyl.radial_segments = 12
+	cyl.rings = 1
+	var mi := MeshInstance3D.new()
+	mi.mesh = cyl
+	mi.material_override = mat
+	mi.position = Vector3(0.0, from + length * 0.5, 0.0)
+	_bone(bone).add_child(mi)
 
 
 var _crank_node: Node3D
