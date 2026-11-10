@@ -102,7 +102,10 @@ func _setup(def: SubjectDefinition) -> void:
 	ap = _char.find_child("AnimationPlayer", true, false)
 	var mesh: MeshInstance3D = _char.find_child("Mannequin", true, false)
 	var suit := def.placeholder_color
-	var trim := def.placeholder_accent if kind == "ski" else suit.darkened(0.55)
+	# The second surface is the mannequin's joints (knees, elbows, hips, neck). In the accent colour
+	# they read as an articulated doll in its underwear; a shade darker than the suit they read as the
+	# stretch panels of a one-piece race suit.
+	var trim := suit.darkened(0.28) if kind == "ski" else suit.darkened(0.55)
 	mesh.set_surface_override_material(0, _mat(suit, 0.55))
 	mesh.set_surface_override_material(1, _mat(trim, 0.6))
 	_hips = sk.find_bone("DEF-hips")
@@ -362,6 +365,13 @@ func _ski_gear(def: SubjectDefinition) -> void:
 		_char.add_child(rod)
 		_poles.append(rod)
 	_helmet(def.placeholder_accent, true)
+	# a race bib on the chest and the back: a bright mark for the operator to keep in frame
+	var chest := BoneAttachment3D.new()
+	sk.add_child(chest)
+	chest.bone_name = "DEF-spine.003"
+	_box(chest, Vector3(0.24, 0.2, 0.01), Vector3(0.0, 0.03, 0.128), _mat(Color(0.95, 0.95, 0.93), 0.8))
+	_box(chest, Vector3(0.24, 0.035, 0.012), Vector3(0.0, 0.115, 0.129), _mat(def.placeholder_accent, 0.6))
+	_box(chest, Vector3(0.24, 0.2, 0.01), Vector3(0.0, 0.03, -0.118), _mat(Color(0.95, 0.95, 0.93), 0.8))
 
 
 var _crank_node: Node3D
@@ -475,18 +485,29 @@ func _helmet(col: Color, goggles: bool) -> void:
 	sk.add_child(att)
 	att.bone_name = "DEF-head"
 	var sph := SphereMesh.new()
-	sph.radius = 0.135
-	sph.height = 0.2
-	sph.is_hemisphere = true
 	var mi := MeshInstance3D.new()
 	mi.mesh = sph
 	mi.material_override = _mat(col, 0.25)
-	mi.position = Vector3(0.0, 0.12, -0.01)
-	mi.scale = Vector3(1.0, 1.0, 1.15)
 	att.add_child(mi)
 	if goggles:
-		_box(att, Vector3(0.21, 0.06, 0.05), Vector3(0.0, 0.11, 0.11), _mat(Color(0.95, 0.55, 0.1), 0.05))
+		# a ski helmet is a full shell round the skull, not a cap sitting on top of it; the goggles
+		# are a mirrored lens across the face, held by a strap right round the shell
+		sph.radius = 0.132
+		sph.height = 0.264
+		sph.radial_segments = 24
+		sph.rings = 12
+		mi.position = Vector3(0.0, 0.125, -0.012)
+		mi.scale = Vector3(1.0, 1.02, 1.12)
+		var lens := _mat(Color(0.95, 0.5, 0.08), 0.05)
+		lens.metallic = 0.8
+		_box(att, Vector3(0.2, 0.07, 0.04), Vector3(0.0, 0.118, 0.122), lens)
+		_box(att, Vector3(0.272, 0.03, 0.27), Vector3(0.0, 0.118, -0.005), _mat(Color(0.06, 0.06, 0.07), 0.6))
 	else:
+		sph.radius = 0.135
+		sph.height = 0.2
+		sph.is_hemisphere = true
+		mi.position = Vector3(0.0, 0.12, -0.01)
+		mi.scale = Vector3(1.0, 1.0, 1.15)
 		_box(att, Vector3(0.2, 0.025, 0.08), Vector3(0.0, 0.2, 0.13), _mat(col.darkened(0.3), 0.4))  # visor
 
 

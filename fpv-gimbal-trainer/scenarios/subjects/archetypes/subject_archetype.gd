@@ -281,7 +281,9 @@ func on_ready(_s: ArchetypeSubject) -> void:
 func animate(s: ArchetypeSubject, delta: float) -> void:
 	animate_jump(s, delta)
 	animate_wheels(s, delta)
-	if s.parts.has("athlete"):
+	if s.parts.has("chassis"):
+		animate_car(s, delta)
+	elif s.parts.has("athlete"):
 		s.parts["athlete"].update(s, delta)  # the rigged athlete animates itself (no swinging limbs, no bob)
 	else:
 		animate_cycle(s, delta)
@@ -297,6 +299,43 @@ func animate_wheels(s: ArchetypeSubject, delta: float) -> void:
 	s.state["spin"] = spin
 	for w in wheels:
 		w.rotation = Vector3(spin, 0.0, PI * 0.5)
+
+
+## A car on its suspension (call after animate_wheels). The wheels stay on the road and the front ones
+## steer into the bend; the body rolls to the OUTSIDE of the bend (a car is not a motorbike), dives
+## under braking and squats under power, and the tail lights glow when it brakes. All of it comes from
+## what the path makes the car do, so each is a cue for the operator: the wheels turn and the lights
+## come on before the car has visibly changed course. `roll` and `pitch` are rad per m/s².
+func animate_car(s: ArchetypeSubject, delta: float, roll := 0.008, pitch := 0.0035) -> void:
+	var ch: Node3D = s.parts["chassis"]
+	s.model.rotation.z = 0.0  # (PathSubject leans the whole model into the turn, like a rider)
+	var fwd := -s.follower.global_transform.basis.z
+	var yaw := atan2(-fwd.x, -fwd.z)
+	var yaw_rate := angle_difference(float(s.state.get("car_yaw", yaw)), yaw) / maxf(delta, 0.0001)
+	s.state["car_yaw"] = yaw
+	var acc := (s.speed_now - float(s.state.get("prev_speed", s.speed_now))) / maxf(delta, 0.0001)
+	s.state["prev_speed"] = s.speed_now
+	var k := 1.0 - exp(-delta / 0.14)
+	var a_long := lerpf(float(s.state.get("accel", 0.0)), clampf(acc, -25.0, 25.0), k)
+	var a_lat := lerpf(float(s.state.get("a_lat", 0.0)), clampf(s.speed_now * yaw_rate, -25.0, 25.0), k)
+	s.state["accel"] = a_long
+	s.state["a_lat"] = a_lat
+	ch.rotation.z = clampf(-a_lat * roll, -0.1, 0.1)
+	ch.rotation.x = clampf(a_long * pitch, -0.05, 0.05)
+	# front wheels: the angle that makes a car of this wheelbase follow the bend (wheelbase 2.62 m)
+	var steer := 0.0
+	if s.speed_now > 0.5:
+		steer = atan(2.62 * s.model.scale.x * yaw_rate / s.speed_now)
+	steer = lerpf(float(s.state.get("steer", 0.0)), clampf(steer, -0.6, 0.6), 1.0 - exp(-delta / 0.08))
+	s.state["steer"] = steer
+	for w in s.parts["wheels"]:
+		if w.position.z < 0.0:
+			w.rotation.y = steer
+	var braking := clampf(-a_long / 3.5, 0.0, 1.0)
+	for light in s.parts.get("brake_lights", []):
+		var mat := (light as MeshInstance3D).material_override as StandardMaterial3D
+		if mat != null:
+			mat.emission_energy_multiplier = lerpf(float(s.parts.get("light_idle", 0.25)), 5.0, braking)
 
 
 ## Cyclic motion at `cadence` Hz: legs and arms swing, horse legs gallop, the body bobs, the

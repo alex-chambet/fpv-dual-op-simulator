@@ -428,6 +428,18 @@ func distance_to_track(x: float, z: float) -> float:
 ## then blending into the hillside. The flat part follows the width of the run-off, so a wide
 ## run-off is never drawn on a slope.
 func ground(x: float, z: float) -> float:
+	return _height(x, z, false)
+
+
+## Height of the TERRAIN MESH: the ground, dropped away under the road package (see _road_dip).
+## Only the terrain builder wants this one. Everything that stands or drives on the circuit - the
+## cars, the drone, the marshals' posts - uses ground(): with the dipped height, a car sat 40 cm
+## under the asphalt, its wheels half buried in the track.
+func terrain_height(x: float, z: float) -> float:
+	return _height(x, z, true)
+
+
+func _height(x: float, z: float, dipped: bool) -> float:
 	var free := free_height(x, z)
 	if _sample(_dist, x, z) > half_width + RUNOFF_CORNER + BARRIER_GAP + SHOULDER + BLEND + FIELD_CELL * 1.6:
 		return free
@@ -437,7 +449,8 @@ func ground(x: float, z: float) -> float:
 	var flat := flat_half_width(index_at(q.z), q.w) if runoff_l.size() > 0 else half_width + 8.0
 	if q.x >= flat + BLEND:
 		return free
-	return lerpf(free, q.y - _road_dip(index_at(q.z), q.w, q.x), 1.0 - smoothstep(flat, flat + BLEND, q.x))
+	var dip := _road_dip(index_at(q.z), q.w, q.x) if dipped else 0.0
+	return lerpf(free, q.y - dip, 1.0 - smoothstep(flat, flat + BLEND, q.x))
 
 
 ## How far the ground is dropped under the road, m.
