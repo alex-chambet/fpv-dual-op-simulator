@@ -368,7 +368,39 @@ func _build_home() -> Control:
 	var ver := _label(VERSION, 14, 0.5)
 	ver.size_flags_vertical = Control.SIZE_SHRINK_END
 	bottom.add_child(ver)
+	# a newer release on GitHub: a banner that can be closed (see UpdateCheck)
+	var checker := UpdateCheck.new()
+	root.add_child(checker)
+	checker.check(VERSION, func(tag: String, url: String): _show_update_banner(root, tag, url))
 	return root
+
+
+## The "new version available" banner, top of the home page, closed with the cross (until the next launch).
+func _show_update_banner(parent: Control, tag: String, url: String) -> void:
+	if parent.has_node("UpdateBanner"):
+		return
+	var bar := PanelContainer.new()
+	bar.name = "UpdateBanner"
+	bar.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	bar.position.y = 18
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
+	bar.add_child(row)
+	var msg := Label.new()
+	msg.text = "Une nouvelle version est disponible : %s" % tag
+	row.add_child(msg)
+	var link := LinkButton.new()
+	link.text = "Télécharger"
+	link.uri = url
+	row.add_child(link)
+	var close := Button.new()
+	close.text = "✕"
+	close.flat = true
+	close.tooltip_text = "Fermer"
+	close.pressed.connect(bar.queue_free)
+	row.add_child(close)
+	parent.add_child(bar)
 
 
 func _tile(title: String, subtitle: String, min_size: Vector2, title_size: int) -> MenuTile:
