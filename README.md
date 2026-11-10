@@ -22,7 +22,7 @@ Le drone vole tout seul autour du sujet. **Vous gérez uniquement la gimbal** : 
 
 Votre meilleur score est enregistré pour chaque sport. Vous pouvez revoir et rejouer vos sessions dans « Historique et replays ».
 
-**Les sports** : ski alpin (slalom), ski de descente (une piste de 2 km et plus façon Streif ou Bellevarde, à plus de 110 km/h, avec des sauts), ski freeride (une grande face raide façon Freeride World Tour : barres rocheuses à sauter ou à passer par un couloir, tout-droit, virages serrés, vitesse qui change sans cesse : le plus dur à filmer), circuit de course (un tour complet du Nürburgring, voir plus bas), voiture sur la Départementale, voiture sur route de montagne. Chaque session est générée avec un trajet différent.
+**Les sports** : ski alpin (slalom), ski de descente (3 km et 1 000 m de dénivelé façon Streif ou Bellevarde : un mur de départ à 70 %, de grands murs, des sauts de 50 m, une porte à chaque virage, plus de 130 km/h — voir [docs/ski_descente.md](fpv-gimbal-trainer/docs/ski_descente.md)), ski freeride (une grande face raide façon Freeride World Tour : barres rocheuses à sauter ou à passer par un couloir, tout-droit, virages serrés, vitesse qui change sans cesse : le plus dur à filmer), circuit de course (un tour complet du Nürburgring, voir plus bas), voiture sur la Départementale, voiture sur route de montagne. Chaque session est générée avec un trajet différent.
 
 *Le trail et le VTT de descente sont temporairement retirés du menu (`in_menu = false` sur leur fiche). Ils restent dans le catalogue : les sessions déjà enregistrées se rejouent, et il suffit d'une ligne pour les remettre.*
 
@@ -178,6 +178,7 @@ selon le régime, le vent du drone en superpose trois selon la vitesse. Chaque b
 - Le mode 2 joueurs : [docs/mode_2_joueurs.md](fpv-gimbal-trainer/docs/mode_2_joueurs.md)
 - Le bac à sable : [docs/bac_a_sable.md](fpv-gimbal-trainer/docs/bac_a_sable.md)
 - Le circuit du Nürburgring : [docs/circuit.md](fpv-gimbal-trainer/docs/circuit.md)
+- Le ski de descente : [docs/ski_descente.md](fpv-gimbal-trainer/docs/ski_descente.md)
 - La Départementale : [docs/departementale.md](fpv-gimbal-trainer/docs/departementale.md)
 - Les graphismes : [docs/graphismes.md](fpv-gimbal-trainer/docs/graphismes.md)
 - Le son : [docs/son.md](fpv-gimbal-trainer/docs/son.md)

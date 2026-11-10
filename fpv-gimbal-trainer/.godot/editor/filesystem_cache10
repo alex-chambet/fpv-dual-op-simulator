@@ -1,5 +1,5 @@
 9cad1ddce9e5a63143ba340c9520626b
-::res://::1794347544
+::res://::1794348762
 export_presets.cfg::TextFile::-1::1794327678::0::1::::<><><>0<>0<><>::
 ski_slope.tscn::PackedScene::1215708909317113592::1791212617::0::1::::<><><>0<>0<><>::res://scenarios/ski_slope/ski_slope.gd<>res://flight/flight_path.tscn<>uid://bl20o0do6rxhw::::res://ui/camera_look.gd<>res://scenarios/ski_slope/frame_guide.gd
 ::res://assets/::1792439125
@@ -25,7 +25,7 @@ asphalt.png::CompressedTexture2D::7895426590358117027::1792309387::1792309580::1
 grass.png::CompressedTexture2D::4867551094389357354::1792309387::1792309580::1::::<><><>0<>0<>5e03e95bf2f352044ebbd9e6d075fdbb<>res://.godot/imported/grass.png-943d4de7a1268399092792fcb4aa22b9.ctex::
 LICENSE_ambientCG_CC0.txt::TextFile::-1::1792309450::0::1::::<><><>0<>0<><>::
 snow.png::CompressedTexture2D::5901735616947159234::1792309387::1792309580::1::::<><><>0<>0<>4227afc159293557c18136a4a011a401<>res://.godot/imported/snow.png-6827fa294fffb79dba9fc3eea9a9d484.ctex::
-::res://docs/::1792475852
+::res://docs/::1794348760
 ajouter_un_sport.md::TextFile::-1::1792246938::0::1::::<><><>0<>0<><>::
 bac_a_sable.md::TextFile::-1::1792142179::0::1::::<><><>0<>0<><>::
 circuit.md::TextFile::-1::1792332686::0::1::::<><><>0<>0<><>::
@@ -34,6 +34,7 @@ graphismes.md::TextFile::-1::1792332673::0::1::::<><><>0<>0<><>::
 mode_2_joueurs.md::TextFile::-1::1792011658::0::1::::<><><>0<>0<><>::
 mouvements.md::TextFile::-1::1792249162::0::1::::<><><>0<>0<><>::
 optimisation.md::TextFile::-1::1792258386::0::1::::<><><>0<>0<><>::
+ski_descente.md::TextFile::-1::1794348760::0::1::::<><><>0<>0<><>::
 son.md::TextFile::-1::1792475852::0::1::::<><><>0<>0<><>::
 ::res://flight/::1793136789
 flight_editor.gd::GDScript::6209343535837446025::1791196278::0::1::::<>Node3D<><>0<>0<><>::
@@ -86,13 +87,13 @@ circuit_layout.gd::GDScript::1335044010555150866::1794330294::0::1::::CircuitLay
 circuit_scenery.gd::GDScript::973006824259305779::1794330294::0::1::::CircuitScenery<>RefCounted<><>0<>0<><>::
 circuit_track.gd::GDScript::3675056165225017545::1792139874::0::1::::CircuitTrack<>RefCounted<><>0<>0<><>::
 race_car_physics.gd::GDScript::7283124161644705477::1792139242::0::1::::RaceCarPhysics<>RefCounted<><>0<>0<><>::
-::res://scenarios/environments/::1792254490
+::res://scenarios/environments/::1794348652
 environment_builder.gd::GDScript::4458010285323756006::1791646388::0::1::::EnvironmentBuilder<>RefCounted<><>0<>0<><>::
 environment_registry.gd::GDScript::1893342025866246819::1792232058::0::1::::EnvironmentRegistry<>RefCounted<><>0<>0<><>::
 environment_style.gd::GDScript::8431792353292574061::1792232058::0::1::::EnvironmentStyle<>Resource<><>0<>0<><>::
 env_circuit.gd::GDScript::2908715516238610078::1792250251::0::1::::EnvCircuit<>EnvironmentBuilder<><>0<>0<><>::
 env_departementale.gd::GDScript::1866740996926997220::1791645903::0::1::::EnvDepartementale<>EnvironmentBuilder<><>0<>0<><>::
-env_downhill.gd::GDScript::2972518090887753208::1792254450::0::1::::EnvDownhill<>EnvSnow<><>0<>0<><>::
+env_downhill.gd::GDScript::2972518090887753208::1794348652::0::1::::EnvDownhill<>EnvSnow<><>0<>0<><>::
 env_drill.gd::GDScript::1725133879063113668::1792254464::0::1::::EnvDrill<>EnvGeneric<><>0<>0<><>::
 env_forest.gd::GDScript::1960863071795389339::1791645148::0::1::::EnvForest<>EnvironmentBuilder<><>0<>0<><>::
 env_freeride.gd::GDScript::89844677648169593::1791707858::0::1::::EnvFreeride<>EnvDownhill<><>0<>0<><>::
@@ -156,14 +157,14 @@ path_util.gd::GDScript::2920133875723418481::1791208413::0::1::::PathUtil<>RefCo
 placeholder_model.gd::GDScript::2805828970314752846::1794329870::0::1::::PlaceholderModel<>RefCounted<><>0<>0<><>::
 subject_catalogue.gd::GDScript::435684606356118393::1791220599::0::1::::SubjectCatalogue<>RefCounted<><>0<>0<><>::
 subject_definition.gd::GDScript::5794620008287474547::1792232124::0::1::::SubjectDefinition<>Resource<><>0<>0<><>::
-::res://scenarios/subjects/archetypes/::1794331678
+::res://scenarios/subjects/archetypes/::1794348652
 air_libre.gd::GDScript::7954482528110700803::1791211520::0::1::::ArchetypeAirLibre<>SubjectArchetype<><>0<>0<><>::
 archetype_context.gd::GDScript::6015295123815011320::1791204692::0::1::::ArchetypeContext<>RefCounted<><>0<>0<><>::
 archetype_registry.gd::GDScript::5717330834139720169::1792231994::0::1::::ArchetypeRegistry<>RefCounted<><>0<>0<><>::
 cible.gd::GDScript::1987018380790656110::1792233137::0::1::::ArchetypeCible<>SubjectArchetype<><>0<>0<><>::
 circuit.gd::GDScript::3725223261770544484::1794329756::0::1::::ArchetypeCircuit<>SubjectArchetype<><>0<>0<><>::
 course_sol_cyclique.gd::GDScript::3093356340102661016::1791211520::0::1::::ArchetypeCourseSolCyclique<>SubjectArchetype<><>0<>0<><>::
-descente.gd::GDScript::6751623923048541698::1792012560::0::1::::ArchetypeDescente<>ArchetypeGlissePente<><>0<>0<><>::
+descente.gd::GDScript::6751623923048541698::1794348652::0::1::::ArchetypeDescente<>ArchetypeGlissePente<><>0<>0<><>::
 eau_surface.gd::GDScript::1217766183113924455::1791211520::0::1::::ArchetypeEauSurface<>SubjectArchetype<><>0<>0<><>::
 freeride.gd::GDScript::4023561066266636860::1792143363::0::1::::ArchetypeFreeride<>ArchetypeGlissePente<><>0<>0<><>::
 glisse_pente.gd::GDScript::7570038656572990480::1794331678::0::1::::ArchetypeGlissePente<>SubjectArchetype<><>0<>0<><>::
@@ -172,7 +173,7 @@ stop_and_go_zone.gd::GDScript::2224088832783628230::1791222880::0::1::::Archetyp
 subject_archetype.gd::GDScript::2526373641655478957::1794329756::0::1::::SubjectArchetype<>RefCounted<><>0<>0<><>::
 tout_terrain_erratique.gd::GDScript::4372545223681012801::1791211520::0::1::::ArchetypeToutTerrainErratique<>SubjectArchetype<><>0<>0<><>::
 vehicule_route.gd::GDScript::5106250118251934293::1791442750::0::1::::ArchetypeVehiculeRoute<>SubjectArchetype<><>0<>0<><>::
-::res://scenarios/subjects/catalogue/::1792256794
+::res://scenarios/subjects/catalogue/::1794348225
 alpinisme.tres::Resource/SubjectDefinition::-1::1791220608::0::1::::<><><>0<>0<><>::res://scenarios/subjects/subject_definition.gd
 aviron.tres::Resource/SubjectDefinition::-1::1791220608::0::1::::<><><>0<>0<><>::res://scenarios/subjects/subject_definition.gd
 basket.tres::Resource/SubjectDefinition::-1::1791220608::0::1::::<><><>0<>0<><>::res://scenarios/subjects/subject_definition.gd
@@ -199,7 +200,7 @@ saut_a_ski.tres::Resource/SubjectDefinition::-1::1791220608::0::1::::<><><>0<>0<
 saut_obstacles.tres::Resource/SubjectDefinition::-1::1791220608::0::1::::<><><>0<>0<><>::res://scenarios/subjects/subject_definition.gd
 skate.tres::Resource/SubjectDefinition::-1::1791220608::0::1::::<><><>0<>0<><>::res://scenarios/subjects/subject_definition.gd
 ski_alpin.tres::Resource/SubjectDefinition::-1::1792012260::0::1::::<><><>0<>0<><>::res://scenarios/subjects/subject_definition.gd
-ski_descente.tres::Resource/SubjectDefinition::-1::1792012751::0::1::::<><><>0<>0<><>::res://scenarios/subjects/subject_definition.gd
+ski_descente.tres::Resource/SubjectDefinition::-1::1794348225::0::1::::<><><>0<>0<><>::res://scenarios/subjects/subject_definition.gd
 ski_de_fond.tres::Resource/SubjectDefinition::-1::1791220608::0::1::::<><><>0<>0<><>::res://scenarios/subjects/subject_definition.gd
 ski_freeride.tres::Resource/SubjectDefinition::-1::1791713094::0::1::::<><><>0<>0<><>::res://scenarios/subjects/subject_definition.gd
 ski_freestyle.tres::Resource/SubjectDefinition::-1::1791220608::0::1::::<><><>0<>0<><>::res://scenarios/subjects/subject_definition.gd

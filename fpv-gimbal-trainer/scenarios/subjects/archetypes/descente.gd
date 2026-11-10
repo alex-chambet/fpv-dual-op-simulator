@@ -16,6 +16,8 @@ const START_SPEED := 7.0      # m/s, after the push out of the start house
 const GRAVITY := 9.81
 const POP_TIME := 0.12         # s: how fast the pop at the lip builds up
 const FINISH_STRAIGHT := 170.0  # m of straight schuss into the finish
+const PREJUMP_MAX := 3.5       # m above the snow: higher than this and the racer pre-jumps (see _jumps)
+const MAX_FLIGHT := 100.0      # m: a flight that has not landed by then is not a jump (the arc is not cut)
 
 
 func id() -> String:
@@ -30,14 +32,20 @@ func defaults() -> Dictionary:
 	var d := super.defaults()
 	d.merge({
 		"subject_size": 1.8,
-		"speed_min": 14.0, "speed_max": 34.0, "speed_variability": 0.04,
-		"cornering_accel": 12.0,
+		# 38 m/s is 137 km/h, the Zielschuss of the Streif; 20 m/s² of grip is the 2 g a racer holds in a
+		# downhill turn (the Karussell is measured at 3.1 g). With the 12 m/s² the sheet used to carry, the
+		# skier had to brake to slalom speeds in every turn and never got past 110 km/h.
+		"speed_min": 14.0, "speed_max": 38.0, "speed_variability": 0.04,
+		"cornering_accel": 20.0,
 		"lean_max_deg": 55.0, "lean_gain": 0.9,
 		"sample_step": STEP,
 		"duration": 98.0,
 		"gates": false, "leaves_tracks": true, "spray": true,
 		"jump_visual": "none", "jump_height": 1.2,
-		"turn_frequency": 0.55, "tight_turns": 0.4, "turn_tightness": 0.0, "air_drag": 0.0042, "snow_friction": 0.035,
+		# air_drag is k = ½·ρ·Cd·A / m of a racer in a tuck: 0.5 × 1.1 × 0.45 m² / 80 kg ≈ 0.0031.
+		# At 0.0042 the terminal speed on a 40 % slope was 28 m/s and the runs topped out at 115 -
+		# 122 km/h whatever the turns; at 0.0032 it is 32 m/s there and 38 m/s on a 70 % wall.
+		"turn_frequency": 0.6, "tight_turns": 0.35, "turn_tightness": 0.4, "air_drag": 0.0032, "snow_friction": 0.035,
 	}, true)
 	return d
 
@@ -58,7 +66,11 @@ func generate(ctx: ArchetypeContext) -> Dictionary:
 		for i in range(int(ev.i0) + 1, int(ev.i1)):
 			air[i] = true
 	speeds = _speeds(pts, kappa, p, air)
-	return finish_plan(pts, speeds, events)
+	var plan := finish_plan(pts, speeds, events)
+	# where the turns are (indices into `points`): the environment sets a gate at each one, so a
+	# turn is never skied without a gate - and a gate on a straight is just a direction gate
+	plan["turn_i"] = course.turns
+	return plan
 
 
 ## z of the crests of the slope (a flat stretch ending on a much steeper one), seen along the fall line at x = 0.
@@ -84,12 +96,15 @@ static func find_crests(ctx: ArchetypeContext, z0: float, z1: float) -> PackedFl
 
 ## The racing line: a sequence of straights and turns (curvature ramps up and down over a few tens of metres, so the
 ## heading never changes abruptly), straight across every crest and into the finish.
-## Returns {points (y = ground), kappa (signed curvature at each point)}.
+## Returns {points (y = ground), kappa (signed curvature at each point), turns (point index of each apex)}.
+## The radii are a downhill's, not a giant slalom's: the tight turns of the Streif and of Bellevarde are
+## 40 - 60 m, the sweeps 100 - 250 m. The 18 - 35 m this used to draw forced a brake to 60 km/h at every one.
 func _course(ctx: ArchetypeContext, length: float, crests: PackedFloat32Array) -> Dictionary:
 	var rng := ctx.rng
 	var p := ctx.params
 	var st := {"x": 0.0, "z": 0.0, "th": 0.0, "s": 0.0,
-			"pts": PackedVector3Array([Vector3(0.0, ctx.ground(0.0, 0.0), 0.0)]), "k": PackedFloat32Array([0.0])}
+			"pts": PackedVector3Array([Vector3(0.0, ctx.ground(0.0, 0.0), 0.0)]), "k": PackedFloat32Array([0.0]),
+			"turns": PackedInt32Array()}
 	_straight(st, ctx, 60.0)
 	var tight_share := float(p.get("tight_turns", 0.4))
 	var straight_share := clampf(1.0 - float(p.turn_frequency) * 1.3, 0.1, 0.5)
@@ -121,9 +136,9 @@ func _course(ctx: ArchetypeContext, length: float, crests: PackedFloat32Array) -
 		if kind == "straight" and (absf(th) > 0.45 or (far_out and signf(th) == signf(x))):
 			kind = "sweep"
 			dir = -signf(th) if not far_out else -signf(x)
-		var angle := rng.randf_range(0.5, 0.85) if kind == "sweep" else rng.randf_range(0.8, 1.25)
-		var radius := rng.randf_range(lerpf(110.0, 70.0, tight), lerpf(190.0, 120.0, tight)) if kind == "sweep" \
-				else rng.randf_range(lerpf(34.0, 18.0, tight), lerpf(52.0, 32.0, tight))
+		var angle := rng.randf_range(0.5, 0.85) if kind == "sweep" else rng.randf_range(0.7, 1.1)
+		var radius := rng.randf_range(lerpf(150.0, 95.0, tight), lerpf(260.0, 160.0, tight)) if kind == "sweep" \
+				else rng.randf_range(lerpf(62.0, 38.0, tight), lerpf(96.0, 56.0, tight))
 		var target := clampf(th + dir * angle, -MAX_HEADING, MAX_HEADING)
 		if kind != "straight" and absf(target - th) < 0.05:
 			kind = "straight"  # already turned as far as this turn would go (heading at its limit): go on straight
@@ -145,20 +160,21 @@ func _course(ctx: ArchetypeContext, length: float, crests: PackedFloat32Array) -
 				_turn(st, ctx, target, radius)
 			_:
 				_turn(st, ctx, target, radius)
-				# often a second tight turn the other way, straight after the first one (an S), sometimes a third, a fourth...
+				# sometimes a second tight turn the other way, straight after the first one (an S: the Steilhang,
+				# the Hausberg), rarely a third
 				var chain := 0
-				while chain < 3 and rng.randf() < lerpf(0.55, 0.85, tight) - 0.25 * chain \
+				while chain < 2 and rng.randf() < lerpf(0.35, 0.65, tight) - 0.3 * chain \
 						and float(st.s) < length - FINISH_STRAIGHT - 80.0:
 					chain += 1
 					dir = -dir
-					var back := clampf(float(st.th) + dir * rng.randf_range(0.9, 1.3), -MAX_HEADING, MAX_HEADING)
-					_turn(st, ctx, back, rng.randf_range(lerpf(34.0, 18.0, tight), lerpf(52.0, 32.0, tight)))
+					var back := clampf(float(st.th) + dir * rng.randf_range(0.8, 1.15), -MAX_HEADING, MAX_HEADING)
+					_turn(st, ctx, back, rng.randf_range(lerpf(62.0, 38.0, tight), lerpf(96.0, 56.0, tight)))
 		last_dir = dir
 	# into the finish: back towards the fall line, then straight
 	if absf(float(st.th)) > 0.15:
 		_turn(st, ctx, 0.0, 150.0)
 	_straight(st, ctx, maxf(length - float(st.s), 40.0))
-	return {"points": st.pts, "kappa": st.k}
+	return {"points": st.pts, "kappa": st.k, "turns": st.turns}
 
 
 func _straight(st: Dictionary, ctx: ArchetypeContext, dist: float) -> void:
@@ -181,6 +197,12 @@ func _turn(st: Dictionary, ctx: ArchetypeContext, target: float, radius: float) 
 		hold = 0.0
 	var total := 2.0 * ramp + hold
 	var n := maxi(2, roundi(total / STEP))
+	# the apex, as a point index (the curvature profile is symmetric, so it is the middle). An index,
+	# not a distance: st.s counts the horizontal advance and the path's own length is 3D, which on a
+	# 35 % slope is 6 % longer - 90 m of drift by the bottom, enough to put a gate on the wrong turn.
+	var turns: PackedInt32Array = st.turns
+	turns.append((st.pts as PackedVector3Array).size() - 1 + n / 2)
+	st.turns = turns
 	var sgn := signf(delta)
 	for i in n:
 		var s := (i + 0.5) * total / n
@@ -259,26 +281,24 @@ func _jumps(ctx: ArchetypeContext, pts: PackedVector3Array, kappa: PackedFloat32
 		var v := speeds[i0]
 		var vh := v * cos(angle)
 		var vy := v * sin(angle)
-		var d := 0.0
-		var i1 := -1
-		var flight := PackedFloat32Array()
-		for k in range(i0 + 1, n):
-			d += Vector2(pts[k].x - pts[k - 1].x, pts[k].z - pts[k - 1].z).length()
-			var t := d / maxf(vh, 1.0)
-			# the pop (legs extending at the lip) lifts the skier progressively, not in one frame
-			var lift := pop * (t - POP_TIME * (1.0 - exp(-t / POP_TIME)))
-			var y := b.y + vy * t - 0.5 * GRAVITY * t * t + lift
-			if d < 10.0:
-				y = maxf(y, pts[k].y)  # still on the rounded lip: the snow carries the skier until it falls away
-			elif y <= pts[k].y or d > 90.0:
-				i1 = k
+		# The pre-jump. Launched tangent to the glide at 35 m/s onto a 60 % landing, a ballistic arc
+		# stays 10 m above the snow for 90 m - which is not what a racer does: he pre-jumps, pushing
+		# off before the lip so the arc hugs the wall, and flies 50 - 70 m a few metres high (the
+		# Mausefalle, the Hausbergkante). Modelled as a downward push at take-off, a little more each
+		# try until the flight peaks under PREJUMP_MAX. Before this the arc was simply cut at 90 m and
+		# the skier dropped 11 m to the snow in one step.
+		var arc := {}
+		for attempt in 6:
+			arc = _arc(pts, i0, b, vh, vy, pop, n)
+			if float(arc.peak) <= PREJUMP_MAX or int(arc.i1) < 0:
 				break
-			flight.append(y)
+			vy -= 1.6
+		var i1: int = arc.i1
+		var d: float = arc.d
+		var flight: PackedFloat32Array = arc.flight
+		var peak: float = arc.peak
 		if i1 < 0 or d < 8.0:
-			continue
-		var peak := 0.0
-		for k in range(i0 + 1, i1):
-			peak = maxf(peak, flight[k - i0 - 1] - pts[k].y)
+			continue  # (never lands within the longest flight a racer survives: no jump here)
 		if peak < 0.3:
 			continue  # the skier never really leaves the snow here
 		for k in range(i0 + 1, i1):
@@ -287,6 +307,34 @@ func _jumps(ctx: ArchetypeContext, pts: PackedVector3Array, kappa: PackedFloat32
 				"ramp_i": i0, "ramp_h": 0.0, "length": d})
 		last_end = i1 + 10
 	return events
+
+
+## One ballistic flight from point i0 (take-off at `b`, horizontal speed vh, vertical vy, the pop
+## `pop`): where it lands, how long it is, the heights along it and its peak above the snow.
+## i1 = -1 when it has not met the snow again within MAX_FLIGHT metres.
+func _arc(pts: PackedVector3Array, i0: int, b: Vector3, vh: float, vy: float, pop: float, n: int) -> Dictionary:
+	var d := 0.0
+	var i1 := -1
+	var flight := PackedFloat32Array()
+	for k in range(i0 + 1, n):
+		d += Vector2(pts[k].x - pts[k - 1].x, pts[k].z - pts[k - 1].z).length()
+		var t := d / maxf(vh, 1.0)
+		# the pop (legs extending at the lip) lifts the skier progressively, not in one frame
+		var lift := pop * (t - POP_TIME * (1.0 - exp(-t / POP_TIME)))
+		var y := b.y + vy * t - 0.5 * GRAVITY * t * t + lift
+		if d < 10.0:
+			y = maxf(y, pts[k].y)  # still on the rounded lip: the snow carries the skier until it falls away
+		elif y <= pts[k].y:
+			i1 = k
+			break
+		elif d > MAX_FLIGHT:
+			break
+		flight.append(y)
+	var peak := 0.0
+	if i1 > 0:
+		for k in range(i0 + 1, i1):
+			peak = maxf(peak, flight[k - i0 - 1] - pts[k].y)
+	return {"i1": i1, "d": d, "flight": flight, "peak": peak}
 
 
 # --- Speed -------------------------------------------------------------------------------------
