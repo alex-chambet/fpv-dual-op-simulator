@@ -6,7 +6,7 @@ Sur un tournage en drone, deux personnes travaillent ensemble : le **pilote** vo
 
 Vous tenez une manette, un drone vole autour d'un sujet (un skieur, une voiture, un vététiste…), et votre travail est de le garder bien cadré, de façon fluide.
 
-> Projet réalisé avec le moteur Godot 4.7. Pour Windows 64 bits et macOS.
+> Projet réalisé avec le moteur Godot 4.7. Pour Windows 64 bits, macOS et Linux (Debian).
 
 ---
 
@@ -90,6 +90,12 @@ Un monde ouvert, sans chrono ni score. Deux terrains au choix :
    `xattr -dr com.apple.quarantine /chemin/vers/fpv-gimbal-trainer.app`
 
 > L'application s'appelle `fpv-gimbal-trainer.app` : c'est le nom interne du projet, et le renommer déplacerait le dossier des scores et de l'historique.
+
+### Linux (Debian) 
+1. Téléchargez les deux fichiers de la dernière version dans l'onglet **Releases** : 
+   `FPV_DUALOP_vX.Y` et `FPV_DUALOP_vX.Y.pck`. 
+2. Mettez-les **dans le même dossier**. 
+3. Lancez le fichier sans extension. Il n'y a rien d'autre à installer.
 
 ## Premiers pas
 

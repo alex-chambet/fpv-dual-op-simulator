@@ -67,7 +67,7 @@ static func _bahnschrift(weight: int, width: int) -> FontVariation:
 		v.variation_opentype = {ts.name_to_tag("wght"): weight, ts.name_to_tag("wdth"): width}
 	else:
 		var f := SystemFont.new()
-		f.font_names = PackedStringArray(["DIN Alternate", "Roboto Condensed", "Arial Narrow", "Arial"])
+		f.font_names = PackedStringArray(["DIN Alternate", "Roboto Condensed", "Arial Narrow", "Arial", "Ubuntu", "sans-serif"])
 		f.font_weight = weight
 		f.fallbacks = [ThemeDB.fallback_font]
 		v.base_font = f
