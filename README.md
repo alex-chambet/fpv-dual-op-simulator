@@ -169,7 +169,6 @@ selon le régime, le vent du drone en superpose trois selon la vitesse. Chaque b
 
 ## Limites connues
 
-- **La licence des douze sons enregistrés n'est pas réglée pour une distribution publique** : ils viennent d'un abonnement de musique de production, qui couvre en général les vidéos et pas l'intégration dans un logiciel diffusé. À vérifier avant toute diffusion hors cercle privé — le jeu fonctionne sans eux, chaque son repassant sur sa boucle calculée (voir [assets/audio/README.md](fpv-gimbal-trainer/assets/audio/README.md)).
 - Les athlètes sont des **mannequins animés**, sans visage ni vêtements détaillés.
 - Le vol acro à deux manettes n'a pas encore été testé sur tous les modèles de manette.
 - Le niveau Expert a surtout été validé en simulation. Vos retours sont les bienvenus.
@@ -195,6 +194,5 @@ Le code source est dans le dossier `fpv-gimbal-trainer/` (projet Godot 4.7).
 - Mannequin animé des athlètes : « Universal Animation Library » de [Quaternius](https://quaternius.com), licence CC0 (domaine public).
 - Détail des sols : sets PBR Asphalt033, Snow010A et Grass004 d'[ambientCG](https://ambientcg.com), licence CC0
   (domaine public), réduits et empaquetés en une image par surface (voir `assets/ground/LICENSE_ambientCG_CC0.txt`).
-- Sons enregistrés : douze boucles tirées de prises Epidemic Sound (abonnement de l'auteur) — **licence à vérifier avant toute distribution publique**, voir `assets/audio/README.md`. Tous les autres sons sont calculés par le code.
 - Tracé du circuit : d'après le plan « Nürburgring - Grand-Prix-Strecke » de [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:N%C3%BCrburgring_-_Grand-Prix-Strecke.svg), aplati puis re-parcouru à courbure bornée (voir [docs/circuit.md](fpv-gimbal-trainer/docs/circuit.md)).
 - Moteur : [Godot Engine](https://godotengine.org) (licence MIT).
