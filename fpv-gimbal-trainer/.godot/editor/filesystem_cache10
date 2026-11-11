@@ -1,5 +1,5 @@
 9cad1ddce9e5a63143ba340c9520626b
-::res://::1794349154
+::res://::1794384440
 export_presets.cfg::TextFile::-1::1794327678::0::1::::<><><>0<>0<><>::
 ski_slope.tscn::PackedScene::1215708909317113592::1791212617::0::1::::<><><>0<>0<><>::res://scenarios/ski_slope/ski_slope.gd<>res://flight/flight_path.tscn<>uid://bl20o0do6rxhw::::res://ui/camera_look.gd<>res://scenarios/ski_slope/frame_guide.gd
 ::res://assets/::1792439125
@@ -36,9 +36,9 @@ mouvements.md::TextFile::-1::1792249162::0::1::::<><><>0<>0<><>::
 optimisation.md::TextFile::-1::1792258386::0::1::::<><><>0<>0<><>::
 ski_descente.md::TextFile::-1::1794348760::0::1::::<><><>0<>0<><>::
 son.md::TextFile::-1::1792475852::0::1::::<><><>0<>0<><>::
-::res://flight/::1793136789
+::res://flight/::1794349729
 flight_editor.gd::GDScript::6209343535837446025::1791196278::0::1::::<>Node3D<><>0<>0<><>::
-flight_path.gd::GDScript::4481755381581952764::1793136789::0::1::::FlightPath<>Path3D<><>0<>0<><>::
+flight_path.gd::GDScript::4481755381581952764::1794349729::0::1::::FlightPath<>Path3D<><>0<>0<><>::
 flight_path.tscn::PackedScene::-1::1791193064::0::1::::<><><>0<>0<><>::res://flight/flight_path.gd<>res://gimbal/gimbal_rig.tscn
 flight_test.gd::GDScript::7032138170346670658::1791193094::0::1::::<>Node3D<><>0<>0<><>::
 fpv_drone.gd::GDScript::2660313024554030197::1792092362::0::1::::FpvDrone<>Node3D<><>0<>0<><>::
@@ -49,9 +49,9 @@ gimbal_rig.tscn::PackedScene::-1::1793136438::0::1::::<><><>0<>0<><>::res://gimb
 gimbal_test.gd::GDScript::8523783861893655639::1791196278::0::1::::<>Node3D<><>0<>0<><>::
 ::res://input/::1791191933
 controller_input.gd::GDScript::5939800643888044837::1791278774::0::1::::<>Node<><>0<>0<><>::
-::res://scenarios/::1793136550
+::res://scenarios/::1794349790
 course_intro.gd::GDScript::744363773240453610::1792248083::0::1::::CourseIntro<>Node<><>0<>0<><>::
-drone_difficulty.gd::GDScript::1066476875964187709::1793136550::0::1::::DroneDifficulty<>RefCounted<><>0<>0<><>::
+drone_difficulty.gd::GDScript::1066476875964187709::1794349470::0::1::::DroneDifficulty<>RefCounted<><>0<>0<><>::
 drone_pip.gd::GDScript::5095405180208771843::1792010456::0::1::::DronePip<>Node<><>0<>0<><>::
 duo_session.gd::GDScript::4239967031643978812::1792010125::0::1::::DuoSession<>Node<><>0<>0<><>::
 movement_planner.gd::GDScript::2204878779047868777::1793136386::0::1::::MovementPlanner<>RefCounted<><>0<>0<><>::
@@ -63,7 +63,7 @@ prop_factory.gd::GDScript::6626833062579876871::1791628198::0::1::::PropFactory<
 road_builder.gd::GDScript::4370521114991598853::1791195823::0::1::::RoadBuilder<>RefCounted<><>0<>0<><>::
 road_traffic.gd::GDScript::5634851037265711770::1791314665::0::1::::RoadTraffic<>Node3D<><>0<>0<><>::
 scenario.tscn::PackedScene::-1::1791639448::0::1::::<><><>0<>0<><>::res://scenarios/scenario_runner.gd<>res://flight/flight_path.tscn<>res://ui/frame_guide.gd<>res://ui/camera_look.gd
-scenario_base.gd::GDScript::1989407025253165802::1793136550::0::1::::ScenarioBase<>Node3D<><>0<>0<><>::
+scenario_base.gd::GDScript::1989407025253165802::1794349790::0::1::::ScenarioBase<>Node3D<><>0<>0<><>::
 scenario_matrix.gd::GDScript::5328420510429964615::1792249053::0::1::::ScenarioMatrix<>RefCounted<><>0<>0<><>::
 scenario_registry.gd::GDScript::7631385424727444337::1791220647::0::1::::ScenarioRegistry<>RefCounted<><>0<>0<><>::
 scenario_runner.gd::GDScript::7058891244819785115::1792306655::0::1::::ScenarioRunner<>ScenarioBase<><>0<>0<><>::

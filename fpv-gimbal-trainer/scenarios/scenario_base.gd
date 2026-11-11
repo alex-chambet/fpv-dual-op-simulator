@@ -16,8 +16,10 @@ enum State { COUNTDOWN, RUNNING, FINISHED }
 ## is never still in FPV, so the drone drifts more while the operator frames up and waits for "go", then
 ## holds its line more tightly once RUNNING starts. The same at every level: the level is about the movement,
 ## the axes and the distance only.
-const HOVER_WANDER := 0.5
-const HOVER_PUMP := 0.35
+## (0.5 / 0.35 m before: with the airframe's own tilt that was +-7 degrees and 30 deg/s of roll on a hover, in a
+## picture-in-picture that is bolted to the frame; a hand-held hover is +-1-2 degrees.)
+const HOVER_WANDER := 0.35
+const HOVER_PUMP := 0.25
 const RUN_WANDER := 0.3
 const RUN_PUMP := 0.22
 ## Fine turbulence of the frame (m, deg), on top of the airframe.
@@ -217,6 +219,7 @@ func _ready() -> void:
 		flight.wander = RUN_WANDER
 		flight.pump = RUN_PUMP
 		flight.inertia = int(replay.get("flight", 1)) >= 3
+		flight.smooth_line = int(replay.get("flight", 1)) >= 4   # (models 1-3 replay on the raw differences)
 	matrix = ScenarioMatrix.current
 	if matrix == null:
 		matrix = _default_config()
