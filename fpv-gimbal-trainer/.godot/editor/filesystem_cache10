@@ -1,6 +1,6 @@
 9cad1ddce9e5a63143ba340c9520626b
-::res://::1794384440
-export_presets.cfg::TextFile::-1::1794327678::0::1::::<><><>0<>0<><>::
+::res://::1794385638
+export_presets.cfg::TextFile::-1::1794385638::0::1::::<><><>0<>0<><>::
 ski_slope.tscn::PackedScene::1215708909317113592::1791212617::0::1::::<><><>0<>0<><>::res://scenarios/ski_slope/ski_slope.gd<>res://flight/flight_path.tscn<>uid://bl20o0do6rxhw::::res://ui/camera_look.gd<>res://scenarios/ski_slope/frame_guide.gd
 ::res://assets/::1792439125
 ::res://assets/audio/::1792497779
@@ -244,7 +244,7 @@ ortho_far.jpg::CompressedTexture2D::7951696226710593993::1792475526::1792497781:
 ortho_near.jpg::CompressedTexture2D::1498611129813250619::1792475514::1792497781::1::::<><><>0<>0<>dc12f1d055d3db0c2b5f4a62b51d6cd9<>res://.godot/imported/ortho_near.jpg-067f921fd03de370a34779dc504c23cc.ctex::
 ::res://test/tools/::1792528617
 ::res://tools/::1792475621
-::res://ui/::1794349142
+::res://ui/::1794385638
 camera_look.gd::GDScript::3215780407401285592::1791709073::0::1::::<>CanvasLayer<><>0<>0<><>::
 countdown_banner.gd::GDScript::4229515761442769074::1792048025::0::1::::CountdownBanner<>Control<><>0<>0<><>::
 frame_guide.gd::GDScript::415957592359135735::1792093567::0::1::::FrameGuide<>Control<><>0<>0<><>::
@@ -252,7 +252,7 @@ graphics_panel.gd::GDScript::7272098227474441270::1792309296::0::1::::GraphicsPa
 history.gd::GDScript::8418260819222450521::1791639448::0::1::::<>Control<><>0<>0<><>::
 input_debug.gd::GDScript::7134020735990727792::1791639504::0::1::::<>Control<><>0<>0<><>::
 loading_screen.gd::GDScript::4917498147072284103::1793135820::0::1::::<>CanvasLayer<><>0<>0<><>::
-main_menu.gd::GDScript::7503341678304918823::1794349127::0::1::::<>Control<><>0<>0<><>::
+main_menu.gd::GDScript::7503341678304918823::1794385638::0::1::::<>Control<><>0<>0<><>::
 menu_tile.gd::GDScript::3727245298801473414::1791640375::0::1::::MenuTile<>Button<><>0<>0<><>::
 motion_blur.gd::GDScript::6322564729586463453::1792309289::0::1::::MotionBlur<>Node<><>0<>0<><>::
 motion_blur_effect.gd::GDScript::620231655174907160::1791379973::0::1::::MotionBlurEffect<>CompositorEffect<><>0<>0<><>::
