@@ -55,7 +55,3 @@ vient, et le remède est une source plus longue et plus régulière, pas un rég
 redistribution dans un logiciel. Un abonnement de musique de production couvre en général des
 vidéos, pas l'intégration dans un jeu diffusé — à vérifier auprès de l'éditeur avant toute
 distribution publique du jeu.
-
-| Fichiers | Source | Licence |
-|---|---|---|
-| les douze `.ogg` de ce dossier | Epidemic Sound (abonnement de l'auteur) | **à vérifier** avant toute distribution publique : l'abonnement standard couvre les productions vidéo, pas forcément un logiciel distribué |
