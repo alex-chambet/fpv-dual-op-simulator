@@ -99,6 +99,8 @@ Un monde ouvert, sans chrono ni score. Deux terrains au choix :
 4. **LANCER** (ou Entrée). Un compte à rebours de quelques secondes laisse le temps de s'installer.
 5. Gardez le sujet dans le rectangle vert. À la fin, regardez votre note, et rejouez pour la battre.
 
+Quand une version plus récente existe sur GitHub, un bandeau « Une nouvelle version est disponible » apparaît en haut de l'accueil, avec un lien de téléchargement et une croix pour le fermer. La vérification se fait une fois par lancement ; sans réseau, rien ne s'affiche.
+
 Le menu se pilote aussi au clavier ou à la manette (flèches, Entrée, Échap pour revenir en arrière). Après une session, il rouvre directement la page de réglages de cette session, pour rejouer en un clic.
 
 Pour changer les réglages de manette, de son et de graphismes : tuile **Paramètres** de l'accueil (ou Échap > Son / Échap > Graphismes en jeu).
@@ -126,7 +128,7 @@ Dans le bac à sable : **M** change de mode de vol (auto, clavier, acro), **Reto
 
 **Compte à rebours** : le 3 - 2 - 1 avant le départ s'affiche en grand au milieu de l'écran (puis « GO »), pour que le cadreur soit prêt.
 
-**Vue du drone** : en 1 joueur, une petite incrustation en bas à droite montre ce que voit la caméra FPV du drone (dans l'axe du nez, inclinée de 25°), pour savoir dans quelle direction il regarde. Elle se désactive dans Échap > Gameplay (« Vue du drone »).
+**Vue du drone** : en 1 joueur, une petite incrustation en bas à droite montre ce que voit la caméra FPV du drone (dans l'axe du nez, inclinée de 25°), pour savoir dans quelle direction il regarde. Elle se désactive dans Échap > Gameplay (« Vue du drone »). L'image est stable : le drone s'incline pour accélérer comme un vrai multirotor, mais sans bascule brutale, et le stationnaire de l'attente du départ reste à ±1-2°, comme à la main.
 
 **Conseil pour le niveau Expert** : réglez la sensibilité gimbal sur Rapide (menu de la session, ou Échap > Gameplay). Les croisements demandent des pointes de plus de 100 °/s.
 
@@ -137,7 +139,8 @@ Dans le bac à sable : **M** change de mode de vol (auto, clavier, acro), **Reto
 Quatre niveaux de qualité (Basse, Moyenne, Haute, Ultra) et un **flou de mouvement** réaliste, par objet : le décor file derrière un sujet net, comme sur une vraie caméra. Si le jeu est lent sur votre machine, baissez la qualité ou l'**échelle de rendu** (agrandissement AMD FSR) dans « Paramètres » ou pendant la partie (Échap → Graphismes). Chaque détail se règle aussi à part (ombres, anticrénelage, herbe, spectateurs…), comme la synchro verticale, la limite d'images/s, le mode plein écran, la luminosité, le contraste, la saturation, les effets de caméra (vignettage, aberration, grain), et l'affichage en jeu (opacité et taille des infos, couleurs du cadre, dont une palette pour daltoniens).
 
 - **Ambiances** : plein jour, matin, fin de journée, temps couvert, chute de neige (sur la neige), ou au hasard. Elles se choisissent sur la page de réglages de la session (ligne « Ambiance »).
-- **Athlètes animés** : le coureur passe de la marche au sprint, le vététiste pédale sur un vrai VTT. Le **skieur** est posé image par image à partir du virage qu'il fait et de **celui qui arrive** : il s'écrase et s'angule dans la courbe, puis se grandit, balance le bâton en avant et traverse les genoux une bonne demi-seconde **avant** que ses skis ne changent de direction — de quoi anticiper le virage rien qu'en le regardant.
+- **Athlètes animés** : le coureur passe de la marche au sprint, le vététiste pédale sur un vrai VTT. Le **skieur** est posé image par image à partir du virage qu'il fait et de **celui qui arrive** : il s'écrase et s'angule dans la courbe, puis se grandit, balance le bâton en avant et traverse les genoux une bonne demi-seconde **avant** que ses skis ne changent de direction — de quoi anticiper le virage rien qu'en le regardant. Il porte une vraie tenue de ski (veste, pantalon, moufles, casque intégral et masque) avec un **dossard blanc devant et derrière**, repère facile à garder dans le cadre, et laisse deux traces continues dans la neige et un nuage de poudreuse.
+- **Voitures sur leur suspension** : la caisse se penche vers l'extérieur du virage, plonge au freinage et s'accroupit à l'accélération, les roues avant braquent dans la courbe et les feux arrière s'allument au freinage — autant d'indices qui annoncent la trajectoire avant que la voiture ne l'ait changée.
 - **Décors vivants** : public, drapeaux et banderoles sur la descente ; fermes, champs labourés et blés mûrs sur la Départementale ; parois rocheuses et massifs sur la route de montagne ; rayons de lumière dans la forêt (qualité Ultra).
 - **Rendu caméra** : vignettage, légère aberration chromatique, grain et **profondeur de champ**, comme une vraie
   optique. Le flou n'est pas décoratif : ce sont les vraies limites de netteté de l'optique choisie, à f/2. À 85 mm
