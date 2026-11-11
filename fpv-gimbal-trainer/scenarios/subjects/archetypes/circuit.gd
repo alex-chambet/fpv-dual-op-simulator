@@ -105,19 +105,9 @@ func configure_subject(s: ArchetypeSubject) -> void:
 	s.base_speed = 30.0
 
 
-## The car squats under power and dives under braking, and its rear lights come on when it brakes.
+## The car squats under power, dives under braking and rolls a little in the corners (a racing
+## suspension is stiff: 1 g moves the body by about 1.4 deg), its front wheels steer and its rear
+## lights come on when it brakes.
 func animate(s: ArchetypeSubject, delta: float) -> void:
 	animate_wheels(s, delta)
-	var prev := float(s.state.get("prev_speed", s.speed_now))
-	var acc := (s.speed_now - prev) / maxf(delta, 0.0001)
-	s.state["prev_speed"] = s.speed_now
-	var smooth := lerpf(float(s.state.get("accel", 0.0)), acc, 1.0 - exp(-delta / 0.12))
-	s.state["accel"] = smooth
-	# 1 g of braking pitches the nose down by about 1.4 deg
-	s.model.rotation.x = lerpf(s.model.rotation.x, clampf(-smooth * 0.0025, -0.045, 0.045),
-			1.0 - exp(-delta / 0.1))
-	var braking := clampf(-smooth / 6.0, 0.0, 1.0)
-	for light in s.parts.get("brake_lights", []):
-		var mat := (light as MeshInstance3D).material_override as StandardMaterial3D
-		if mat != null:
-			mat.emission_energy_multiplier = lerpf(0.25, 4.0, braking)
+	animate_car(s, delta, 0.0025, 0.0025)

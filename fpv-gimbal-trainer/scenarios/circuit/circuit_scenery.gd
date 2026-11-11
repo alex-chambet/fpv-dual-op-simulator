@@ -130,7 +130,7 @@ func _terrain() -> void:
 	mi.name = "Terrain"
 	var key := layout.get_instance_id()
 	if not _terrain_cache.has(key):
-		var m := TerrainBuilder.build(Callable(layout, "ground"), x_half, b.position.y, b.end.y, 6.0, 34.0)
+		var m := TerrainBuilder.build(Callable(layout, "terrain_height"), x_half, b.position.y, b.end.y, 6.0, 34.0)
 		_terrain_cache[key] = {"mesh": m, "info": TerrainBuilder.last_info}
 	else:
 		# the grass reads the heights of the last terrain built: put them back

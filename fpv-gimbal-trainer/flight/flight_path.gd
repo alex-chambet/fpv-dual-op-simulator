@@ -49,6 +49,9 @@ signal finished
 ## corrections). Its attitude is the one that produces its acceleration, as on a real multirotor.
 ## false: the body sits on the path (legacy flight, kept for old replays).
 @export var inertia := false
+## true: the line's speed / acceleration are low-passed before the airframe uses them (flight model 4, see
+## LINE_VEL_TAU). false: the raw finite differences, as flight models 1-3 recorded (so old replays are identical).
+@export var smooth_line := true
 ## How tightly the pilot holds the line: natural frequency (Hz) and damping of the chase, across / along the
 ## path and in height (throttle is held less precisely than the sticks).
 @export var track_hz := 0.55
@@ -73,6 +76,17 @@ const MAX_SINK := 1.5       ## m/s², most a late throttle in a turn pulls the d
 const SPEED_JUMP := 5.0     ## m/s in one frame: a discontinuity of the line, not a manoeuvre
 const ATTITUDE_LAG := 0.12  ## s, the frame follows the thrust direction the pilot commands
 
+## Filtering of the line the airframe chases (smooth_line). The line is a baked curve sampled once per frame; its
+## position is good to a centimetre, which is nothing - but differentiated twice at 60 Hz a centimetre is 36 m/s².
+## Fed straight into the airframe, those isolated spikes (measured: 23 - 50 m/s² against a normal 0.2 m/s²) were
+## the commanded acceleration, so the thrust axis - the attitude of the drone, and what the drone view shows -
+## flipped by up to 70 degrees in a single frame and came back. A pilot does not do that: his sticks have
+## bandwidth. Each stage is a first-order filter with this time constant (s).
+const LINE_VEL_TAU := 0.05   ## line speed, from the position
+const LINE_ACC_TAU := 0.15   ## line acceleration, from the speed
+const ATT_ACC_TAU := 0.10    ## acceleration that tilts the frame (the spring's output)
+const FLOOR_MARGIN := 0.25   ## m above the 1 m floor that the aim point keeps, so the drone does not graze it
+
 ## Set by a scenario each frame (0..1) when externally_driven is true.
 var external_ratio := 0.0
 var speed_now := 0.0
@@ -93,7 +107,10 @@ var _x := Vector3.ZERO
 var _v := Vector3.ZERO
 var _p_prev := Vector3.ZERO
 var _pv_prev := Vector3.ZERO
+var _pv_raw := Vector3.ZERO     # unfiltered line speed of the previous frame (to spot a real jump)
+var _pa_s := Vector3.ZERO       # filtered line acceleration
 var _acc := Vector3.ZERO
+var _acc_s := Vector3.ZERO      # filtered acceleration that sets the attitude
 var _q := Quaternion.IDENTITY
 var _air_ready := false
 
@@ -209,21 +226,50 @@ func _step_airframe(delta: float) -> void:
 	var p := follower.global_position
 	var o := right * (_n(6, wander_freq) * wander) + fwd * (_n(7, wander_freq * 0.8) * wander * 0.6) \
 			+ Vector3.UP * (_n(8, pump_freq) * pump) + follower.global_basis * body.position
+	# The floor, seen by the pilot BEFORE the drone hits it: when the wander / pumping would take the aim point
+	# below 1 m of the ground (a hover on a slope: the ground rises 0.3 m when the drone drifts 0.5 m sideways),
+	# the aim point stays above it. The hard clamp at the end was the only floor, and a clamp is a snap: the
+	# position was pushed out in one step, the spring answered, and the frame tilted 30 degrees and back - in
+	# every hover on a slope (the countdown of a descent, of a freeride face).
+	if smooth_line and ground_fn.is_valid():
+		var aim := p + o
+		var floor_aim := float(ground_fn.call(aim.x, aim.z)) + 1.0 + FLOOR_MARGIN
+		if aim.y < floor_aim:
+			o.y += floor_aim - aim.y
 	if not _air_ready or _x.distance_to(p + o) > 40.0:  # first frame, or the path was restarted
 		_x = p + o
 		_v = Vector3.ZERO
 		_p_prev = p
 		_pv_prev = Vector3.ZERO
+		_pv_raw = Vector3.ZERO
+		_pa_s = Vector3.ZERO
 		_acc = Vector3.ZERO
+		_acc_s = Vector3.ZERO
 		_q = follower.global_basis.get_rotation_quaternion()
+		if smooth_line:
+			# level, with the heading of the path: the follower's own basis is tilted by the slope of the path (-35
+			# degrees nose-down at the start wall of a freeride face), and the frame used to start the countdown
+			# in that attitude and straighten up in half a second
+			_q = Basis(right, Vector3.UP, -fwd).get_rotation_quaternion()
 		_air_ready = true
-	var pv := (p - _p_prev) / delta
+	var pv_raw := (p - _p_prev) / delta
+	var pv := pv_raw
+	var jumped := (pv - _pv_prev).length() > SPEED_JUMP
+	if smooth_line:
+		jumped = (pv_raw - _pv_raw) .length() > SPEED_JUMP
+		pv = _pv_prev.lerp(pv_raw, 1.0 - exp(-delta / LINE_VEL_TAU))
+	_pv_raw = pv_raw
 	var pa := (pv - _pv_prev) / delta * anticipation
+	if smooth_line:
+		_pa_s = _pa_s.lerp((pv - _pv_prev) / delta, 1.0 - exp(-delta / LINE_ACC_TAU))
+		pa = _pa_s * anticipation
 	# A line whose speed jumps in one frame is not something to chase (the subject's flying start at "GO"):
 	# the pilot was already on the move, the drone takes the jump as it is.
-	if (pv - _pv_prev).length() > SPEED_JUMP:
+	if jumped:
+		pv = pv_raw
 		_v += pv - _pv_prev
 		_pv_prev = pv
+		_pa_s = Vector3.ZERO
 		pa = Vector3.ZERO
 	var w := TAU * track_hz
 	var wv := TAU * track_hz_vertical
@@ -253,7 +299,11 @@ func _step_airframe(delta: float) -> void:
 			_x.y = floor_y
 			_v.y = maxf(_v.y, 0.0)
 	# attitude: the thrust axis tilts to produce the acceleration (plus the small turbulence of the frame)
-	var up := (_acc + Vector3(0.0, 9.81, 0.0)).normalized()
+	var acc_att := _acc
+	if smooth_line:
+		_acc_s = _acc_s.lerp(_acc, 1.0 - exp(-delta / ATT_ACC_TAU))
+		acc_att = _acc_s
+	var up := (acc_att + Vector3(0.0, 9.81, 0.0)).normalized()
 	var f := (fwd - up * fwd.dot(up)).normalized()
 	var b := Basis(f.cross(up), up, -f) * Basis.from_euler(Vector3(
 			deg_to_rad(_n(1, turbulence_freq) * turbulence_tilt_deg), 0.0, deg_to_rad(_n(2, turbulence_freq) * turbulence_tilt_deg)))
@@ -265,7 +315,9 @@ func _step_airframe(delta: float) -> void:
 func airframe_state() -> Dictionary:
 	return {"x": [_x.x, _x.y, _x.z], "v": [_v.x, _v.y, _v.z], "p": [_p_prev.x, _p_prev.y, _p_prev.z],
 			"pv": [_pv_prev.x, _pv_prev.y, _pv_prev.z], "a": [_acc.x, _acc.y, _acc.z],
-			"q": [_q.x, _q.y, _q.z, _q.w], "ready": _air_ready}
+			"q": [_q.x, _q.y, _q.z, _q.w], "ready": _air_ready,
+			"pvr": [_pv_raw.x, _pv_raw.y, _pv_raw.z], "pas": [_pa_s.x, _pa_s.y, _pa_s.z],
+			"as": [_acc_s.x, _acc_s.y, _acc_s.z]}
 
 
 func restore_airframe(d: Dictionary) -> void:
@@ -276,6 +328,10 @@ func restore_airframe(d: Dictionary) -> void:
 	_acc = Vector3(d.a[0], d.a[1], d.a[2])
 	_q = Quaternion(d.q[0], d.q[1], d.q[2], d.q[3])
 	_air_ready = bool(d.ready)
+	# the filter states exist only in flight model 4 recordings
+	for pair in [["pvr", "_pv_raw"], ["pas", "_pa_s"], ["as", "_acc_s"]]:
+		var a = d.get(pair[0], [0.0, 0.0, 0.0])
+		set(pair[1], Vector3(a[0], a[1], a[2]))
 
 
 ## Sets smooth (Catmull-Rom style) in/out handles on every point.

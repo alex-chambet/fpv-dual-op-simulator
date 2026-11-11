@@ -15,7 +15,9 @@ extends RefCounted
 ## (the drone flew differently); the guided courses keep the same geometry and still replay.
 ## 3: closer level 6, and the airframe (FlightPath.inertia: the drone chases its line with inertia and the
 ## pilot's small corrections; runs recorded before replay without it).
-const FLIGHT_VERSION := 3
+## 4: the line the airframe chases is low-passed (FlightPath.smooth_line), so the drone no longer flips its
+## attitude on one-frame spikes of the line's acceleration. Replays of models 1-3 keep the raw differences.
+const FLIGHT_VERSION := 4
 
 ## Highest level (Expert).
 const MAX_LEVEL := 6

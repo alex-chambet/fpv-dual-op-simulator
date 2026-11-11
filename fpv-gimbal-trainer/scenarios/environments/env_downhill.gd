@@ -20,6 +20,7 @@ const CELL := 25.0          # m, size of the cells of the spatial lookups (drone
 const FOREST_END := 700.0   # m: the trees of the course are not drawn beyond (the far scenery has its own forest)
 
 var crests := PackedFloat32Array()   ## z of the crests (the jumps)
+var gate_s := PackedFloat32Array()   ## where the gates stand, as distances along the racing line
 var _h := PackedFloat32Array()       ## height of the fall line every metre from Z_MIN
 var _xc := PackedFloat32Array()      ## x of the piste centre every metre from _c_z0
 var _hw := PackedFloat32Array()      ## half width of the piste measured along x, every metre from _c_z0
@@ -45,35 +46,55 @@ func configure() -> void:
 	var rel := clampf(float(opt("relief", 0.0)), 0.0, 1.0)
 	var roll_p1 := rng.randf() * TAU
 	var roll_p2 := rng.randf() * TAU
-	# Sections of the slope: [start z, grade, length of the transition from the previous grade]
-	var sections := [[Z_MIN, 0.3, 0.0], [-70.0, 0.5, 30.0]]  # above the start, then the steep start ramp
-	var z := 45.0
-	var g := 0.5
-	var since := 0.0
+	# Sections of the slope: [start z, grade, length of the transition from the previous grade].
+	# The numbers are the real courses': the Streif averages 27 % and the Face de Bellevarde 32 %, but
+	# both open on a wall (Bellevarde starts at 71 %, the Streif has the Mausefalle at 85 % within its
+	# first 300 m) and both keep two or three long walls at 65 - 85 % (Steilhang, Hausbergkante). The
+	# earlier mountain had the average already (34 - 37 %) and none of the walls: its steepest sections
+	# were 45 - 56 % and 100 - 150 m long, which is why it never felt like either course.
+	# (A first cut with walls at 64 - 82 % every 650 - 950 m and landings at 58 - 72 % came out at
+	# 43 - 48 % average with a quarter of the course above 60 %: steeper than either real course. These
+	# are the pulled-back values; the measurement that set them is in docs/ski_descente.md.)
+	var start_wall := rng.randf_range(0.64, 0.72)
+	var sections := [[Z_MIN, 0.3, 0.0], [-70.0, 0.5, 30.0], [45.0, start_wall, 28.0]]  # above the start,
+	# the start ramp, then the start wall itself
+	var start_len := rng.randf_range(130.0, 190.0)
+	var z := 45.0 + start_len
+	var g := start_wall
+	var since := start_len
 	var next_crest := rng.randf_range(250.0, 340.0) * lerpf(1.0, 0.75, rel)
+	var since_wall := 0.0
+	var next_wall := rng.randf_range(850.0, 1150.0)
 	while z < Z_MAX:
 		var length := rng.randf_range(110.0, 230.0) * lerpf(1.0, 0.6, rel)
 		var tr := rng.randf_range(25.0, 45.0) * lerpf(1.0, 0.7, rel)
 		var ng := 0.0
 		if since >= next_crest and g <= 0.3:
-			ng = rng.randf_range(0.52, 0.62)  # a glide ends on a steep wall: a crest
+			ng = rng.randf_range(0.54, 0.66)  # a glide ends on a steep wall: a crest, and its landing
 			tr = 4.0
+			length = rng.randf_range(100.0, 160.0)
 			crests.append(z)
 			since = 0.0
 			next_crest = rng.randf_range(380.0, 540.0) * lerpf(1.0, 0.75, rel)
 		elif since >= next_crest - 160.0 and g > 0.3:
 			ng = rng.randf_range(0.17, 0.25)  # the glide before the next crest
 			length = rng.randf_range(80.0, 120.0)
+		elif since_wall >= next_wall and g < 0.5:
+			ng = rng.randf_range(0.58, 0.72)  # a big wall: the Steilhang, the Hausbergkante
+			length = rng.randf_range(120.0, 200.0)
+			since_wall = 0.0
+			next_wall = rng.randf_range(900.0, 1200.0)
 		else:
 			var pick := rng.randf()
 			if pick < 0.3:
-				ng = rng.randf_range(0.16, 0.26)
-			elif pick < 0.7:
-				ng = rng.randf_range(0.3, 0.4)
+				ng = rng.randf_range(0.14, 0.24)
+			elif pick < 0.75:
+				ng = rng.randf_range(0.30, 0.42)
 			else:
-				ng = rng.randf_range(0.45, 0.56)
+				ng = rng.randf_range(0.44, 0.56)
 		sections.append([z, ng, tr])
 		since += length
+		since_wall += length
 		z += length
 		g = ng
 	var n := int(Z_MAX - Z_MIN) + 1
@@ -89,6 +110,7 @@ func configure() -> void:
 		grade[k] = _grade_at_section(sections[si], prev_g, zk)
 		if rel > 0.0:
 			grade[k] *= 1.0 + rel * (0.17 * sin(zk * TAU / 63.0 + roll_p1) + 0.09 * sin(zk * TAU / 29.0 + roll_p2))
+		grade[k] = minf(grade[k], 0.85)   # a roll on top of a wall: no steeper than the Mausefalle
 	_h.resize(n)
 	_h[0] = 0.0
 	for k in range(1, n):
@@ -513,8 +535,11 @@ void fragment() {
 	return m
 
 
-## Red downhill gates (two flags on two poles each, on both sides of the racing line) about every 110 m, not where
-## the skier is in the air.
+## Red downhill gates (two flags on two poles each, on both sides of the racing line): one at the apex of every
+## turn of the racing line (`plan.turn_i`, set by ArchetypeDescente), then direction gates every ~110 m on any
+## stretch left without one - never where the skier is in the air. A course is SET through its gates: a turn
+## without a gate is what the old regular spacing produced (up to ten per run) and it reads as a skier turning
+## for no reason.
 func _gates(dense: PackedVector3Array, plan: Dictionary) -> void:
 	var cum := PathUtil.cumulative(dense)
 	var total: float = cum[cum.size() - 1]
@@ -522,18 +547,45 @@ func _gates(dense: PackedVector3Array, plan: Dictionary) -> void:
 	for ev in plan.events:
 		if ev.get("type", "") == "jump":
 			air.append(Vector2(float(ev.p0.z) - 15.0, float(ev.p1.z) + 10.0))
+	# the turns, as distances along the line (their indices are into plan.points, whose own cumulative
+	# length is the same parameterisation as `dense`, a resampling of the same curve)
+	var wanted := PackedFloat32Array()
+	var pts: PackedVector3Array = plan.points
+	var pcum := PathUtil.cumulative(pts)
+	for i in plan.get("turn_i", PackedInt32Array()):
+		var ti := clampi(int(i), 0, pcum.size() - 1)
+		if pcum[ti] > 40.0 and pcum[ti] < total - 60.0:
+			wanted.append(pcum[ti])
+	wanted.sort()
+	# fill: no stretch of more than 130 m without a gate, from the start house to the finish (a real
+	# downhill is set at about ten gates a kilometre; the turns alone give four)
+	var all := PackedFloat32Array()
+	var prev := 0.0
+	var ends := wanted.duplicate()
+	ends.append(total - 60.0)
+	for k in ends.size():
+		var s_next: float = ends[k]
+		var gap := s_next - prev
+		if gap > 130.0:
+			var n := int(gap / 100.0)
+			for j in range(1, n + 1):
+				all.append(prev + gap * float(j) / float(n + 1))
+		if k < wanted.size():
+			all.append(s_next)
+		prev = s_next
+	gate_s = PackedFloat32Array()
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var poles := SurfaceTool.new()
 	poles.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var s := 90.0
-	while s < total - 60.0:
+	for s in all:
 		var p := PathUtil.polyline_at(dense, cum, s)
 		var flying := false
 		for a in air:
 			if p.z >= a.x and p.z <= a.y:
 				flying = true
 		if not flying:
+			gate_s.append(s)
 			var t := PathUtil.polyline_at(dense, cum, s + 2.0) - PathUtil.polyline_at(dense, cum, s - 2.0)
 			t.y = 0.0
 			t = t.normalized()
@@ -551,7 +603,6 @@ func _gates(dense: PackedVector3Array, plan: Dictionary) -> void:
 				var flag := BoxMesh.new()
 				flag.size = Vector3(0.82, 0.95, 0.02)
 				st.append_from(flag, 0, Transform3D(basis, Vector3(c.x, g + 1.35, c.z)))
-		s += 110.0
 	for pair in [[st, Color(0.85, 0.05, 0.05)], [poles, Color(0.92, 0.92, 0.92)]]:
 		var mi := MeshInstance3D.new()
 		mi.mesh = pair[0].commit()

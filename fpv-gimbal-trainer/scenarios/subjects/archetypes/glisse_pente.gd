@@ -118,9 +118,23 @@ func _build_trail(s: ArchetypeSubject) -> void:
 	# a groove in the snow: thin, overlapping (continuous), a little darker and bluer than the snow around
 	var box := BoxMesh.new()
 	box.size = Vector3(0.07, 0.008, TRAIL_STEP * 1.7)
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.7, 0.76, 0.9)
-	mat.roughness = 0.9
+	# The marks lie 2 cm above the analytic ground, but the terrain is drawn as flat triangles that ride
+	# above or below it by more than that: half the marks were buried, and two continuous grooves came
+	# out as a staggered row of dashes. The shader pulls them a hair towards the camera in depth, so the
+	# snow never covers them (and they still pass behind the skier, who is much further forward).
+	var sh := Shader.new()
+	sh.code = """shader_type spatial;
+void vertex() {
+	POSITION = PROJECTION_MATRIX * MODELVIEW_MATRIX * vec4(VERTEX, 1.0);
+	POSITION.z += 0.00003 * POSITION.w;
+}
+void fragment() {
+	ALBEDO = vec3(0.68, 0.75, 0.9);
+	ROUGHNESS = 0.9;
+}
+"""
+	var mat := ShaderMaterial.new()
+	mat.shader = sh
 	box.material = mat
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
@@ -147,12 +161,20 @@ func _update_trail(s: ArchetypeSubject) -> void:
 	# Several segments per frame at high speed, so the tracks stay continuous. When all the marks are used, the
 	# oldest ones (far behind) are reused: the tracks never stop behind a skier on a long run.
 	while gp.distance_to(last) >= TRAIL_STEP:
-		last += (gp - last).normalized() * TRAIL_STEP
+		# Each mark lies along the way the skier actually went, not along the way the follower is turned:
+		# the two differ in a bend, and marks laid across their own line are a row of dashes, not a groove.
+		var d := (gp - last).normalized()
+		last += d * TRAIL_STEP
+		var x := b.y.cross(-d)
+		if x.length() < 0.01:
+			x = b.x
+		x = x.normalized()
+		var mark := Basis(x, (-d).cross(x), -d)
 		for side in [-1.0, 1.0]:
-			var q: Vector3 = last + b.x * side * 0.2
+			var q: Vector3 = last + x * side * 0.2
 			if s.ground_height.is_valid():
 				q.y = float(s.ground_height.call(q.x, q.z)) + 0.02
-			mm.set_instance_transform(count % TRAIL_MAX, Transform3D(b, q))
+			mm.set_instance_transform(count % TRAIL_MAX, Transform3D(mark, q))
 			count += 1
 	mm.visible_instance_count = mini(count, TRAIL_MAX)
 	s.state["trail_count"] = count
@@ -161,8 +183,8 @@ func _update_trail(s: ArchetypeSubject) -> void:
 
 func _build_spray(s: ArchetypeSubject) -> void:
 	var spray := GPUParticles3D.new()
-	spray.amount = 160
-	spray.lifetime = 1.0
+	spray.amount = 420
+	spray.lifetime = 0.9
 	spray.local_coords = false
 	spray.emitting = false
 	spray.position = Vector3(0, 0.15, 0.7)
@@ -175,25 +197,44 @@ func _build_spray(s: ArchetypeSubject) -> void:
 	pm.gravity = Vector3(0, -5.0, 0)
 	pm.damping_min = 0.5
 	pm.damping_max = 1.0
-	pm.scale_min = 0.6
-	pm.scale_max = 1.4
+	pm.scale_min = 0.5
+	pm.scale_max = 1.3
+	# each puff swells as it thins out, like powder hanging in the air
+	var grow := Curve.new()
+	grow.add_point(Vector2(0.0, 0.35))
+	grow.add_point(Vector2(1.0, 1.0))
+	var grow_tex := CurveTexture.new()
+	grow_tex.curve = grow
+	pm.scale_curve = grow_tex
 	var ramp := Gradient.new()
-	ramp.set_color(0, Color(1, 1, 1, 0.85))
+	ramp.set_color(0, Color(1, 1, 1, 0.5))
 	ramp.set_color(1, Color(1, 1, 1, 0.0))
 	var ramp_tex := GradientTexture1D.new()
 	ramp_tex.gradient = ramp
 	pm.color_ramp = ramp_tex
 	spray.process_material = pm
-	var puff := SphereMesh.new()
-	puff.radius = 0.12
-	puff.height = 0.24
-	puff.radial_segments = 6
-	puff.rings = 3
+	# Soft round puffs facing the camera, many and faint, so they add up to a cloud of powder. (They
+	# used to be a few opaque balls: a string of white discs behind the skier.)
+	var puff := QuadMesh.new()
+	puff.size = Vector2(0.55, 0.55)
+	var soft := Gradient.new()
+	soft.set_color(0, Color(1, 1, 1, 1))
+	soft.set_color(1, Color(1, 1, 1, 0))
+	var soft_tex := GradientTexture2D.new()
+	soft_tex.gradient = soft
+	soft_tex.fill = GradientTexture2D.FILL_RADIAL
+	soft_tex.fill_from = Vector2(0.5, 0.5)
+	soft_tex.fill_to = Vector2(1.0, 0.5)
+	soft_tex.width = 64
+	soft_tex.height = 64
 	var mat := StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	mat.vertex_color_use_as_albedo = true
 	mat.albedo_color = Color(1, 1, 1)
+	mat.albedo_texture = soft_tex
+	mat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	mat.billboard_keep_scale = true
 	puff.material = mat
 	spray.draw_pass_1 = puff
 	s.model.add_child(spray)

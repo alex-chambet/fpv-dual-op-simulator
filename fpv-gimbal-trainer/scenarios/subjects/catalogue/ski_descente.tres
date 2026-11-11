@@ -7,18 +7,18 @@ script = ExtResource("1")
 id = "ski_descente"
 display_name = "Ski de descente"
 category = "Neige / glace"
-description = "Descente de ski façon Streif ou Bellevarde : piste large et raide dans la forêt, enchaînements de virages serrés (souvent en S) entre quelques grandes courbes, pente qui change sans cesse (replats, murs, ondulations), schuss à plus de 110 km/h, sauts sur les cassures de pente. Entre 1 min 30 et 1 min 45."
+description = "Descente de ski façon Streif ou Bellevarde : un mur de départ à 70 %, de grands murs à 65-80 %, des glisses, des cassures de pente qui envoient en l'air, de grandes courbes à 100-250 m de rayon et quelques virages serrés à 40-60 m (souvent en S), une porte à chaque virage, schuss à plus de 130 km/h. Entre 1 min 30 et 1 min 45."
 archetype = "DESCENTE"
 overrides = {
-"cornering_accel": 12.0,
+"cornering_accel": 20.0,
 "duration": 98.0,
 "lean_gain": 0.9,
 "lean_max_deg": 55.0,
-"speed_max": 34.0,
+"speed_max": 38.0,
 "speed_min": 14.0,
-"tight_turns": 0.65,
-"turn_frequency": 0.9,
-"turn_tightness": 1.0
+"tight_turns": 0.35,
+"turn_frequency": 0.6,
+"turn_tightness": 0.4
 }
 subject_size = 1.8
 placeholder_shape = "person"

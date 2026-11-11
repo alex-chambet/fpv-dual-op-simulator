@@ -38,25 +38,60 @@ static func _flat(key: String, c: Color, rough: float, metal := 0.0, emit := 0.0
 
 
 ## Builds a car under `parent`. Returns the wheel nodes (axle along X after their rotation, spin about X).
+## The sprung part of a car built by build() / race(): everything but the wheels. Rolling and pitching
+## it (and not the whole car) leaves the wheels on the road.
+static func chassis(car: Node3D) -> Node3D:
+	return car.get_node_or_null("Chassis") as Node3D
+
+
+## The tail lights of a car built by build(), each with its own material so they can glow under braking
+## (they share one material otherwise: a street full of traffic is then a single draw call).
+static func own_tail_lights(car: Node3D) -> Array[MeshInstance3D]:
+	var out: Array[MeshInstance3D] = []
+	var ch := chassis(car)
+	if ch == null:
+		return out
+	for n in ["TailL", "TailR"]:
+		var mi := ch.get_node_or_null(n) as MeshInstance3D
+		if mi != null:
+			mi.material_override = mi.material_override.duplicate()
+			out.append(mi)
+	return out
+
+
 static func build(parent: Node3D, color: Color, style := 0) -> Array[MeshInstance3D]:
+	var ch := Node3D.new()
+	ch.name = "Chassis"
+	parent.add_child(ch)
 	var body_mesh := _body_mesh(style)
 	var body := MeshInstance3D.new()
 	body.name = "CarBody"
 	body.mesh = body_mesh
 	body.set_surface_override_material(0, _paint(color))
-	body.set_surface_override_material(1, _flat("glass", Color(0.05, 0.07, 0.09), 0.05, 0.2))
+	body.set_surface_override_material(1, _glass())
 	body.set_surface_override_material(2, _flat("trim", Color(0.04, 0.04, 0.045), 0.6))
-	parent.add_child(body)
+	ch.add_child(body)
 	# lights, plates, mirrors
 	var head := _flat("head", Color(0.95, 0.95, 0.9), 0.1, 0.0, 0.6)
-	var tail := _flat("tail", Color(1.0, 0.05, 0.02), 0.3, 0.0, 2.0)
+	if not _cache.has("tail2"):
+		var tm := StandardMaterial3D.new()
+		tm.albedo_color = Color(0.45, 0.02, 0.02)
+		tm.roughness = 0.3
+		tm.emission_enabled = true
+		tm.emission = Color(1.0, 0.04, 0.02)
+		tm.emission_energy_multiplier = 0.5
+		_cache["tail2"] = tm
+	var tail: StandardMaterial3D = _cache["tail2"]
 	var plate := _flat("plate", Color(0.92, 0.92, 0.9), 0.5)
+	var tail_y := 0.86 if style == 0 else 0.94
 	for sx in [-1.0, 1.0]:
-		_box(parent, Vector3(0.36, 0.12, 0.06), Vector3(sx * 0.6, 0.78, -2.09), head)
-		_box(parent, Vector3(0.34, 0.12, 0.06), Vector3(sx * 0.62, 0.84 if style == 0 else 0.92, 2.08), tail)
-		_box(parent, Vector3(0.18, 0.1, 0.08), Vector3(sx * 0.95, 1.06, -0.82), _paint(color))
-	_box(parent, Vector3(0.52, 0.11, 0.03), Vector3(0, 0.5, -2.13), plate)
-	_box(parent, Vector3(0.52, 0.11, 0.03), Vector3(0, 0.55, 2.13), plate)
+		_box(ch, Vector3(0.34, 0.11, 0.05), Vector3(sx * 0.5, 0.58, -2.105), head)
+		var t := _box_node(ch, Vector3(0.36, 0.11, 0.05), Vector3(sx * 0.5, tail_y - 0.1, 2.105), tail)
+		t.name = "TailL" if sx < 0.0 else "TailR"
+		var mirror := _box_node(ch, Vector3(0.17, 0.1, 0.07), Vector3(sx * 0.94, 1.05, -0.84), _paint(color))
+		mirror.rotation.y = sx * 0.2
+	_box(ch, Vector3(0.52, 0.11, 0.03), Vector3(0, 0.46, -2.14), plate)
+	_box(ch, Vector3(0.52, 0.11, 0.03), Vector3(0, 0.56, 2.14), plate)
 	var wheels: Array[MeshInstance3D] = []
 	for wx in [-0.8, 0.8]:
 		for wz in [-1.3, 1.32]:
@@ -72,7 +107,10 @@ static func build(parent: Node3D, color: Color, style := 0) -> Array[MeshInstanc
 ## A GT racing car: the low coupe body in a two-tone livery, a big rear wing, a front splitter, a
 ## diffuser, slicks on wide rims, tow hooks and a roof hatch. Returns
 ## {"wheels": [MeshInstance3D], "brake_lights": [MeshInstance3D], "wheel_radius": float}.
-static func race(parent: Node3D, colour: Color, accent: Color) -> Dictionary:
+static func race(car: Node3D, colour: Color, accent: Color) -> Dictionary:
+	var parent := Node3D.new()  # the sprung part: everything below but the wheels
+	parent.name = "Chassis"
+	car.add_child(parent)
 	var body := MeshInstance3D.new()
 	body.name = "RaceBody"
 	body.mesh = _body_mesh(2)
@@ -161,14 +199,14 @@ static func race(parent: Node3D, colour: Color, accent: Color) -> Dictionary:
 	# slicks: wider and a little bigger than the road wheels, and flush with the flanks (a racing car
 	# fills its arches; set any further in, the tyres disappear inside the bodywork)
 	var wheels: Array[MeshInstance3D] = []
-	for wx in [-0.96, 0.96]:
+	for wx in [-0.88, 0.88]:
 		for wz in [-1.32, 1.34]:
 			var w := MeshInstance3D.new()
 			w.mesh = _wheel_mesh()
 			w.position = Vector3(wx, 0.35, wz)
 			w.rotation = Vector3(0.0, 0.0, PI * 0.5)
-			w.scale = Vector3(1.06, 1.45, 1.06)  # the axle is along local Y: Y = width
-			parent.add_child(w)
+			w.scale = Vector3(1.06, 1.3, 1.06)  # the axle is along local Y: Y = width
+			car.add_child(w)
 			wheels.append(w)
 	return {"wheels": wheels, "brake_lights": lights, "wheel_radius": 0.35}
 
@@ -263,18 +301,20 @@ static func _body_mesh(style: int) -> ArrayMesh:
 	var key := "body/%d" % style
 	if _cache.has(key):
 		return _cache[key]
-	# lower body: [z, bottom, top (beltline), half width]. Style 2 (racing coupe) sits lower on the
-	# ground, is wider over the wheels and has a flatter nose.
-	var lower := [[-2.12, 0.34, 0.6, 0.8], [-2.02, 0.28, 0.8, 0.86], [-1.7, 0.26, 0.9, 0.89], [-1.15, 0.26, 0.97, 0.9],
-			[0.0, 0.26, 0.99, 0.9], [1.4, 0.26, 1.0, 0.9], [1.85, 0.27, 0.99 if style == 0 else 1.02, 0.89],
-			[2.05, 0.3, 0.93 if style == 0 else 1.0, 0.86], [2.12, 0.38, 0.82 if style == 0 else 0.9, 0.82]]
+	# lower body: [z, bottom, top (beltline), half width]. The nose and the tail narrow in plan (a car
+	# seen from above is not a rectangle) and the bonnet falls away to the bumper. Style 2 (racing
+	# coupe) sits lower on the ground, is wider over the wheels and has a flatter nose.
+	var lower := [[-2.12, 0.36, 0.64, 0.7], [-2.05, 0.3, 0.75, 0.79], [-1.86, 0.27, 0.84, 0.86], [-1.5, 0.26, 0.92, 0.89],
+			[-1.15, 0.26, 0.97, 0.9], [0.0, 0.26, 0.99, 0.9], [1.4, 0.26, 1.0, 0.9],
+			[1.8, 0.27, 0.99 if style == 0 else 1.02, 0.88], [2.03, 0.3, 0.93 if style == 0 else 1.0, 0.81],
+			[2.12, 0.38, 0.84 if style == 0 else 0.92, 0.72]]
 	if style == 2:
-		lower = [[-2.2, 0.17, 0.5, 0.84], [-2.06, 0.14, 0.7, 0.92], [-1.7, 0.13, 0.82, 0.97], [-1.15, 0.13, 0.88, 0.99],
+		lower = [[-2.2, 0.17, 0.5, 0.76], [-2.08, 0.14, 0.68, 0.88], [-1.75, 0.13, 0.82, 0.96], [-1.15, 0.13, 0.88, 0.99],
 				[0.0, 0.13, 0.9, 1.0], [1.4, 0.13, 0.92, 0.99], [1.85, 0.14, 0.95, 0.97],
-				[2.08, 0.17, 0.9, 0.92], [2.2, 0.28, 0.76, 0.84]]
+				[2.08, 0.17, 0.9, 0.9], [2.2, 0.28, 0.76, 0.8]]
 	var rings := []
 	for s in lower:
-		rings.append(_ring(s[0], s[1], s[2], s[3] - 0.05, s[3], 0.12))
+		rings.append(_ring(s[0], s[1], s[2], s[3] - 0.05, s[3], 0.14))
 	var st := SurfaceTool.new()
 	_loft(st, rings)
 	var mesh := st.commit()
@@ -297,39 +337,108 @@ static func _body_mesh(style: int) -> ArrayMesh:
 	var gst := SurfaceTool.new()
 	_loft(gst, grings)
 	gst.commit(mesh)
-	# the glass surface is 1; caps of the glasshouse + trim (bumpers, wheel arches) are surface 2
+	# The glasshouse itself is painted (roof and pillars); the glass is a set of panes laid on it,
+	# a centimetre proud: windscreen, rear window and two side windows a side, split by the B pillar.
+	# One dark block for the whole cabin is what made the car read as a toy.
+	var glass := SurfaceTool.new()
+	glass.begin(Mesh.PRIMITIVE_TRIANGLES)
+	_screen(glass, top[0], top[1], 0.12, 0.93)
+	_screen(glass, top[top.size() - 2], top[top.size() - 1], 0.08, 0.86)
+	var side: Array = SIDE_PANES[style]
+	var ref: Array = top[1]
+	for sx in [-1.0, 1.0]:
+		for pane in side:
+			var pts := PackedVector3Array()
+			for zy in pane:
+				var x := lerpf(ref[3], ref[4], (float(zy[1]) - float(ref[1])) / (float(ref[2]) - float(ref[1]))) + 0.014
+				pts.append(Vector3(sx * x, zy[1], zy[0]))
+			_pane(glass, pts, Vector3(sx, 0.35, 0.0))
+	# trim: caps of the glasshouse, bumpers, grille, wheel wells, sills, door shut lines, handles
 	var trim := SurfaceTool.new()
 	trim.begin(Mesh.PRIMITIVE_TRIANGLES)
 	_cap(trim, grings[0], -1.0)
 	_cap(trim, grings[grings.size() - 1], 1.0)
-	var arch_x := 0.985 if style == 2 else 0.885
-	var sill_x := 1.005 if style == 2 else 0.905
-	var bumper_y := 0.3 if style == 2 else 0.36
-	for bz in [-2.1, 2.1]:
-		_slab(trim, Vector3(0, bumper_y, bz), Vector3(1.74, 0.14, 0.12))
-	_slab(trim, Vector3(0, 0.62 if style != 2 else 0.5, -2.11), Vector3(0.9, 0.16, 0.04))  # grille
-	# wheel arches: a thin dark lip round the top of the wheel, not a panel over the whole flank
-	var arch := Vector3(0.05, 0.5, 0.9) if style != 2 else Vector3(0.035, 0.26, 0.84)
-	var arch_y := 0.52 if style != 2 else 0.6
+	var arch_x := 0.992 if style == 2 else 0.9
+	var sill_x := 1.005 if style == 2 else 0.9
+	var bumper_y := 0.3 if style == 2 else 0.38
+	_slab(trim, Vector3(0, bumper_y, -2.1), Vector3(1.5, 0.12, 0.1))
+	_slab(trim, Vector3(0, bumper_y + 0.02, 2.1), Vector3(1.5, 0.12, 0.1))
+	_slab(trim, Vector3(0, 0.55 if style != 2 else 0.5, -2.11), Vector3(0.8, 0.13, 0.04))  # grille
+	# wheel wells: a dark half disc behind each wheel, a little larger than the tyre, so the wheel sits
+	# in a round arch cut into the flank (it used to be a black rectangle laid over the door)
+	var wheel_y := 0.35 if style == 2 else 0.33
+	var well_r := 0.45 if style == 2 else 0.42
 	for wx in [-1.0, 1.0]:
 		for wz in [-1.3, 1.32]:
-			_slab(trim, Vector3(wx * arch_x, arch_y, wz), arch)
-		_slab(trim, Vector3(wx * sill_x, 0.3, 0.0), Vector3(0.03, 0.1, 1.7))  # sill
+			_half_disc(trim, Vector3(wx * arch_x, wheel_y - 0.06, wz), well_r, wx)
+		_slab(trim, Vector3(wx * sill_x, 0.29, 0.0), Vector3(0.03, 0.08, 1.74))  # sill
+		if style != 2:
+			for lz in [-0.72, 0.26]:  # door shut lines
+				_slab(trim, Vector3(wx * 0.892, 0.62, lz), Vector3(0.022, 0.6, 0.012))
+			for hz in [-0.02, 0.66]:  # door handles
+				_slab(trim, Vector3(wx * 0.9, 0.88, hz), Vector3(0.03, 0.028, 0.15))
 	trim.commit(mesh)
-	# merge: surface 0 = paint (lower body + caps), 1 = glass, 2 = trim
+	# merge: surface 0 = paint (lower body, caps, roof and pillars), 1 = glass, 2 = trim
 	var out := ArrayMesh.new()
 	var paint := SurfaceTool.new()
 	paint.append_from(mesh, 0, Transform3D.IDENTITY)
 	paint.append_from(mesh, 1, Transform3D.IDENTITY)
+	paint.append_from(mesh, 2, Transform3D.IDENTITY)
 	paint.commit(out)
-	var glass := SurfaceTool.new()
-	glass.append_from(mesh, 2, Transform3D.IDENTITY)
 	glass.commit(out)
 	var tr := SurfaceTool.new()
 	tr.append_from(mesh, 3, Transform3D.IDENTITY)
 	tr.commit(out)
 	_cache[key] = out
 	return out
+
+
+## Side windows of each body style: polygons in (z, y) on the flank of the glasshouse, front pane then
+## rear pane, inset from the roof line so the pillars and the roof rail stay in paint.
+const SIDE_PANES := [
+	[[[-0.8, 1.06], [-0.36, 1.34], [0.2, 1.36], [0.2, 1.06]], [[0.3, 1.06], [0.3, 1.36], [0.8, 1.36], [1.26, 1.06]]],
+	[[[-0.8, 1.06], [-0.36, 1.34], [0.2, 1.36], [0.2, 1.06]], [[0.3, 1.06], [0.3, 1.36], [0.85, 1.355], [1.5, 1.28], [1.64, 1.06]]],
+	[[[-0.9, 0.96], [-0.52, 1.15], [0.15, 1.165], [0.15, 0.96]], [[0.25, 0.96], [0.25, 1.165], [0.75, 1.165], [1.45, 1.0]]],
+]
+
+
+## A windscreen (or rear window) on the sloping face between two sections of the glasshouse
+## ([z, y0, y1, w0, w1]), from fraction t0 to t1 of the slope, narrower than the roof by the pillars.
+static func _screen(st: SurfaceTool, a: Array, b: Array, t0: float, t1: float) -> void:
+	var pa := Vector3(0.0, a[2], a[0])
+	var pb := Vector3(0.0, b[2], b[0])
+	var d := pb - pa
+	var n := Vector3(0.0, d.z, -d.y).normalized()
+	if n.y < 0.0:
+		n = -n
+	var pts := PackedVector3Array()
+	for c in [[t0, -1.0], [t0, 1.0], [t1, 1.0], [t1, -1.0]]:
+		var t: float = c[0]
+		var hw := lerpf(a[4], b[4], t) - 0.1
+		pts.append(pa + d * t + n * 0.012 + Vector3(float(c[1]) * hw, 0.0, 0.0))
+	_pane(st, pts, n)
+
+
+## A flat convex polygon facing `out`.
+static func _pane(st: SurfaceTool, pts: PackedVector3Array, out: Vector3) -> void:
+	var n := (pts[1] - pts[0]).cross(pts[2] - pts[0]).normalized()
+	var flip := n.dot(out) < 0.0
+	if flip:
+		n = -n
+	for i in range(1, pts.size() - 1):
+		# (Godot's front faces are clockwise)
+		for v in ([pts[0], pts[i], pts[i + 1]] if flip else [pts[0], pts[i + 1], pts[i]]):
+			st.set_normal(n)
+			st.add_vertex(v)
+
+
+## Upper half of a disc in the plane x = c.x, facing sx (a wheel well).
+static func _half_disc(st: SurfaceTool, c: Vector3, r: float, sx: float) -> void:
+	var pts := PackedVector3Array()
+	for k in 13:
+		var a := PI * k / 12.0
+		pts.append(c + Vector3(0.0, sin(a) * r, cos(a) * r))
+	_pane(st, pts, Vector3(sx, 0.0, 0.0))
 
 
 static func _slab(st: SurfaceTool, c: Vector3, size: Vector3) -> void:

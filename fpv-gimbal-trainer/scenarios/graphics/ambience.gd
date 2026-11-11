@@ -63,7 +63,7 @@ static func variant(base: EnvironmentStyle, id: String) -> EnvironmentStyle:
 			s.fog_density = base.fog_density * (1.7 if base.fog_density < 0.003 else 1.1)
 			s.light_shafts = base.light_shafts * 1.25
 			s.fog_sun_scatter = 0.55
-			s.ambient_energy = base.ambient_energy * (1.0 if valley else 0.8)
+			s.ambient_energy = base.ambient_energy * (1.5 if valley else 1.05)  # (see "golden")
 			s.cloud_coverage = base.cloud_coverage * 0.7
 		"golden":
 			s.sun_elevation = 20.0 if valley else 11.0
@@ -77,7 +77,10 @@ static func variant(base: EnvironmentStyle, id: String) -> EnvironmentStyle:
 			s.fog_density = base.fog_density * (1.3 if base.fog_density < 0.003 else 1.0)
 			s.light_shafts = base.light_shafts * 1.25
 			s.fog_sun_scatter = 0.85
-			s.ambient_energy = base.ambient_energy * (1.0 if valley else 0.8)
+			# A low sun leaves whole slopes in the shade of the relief, and the darker evening sky lights
+			# them less: without more fill light they went nearly black (a road in the shade of its
+			# valley was a black screen). Shade at the end of the day is blue and dim, not black.
+			s.ambient_energy = base.ambient_energy * (2.0 if valley else 1.3)
 			s.cloud_coverage = base.cloud_coverage * 0.9
 			s.adjustment_saturation = base.adjustment_saturation * 1.07
 			s.glow_intensity = base.glow_intensity * 1.4
