@@ -41,7 +41,7 @@ static var _result := {}   ## {tag, url} once a newer release is known, for late
 ## and given again straight away on later visits to the home page.
 func check(current: String, on_newer: Callable) -> void:
 	if not _result.is_empty():
-		on_newer.call(_result.tag, _result.url)
+		on_newer.call_deferred(_result.tag, _result.url)
 		return
 	if _done:
 		return
@@ -60,6 +60,6 @@ func check(current: String, on_newer: Callable) -> void:
 		var url := str(data.get("html_url", ""))
 		if tag != "" and url.begins_with("https://github.com/") and is_newer(tag, current):
 			_result = {"tag": tag, "url": url}
-			on_newer.call(tag, url))
+			on_newer.call_deferred(tag, url))
 	if http.request(API, PackedStringArray(["User-Agent: fpv-dualop", "Accept: application/vnd.github+json"])) != OK:
 		http.queue_free()
