@@ -261,6 +261,40 @@ La voiture unique du niveau d'entraînement (`ArchetypeCircuit`) ne roule pas su
 image par image : son tracé vient de `CircuitLayout.racing_line()`, déjà rééchantillonné et lissé
 d'avance, donc elle n'avait aucun de ces deux défauts.
 
+**Une troisième cause, celle-là dans le terrain lui-même : des voitures en roue arrière ou avant.**
+Le relevé d'altitude du tour (`CircuitTrack.HEIGHT_S/HEIGHT_M`) ne sait rien des endroits où le tour
+se replie sur lui-même - l'oméga de la Mercedes-Arena, une épingle à côté de sa propre ligne droite -
+qui peuvent placer deux brins à quelques dizaines de mètres l'un de l'autre en plan mais à plus de
+dix mètres d'écart d'altitude : sans correction, le sol entre eux serait une falaise.
+`CircuitLayout._level_folds()` existe pour ça : chaque point est tiré vers l'altitude des points
+proches en plan mais éloignés le long du tour. Mais cette correction ne regarde pas sur quelle
+distance, le long du tour, elle doit étaler le changement - un tirage de onze mètres peut se tasser
+sur à peine cinquante mètres de piste. La falaise disparaît, mais une voiture qui roule dessus tangue
+comme si elle avait pris une rampe : mesuré, **jusqu'à 35 % de pente par endroits, sur 9 zones
+distinctes du tour**, alors que le relevé d'altitude d'origine ne dépasse jamais 7 %.
+
+Corrigé en ajoutant `CircuitLayout._limit_grade()` : une passe qui plafonne la pente du profil final
+à 10 %, en redonnant la moitié de tout excès de chaque côté du segment qui le porte - jusqu'à ce que
+le changement nécessaire soit étalé sur assez de distance pour rester sous ce plafond, sans toucher
+au reste du relevé (qui, lui, reste sous les 10 %). Vérifié : les 9 zones trouvées descendent toutes
+sous 12 %, l'altitude extrême du tour reste cohérente avec le relevé d'origine (environ 28 m
+d'écart à pleine échelle), et sur 2 minutes de trafic réel (9 voitures), le tangage maximal observé
+tombe à 8° - contre 19 à 35° avant - sans rien changer aux dépassements ni à l'espacement entre
+voitures.
+
+**Un quatrième défaut, lui dans le SIGNE du tangage** : même une fois la pente plafonnée à une valeur
+réaliste, les voitures continuaient à sembler « en roue arrière ou avant » dans les montées et les
+descentes. `CircuitTraffic._place()` calculait l'angle de tangage avec un signe inversé
+(`atan2(-slope, 1.0)`, et de même pour l'accélération) : vérifié par un test isolé (une pente
+montante donnait un angle qui penche le NEZ VERS LE BAS, l'inverse de ce qu'une voiture fait
+réellement en montée). Le même signe inversé s'appliquait au tangage d'accélération/freinage
+(cabrage à l'accélération, plongée au freinage). Corrigé en retirant les deux signes moins
+(`atan2(slope, 1.0) + accel * 0.0025`). Vérifié : sur 2 minutes de trafic réel, le tangage affiché
+est maintenant du même signe que la pente réelle du tour 31 394 fois sur 31 435 mesures (les rares
+désaccords sont aux points d'inflexion, où le terme d'accélération l'emporte brièvement sur une
+pente quasi nulle - normal). Tangage maximal inchangé (8°), dépassements et espacement entre
+voitures inchangés.
+
 ## Le sol sous la piste est creusé exprès
 
 Le terrain est dessiné en triangles de 6 m de côté et, entre ses sommets, il interpole en ligne

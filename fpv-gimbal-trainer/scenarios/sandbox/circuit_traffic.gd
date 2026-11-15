@@ -199,7 +199,11 @@ func _place(c: Dictionary, delta: float) -> void:
 	var slope := (layout.point_at(s + 6.0).y - layout.point_at(s - 6.0).y) / 12.0
 	var accel := float(c.accel)
 	var basis := Basis(Vector3.UP, yaw)
-	basis = basis * Basis(Vector3.RIGHT, atan2(-slope, 1.0) + clampf(-accel * 0.0025, -0.045, 0.045))
+	# Basis(RIGHT, +angle) tips the car's nose UP (verified empirically, not just by the formula below):
+	# a positive slope (climbing) and a positive accel (speeding up, squats the rear) must both give a
+	# POSITIVE angle here. The previous "-slope" / "-accel" had both backwards - every climb pitched the
+	# nose down and every descent pitched it up, which is what read as a wheelie or a stoppie.
+	basis = basis * Basis(Vector3.RIGHT, atan2(slope, 1.0) + clampf(accel * 0.0025, -0.045, 0.045))
 	var lean := clampf(atan2(float(c.v) * _yaw_rate(s), 9.81) * 0.12, -0.06, 0.06)
 	basis = basis * Basis(Vector3.BACK, lean)
 	node.basis = basis

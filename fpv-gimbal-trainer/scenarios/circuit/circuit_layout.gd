@@ -99,8 +99,16 @@ func _init(track_scale := 0.5, point_step := 3.0) -> void:
 ## to be a cliff. Here every point is pulled towards the height of the points that are close to it
 ## ON THE GROUND but far from it along the lap, until neighbouring legs sit at a believable height
 ## of each other. The shape of the profile along the lap survives; only the folds are levelled.
+##
+## The pull itself does not look at how far along the lap it has to spend a correction over: two legs
+## a couple of hundred metres apart along the lap, but pulled ten-odd metres towards each other, can
+## end up with most of that change packed into fifty metres of track - a cliff is gone, but a car
+## driving over it pitches up or down like it hit a ramp (measured, up to 35% grade, 9 separate spots
+## around this lap; the real elevation profile never exceeds 7%). MAX_GRADE spreads any correction
+## that steep over more of the lap instead, the same total change, so the legs still end up level.
 const FOLD_REACH := 60.0    ## two legs closer than this in plan have to agree on their height, m
 const FOLD_APART := 150.0   ## ...when they are at least this far apart along the lap, m
+const MAX_GRADE := 0.10     ## steepest the LEVELLED profile may still rise or fall, m per m of track
 
 func _level_folds() -> void:
 	var n := centre.size()
@@ -141,6 +149,32 @@ func _level_folds() -> void:
 			for k in range(1, span):
 				surface[(i0 + k) % n] = lerpf(surface[i0], surface[i1], float(k) / span)
 		surface = _smoothed(surface, 2)
+	_limit_grade(surface, step, MAX_GRADE)
+
+
+## Caps how steep a closed profile may rise or fall, metre for metre, by giving back half of any
+## excess slope to each side of the segment that has it - repeated until nothing is left to give
+## back (or far too many passes have run; a closed loop of a few hundred points settles well before
+## that). Unlike _limit_rise(), which only ever lowers a value (right for a width that must not grow
+## past what is safe), a height must be free to still end up higher OR lower than where it started -
+## so here each step keeps the total of the pair unchanged, spreading the correction sideways instead
+## of cutting it off, until the whole stretch that needed it is no steeper than max_grade.
+static func _limit_grade(arr: PackedFloat32Array, step: float, max_grade: float) -> void:
+	var n := arr.size()
+	var max_step := max_grade * step
+	for _pass in 200:
+		var changed := false
+		for i in n:
+			var j := (i + 1) % n
+			var d := arr[j] - arr[i]
+			if absf(d) <= max_step:
+				continue
+			var excess := (absf(d) - max_step) * 0.5 * signf(d)
+			arr[i] += excess
+			arr[j] -= excess
+			changed = true
+		if not changed:
+			break
 
 
 func _bounds() -> Rect2:
