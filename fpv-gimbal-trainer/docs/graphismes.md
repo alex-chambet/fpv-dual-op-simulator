@@ -164,6 +164,19 @@ libellés donnent l'angle, parce que c'est comme ça qu'on le règle sur une cam
   de roulement s'arrondit vers les flancs au lieu de finir sur une arête. Une voiture reste à quelques milliers de
   triangles, donc les neuf du circuit libre ne coûtent rien.
 
+  **La caisse avait un trou à chaque bout, et on voyait au travers.** Le loft referme ses deux
+  extrémités (nez et queue) par un éventail de triangles depuis le centre de l'anneau (`_cap()`), mais
+  le sens de ces triangles était inversé aux DEUX bouts, pas seulement à l'arrière : vérifié en
+  affichant la coque toute seule (sans pare-chocs ni roues) sur un fond vert, vue de face et vue de
+  dos - les deux bouts montraient un trou noir en plein milieu, l'intérieur creux de la caisse. À
+  l'avant, le pare-chocs, la calandre et le becquet (des boîtes pleines, posées devant) couvraient le
+  trou par hasard ; à l'arrière, rien ne le couvrait complètement, d'où « pas de pare-choc arrière, on
+  voit au travers » - repéré sur la voiture du mode entraînement (celle qui se voit de plus près et
+  de plus loin), mais le même bug touchait aussi les voitures de course du bac à sable et les
+  berlines/compactes du trafic routier (`CarModel.build()`), qui utilisent le même `_cap()`. Corrigé
+  en inversant le sens des deux côtés ensemble ; vérifié : la coque seule est maintenant pleine, vue
+  de face comme vue de dos, sans rien changer à sa forme ni aux pièces posées dessus.
+
   **Un modèle GT3 importé a été cherché, essayé et écarté** (octobre 2026). Il n'existe pas de GT3 en CC0 : la
   catégorie est entièrement sous marque déposée, et les modèles « GT3 » gratuits trouvés sont CC-BY (Sketchfab) ou
   sous licence d'usage restreinte. Les trois meilleurs candidats réellement CC0 et téléchargeables ont été importés,

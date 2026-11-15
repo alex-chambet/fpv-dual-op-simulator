@@ -292,7 +292,12 @@ static func _cap(st: SurfaceTool, ring: PackedVector3Array, facing: float) -> vo
 	for k in ring.size():
 		var a := ring[k]
 		var b := ring[(k + 1) % ring.size()]
-		for v in ([c, a, b] if facing > 0.0 else [c, b, a]):
+		# the ring itself always winds the same way (see _ring()): both ends were facing the wrong
+		# way round (verified: a bare body mesh, no bumpers or wheels, showed daylight clean through
+		# BOTH the nose and the tail - the nose only read as solid in the finished car because the
+		# splitter, grille and bumper boxes in front of it happened to cover the hole; nothing covered
+		# the tail's as well, which is the "missing bumper, see-through" the player noticed there).
+		for v in ([c, b, a] if facing > 0.0 else [c, a, b]):
 			st.set_normal(Vector3(0, 0, facing))
 			st.add_vertex(v)
 
