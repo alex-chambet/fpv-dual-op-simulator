@@ -107,7 +107,7 @@ func _process(delta: float) -> void:
 	var lap := layout.lap_length
 	# where each car sits across the track right now (its own line plus any move to overtake)
 	for c in cars:
-		c["lat_now"] = _offsets[layout.index_at(float(c.s))] * float(c.swing) + float(c.lateral)
+		c["lat_now"] = layout.sample_along(_offsets, float(c.s)) * float(c.swing) + float(c.lateral)
 	for ci in cars.size():
 		var c: Dictionary = cars[ci]
 		var i := layout.index_at(float(c.s))
@@ -129,7 +129,7 @@ func _process(delta: float) -> void:
 			var d := fposmod(float(o.s) - float(c.s), lap)
 			if d > LOOK_AHEAD:
 				continue
-			var mine: float = _offsets[layout.index_at(float(o.s))] * float(c.swing) + float(c.lateral)
+			var mine: float = layout.sample_along(_offsets, float(o.s)) * float(c.swing) + float(c.lateral)
 			if absf(float(o.lat_now) - mine) > 2.9:
 				continue      # it goes past on the other side of the track
 			if d < gap:
@@ -182,9 +182,11 @@ func _process(delta: float) -> void:
 
 func _place(c: Dictionary, delta: float) -> void:
 	var s := float(c.s)
-	var i := layout.index_at(s)
-	var base: float = _offsets[i] * float(c.swing) + float(c.lateral)
-	var off := layout.safe_offset(i, base)
+	# continuous (sample_along / safe_offset_at, not the nearest point): looked up by index, the
+	# offset - which swings several metres across a corner - jumped by over a metre at a time, the
+	# biggest part of the stutter the player sees, worse than the heading alone (see dir_at).
+	var base: float = layout.sample_along(_offsets, s) * float(c.swing) + float(c.lateral)
+	var off := layout.safe_offset_at(s, base)
 	var centre := layout.point_at(s)
 	var nrm := layout.normal_at(s)
 	var pos := Vector3(centre.x + nrm.x * off, 0.0, centre.z + nrm.y * off)
@@ -216,8 +218,7 @@ func _place(c: Dictionary, delta: float) -> void:
 
 ## Yaw rate of the track at a lap distance (rad per metre x speed = rad/s), for the body roll.
 func _yaw_rate(s: float) -> float:
-	var i := layout.index_at(s)
-	return layout.curvature[i]
+	return layout.sample_along(layout.curvature, s)
 
 
 ## Horizontal push getting a drone sphere out of the cars.

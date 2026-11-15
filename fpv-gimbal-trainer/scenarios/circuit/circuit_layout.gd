@@ -405,15 +405,33 @@ func flat_half_width(i: int, side: float) -> float:
 ## the radius of the bend towards its centre - a 35 m wide run-off on the inside of a 14 m hairpin
 ## turns inside out. The offset is therefore kept to 80% of that radius on the inside.
 func safe_offset(i: int, off: float) -> float:
-	var k := curvature[i % curvature.size()]
+	return _fold(off, curvature[i % curvature.size()])
+
+
+func _fold(off: float, k: float) -> float:
 	if off * k >= 0.0 or absf(k) < 0.000001:
 		return off          # away from the centre of the bend: never folds
 	return signf(off) * minf(absf(off), 0.8 / absf(k))
 
 
-## Same, at a lap distance.
+## Same, at a lap distance - continuous (sample_along(), not the nearest point: see dir_at for why a
+## plain nearest-sample lookup visibly stutters for anything moving along the track, here a car
+## placed with a lateral offset that is itself continuous, such as the racing line).
 func safe_offset_at(lap_s: float, off: float) -> float:
-	return safe_offset(index_at(lap_s), off)
+	return _fold(off, sample_along(curvature, lap_s))
+
+
+## Linear interpolation of a value given per centre point (curvature, a precomputed lateral-offset
+## profile...) at a lap distance, the same way point_at() blends position. Looking such an array up
+## by the nearest point only (as index_at() does) is fine for something built once from it, but it
+## visibly stutters anything placed from it every frame while moving - see dir_at.
+func sample_along(arr: PackedFloat32Array, lap_s: float) -> float:
+	var n := arr.size()
+	var f := fposmod(lap_s, lap_length) / maxf(lap_length, 0.001) * n
+	var i := int(f) % n
+	var j := (i + 1) % n
+	var t := f - int(f)
+	return lerpf(arr[i], arr[j], t)
 
 
 ## Distance (m) from (x, z) to the nearest part of the track, anywhere on the lap (a few metres of
@@ -494,10 +512,23 @@ func point_at(lap_s: float) -> Vector3:
 	return Vector3(p.x, lerpf(surface[i], surface[j], t), p.y)
 
 
-## Unit direction of travel (xz) at a lap distance.
+## Unit direction of travel (xz) at a lap distance: slerped between the tangents of the two centre
+## points around it, the same way point_at() blends their position. The tangent AT a sample point
+## jumps from one point to the next (a car's heading - or anything placed with a lateral offset,
+## which turns with it - would otherwise snap by several degrees every `step` metres: on a tight
+## corner, measured up to 12 deg per snap, a visible stutter however smoothly the car itself moves).
 func dir_at(lap_s: float) -> Vector2:
 	var n := centre.size()
-	var i := int(fposmod(lap_s, lap_length) / maxf(lap_length, 0.001) * n) % n
+	var f := fposmod(lap_s, lap_length) / maxf(lap_length, 0.001) * n
+	var i := int(f) % n
+	var j := (i + 1) % n
+	var t := f - int(f)
+	return _tangent(i).slerp(_tangent(j), t).normalized()
+
+
+## Tangent of the centre line at a sample point (not interpolated - see dir_at).
+func _tangent(i: int) -> Vector2:
+	var n := centre.size()
 	return (centre[(i + 1) % n] - centre[(i - 1 + n) % n]).normalized()
 
 

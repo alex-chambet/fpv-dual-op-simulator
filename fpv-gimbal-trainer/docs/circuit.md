@@ -226,6 +226,41 @@ deux points de passage, et rasait ainsi le toit de la grande tribune. Sur 40 vol
 (121 km) : 1 traversée d'un objet dessiné et 401 images à moins de 2 m **avant**, **aucune** après ;
 54 % du temps en tronçons bas (59 % avant), accélération max inchangée (3,6 m/s²).
 
+## Les voitures du bac à sable saccadaient en roulant
+
+`CircuitTraffic._place()` recalcule chaque image la position et le cap d'une voiture à partir de
+`CircuitLayout.dir_at(s)` / `normal_at(s)` : la direction de la piste à sa distance de tour `s`.
+Cette fonction ne regardait que le point échantillonné le plus proche (un tous les 3 m) au lieu
+d'interpoler entre les deux points autour de `s`, contrairement à `point_at()` qui, elle,
+interpole bien la position. Direction et cap **sautaient donc d'un coup** à chaque point
+échantillonné, pendant que la position elle-même avançait sans à-coup : mesuré, jusqu'à 12° d'un
+coup dans l'épingle la plus serrée, **au même endroit du tour à chaque tour, quelle que soit la
+vitesse** - la signature d'un saut au lieu d'un mouvement.
+
+Corrigé en interpolant aussi la direction (`CircuitLayout.dir_at`), par slerp entre les deux
+directions voisines, avec le même paramètre `t` que `point_at()`. Vérifié : le saut de cap devient
+proportionnel à la vitesse (1 à 3° par image selon la vitesse, comme un virage qui tourne
+réellement) au lieu d'un saut fixe de 12° indépendant d'elle.
+
+**Un second saut, plus gros, restait dans les virages** : la trajectoire de course de chaque voiture
+(`_offsets`, à quel point du bord à bord elle roule) et le calcul qui la garde hors de l'intérieur
+d'un virage serré (`safe_offset`) étaient lus eux aussi au point échantillonné le plus proche - pas
+interpolés. Dans un virage, où cette trajectoire traverse la piste sur plusieurs mètres en peu de
+distance, cela sautait d'un coup **jusqu'à 1,33 m** (mesuré, à la corde 312 m) - indépendamment de la
+vitesse, et c'est lui le plus gros, surtout visible quand une voiture balaie large une partie du
+virage (ce que l'utilisateur a décrit comme « en drift »). Corrigé en ajoutant
+`CircuitLayout.sample_along()` (même interpolation que `point_at()`, pour n'importe quelle valeur
+donnée point par point : trajectoire, courbure) et en l'utilisant pour la position latérale de
+`CircuitTraffic._place()` et pour le roulis (`_yaw_rate`, qui avait le même défaut, jusqu'à 0,85°
+d'un coup). Vérifié : le saut latéral redevient proportionnel à la vitesse (0,11 à 0,33 m selon la
+vitesse) au lieu d'un saut fixe de 1,33 m ; sur 2 minutes de trafic réel (9 voitures), écart
+latéral/avancement maximal 0,13 m sur 64 755 mesures, le saut de cap plafonne à 1,26°. Dépassements
+et distances entre voitures inchangés.
+
+La voiture unique du niveau d'entraînement (`ArchetypeCircuit`) ne roule pas sur cette trajectoire
+image par image : son tracé vient de `CircuitLayout.racing_line()`, déjà rééchantillonné et lissé
+d'avance, donc elle n'avait aucun de ces deux défauts.
+
 ## Le sol sous la piste est creusé exprès
 
 Le terrain est dessiné en triangles de 6 m de côté et, entre ses sommets, il interpole en ligne
