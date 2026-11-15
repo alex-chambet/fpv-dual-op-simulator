@@ -63,6 +63,14 @@ func _clearance_fn() -> Callable:
 	return Callable(env, "clearance") if env != null else Callable()
 
 
+func _pilot_floor_fn() -> Callable:
+	return Callable(env, "pilot_floor") if env != null else Callable()
+
+
+func pilot_hits_occluders() -> bool:
+	return env.pilot_hits_occluders() if env != null else true
+
+
 func _occluder_kind() -> String:
 	return env.occluder_kind() if env != null else "trees"
 

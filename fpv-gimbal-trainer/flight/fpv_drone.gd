@@ -60,7 +60,8 @@ var heading := 0.0                 ## yaw of the drone (rad), used by the gimbal
 
 ## Callable(x, z) -> height below which the drone cannot go (ground, tunnel hull...). Invalid = flat ground at 0.
 var ground_fn := Callable()
-## Callable(position: Vector3, radius: float) -> Vector3: horizontal push that gets the drone out of an obstacle.
+## Callable(position: Vector3, radius: float) -> Vector3: push that gets the drone out of an obstacle (horizontal
+## off a wall, upwards on top of a roof - which then counts as ground - or downwards under a beam).
 var obstacle_fn := Callable()
 
 var _since_crash := 10.0
@@ -151,29 +152,36 @@ func _collide(h: float) -> void:
 					_crash()
 				velocity -= nrm * vn * 1.2
 				omega *= 0.5
+			if nrm.y > 0.7:  # pushed up: the drone is on top of the obstacle (a roof), which is ground to it
+				_rest(h)
 	# ground
 	var gy := 0.0
 	if ground_fn.is_valid():
 		gy = float(ground_fn.call(position.x, position.z))
 	if position.y < gy + radius:
 		position.y = gy + radius
-		grounded = true
 		if velocity.y < 0.0:
 			var hard := -velocity.y > crash_speed or (Basis(orientation).y.y < 0.3 and velocity.length() > crash_speed)
 			if hard:
 				_crash()
 			velocity.y = -velocity.y * 0.1 if hard else 0.0
-		var fr := exp(-5.0 * h)
-		velocity.x *= fr
-		velocity.z *= fr
-		omega *= exp(-8.0 * h)
-		if velocity.length() < 2.0:  # lying on the ground: put the drone back on its feet (no turtle mode)
-			var level := Basis.looking_at(_flat_forward(), Vector3.UP).get_rotation_quaternion()
-			orientation = orientation.slerp(level, clampf(2.0 * h, 0.0, 1.0)).normalized()
+		_rest(h)
 	# ceiling
 	if position.y > max_height:
 		position.y = max_height
 		velocity.y = minf(velocity.y, 0.0)
+
+
+## The drone touches what it stands on (the ground, a roof): it rubs, and gets back on its feet.
+func _rest(h: float) -> void:
+	grounded = true
+	var fr := exp(-5.0 * h)
+	velocity.x *= fr
+	velocity.z *= fr
+	omega *= exp(-8.0 * h)
+	if velocity.length() < 2.0:  # lying on the ground: put the drone back on its feet (no turtle mode)
+		var level := Basis.looking_at(_flat_forward(), Vector3.UP).get_rotation_quaternion()
+		orientation = orientation.slerp(level, clampf(2.0 * h, 0.0, 1.0)).normalized()
 
 
 func _flat_forward() -> Vector3:

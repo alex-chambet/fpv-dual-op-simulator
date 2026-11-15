@@ -27,7 +27,7 @@ func setup(s: ScenarioBase) -> void:
 	s.add_child(self)
 	drone = FpvDrone.new()
 	add_child(drone)
-	drone.ground_fn = s._clearance_fn()
+	drone.ground_fn = s._pilot_floor_fn()
 	drone.obstacle_fn = Callable(self, "obstacle_push")
 	# Start near the planned drone position, nose towards the subject
 	var start := s.drone_pts[0]
@@ -35,6 +35,14 @@ func setup(s: ScenarioBase) -> void:
 	if drone.ground_fn.is_valid():
 		gy = float(drone.ground_fn.call(start.x, start.z))
 	start.y = gy + drone.radius  # takes off from the ground, like a real quad
+	# ...and never from inside a building: the planned path flies over them, its start may be above one
+	for _i in 8:
+		var out := obstacle_push(start, drone.radius + 0.5)
+		if out.length() < 0.001:
+			break
+		start += Vector3(out.x, 0.0, out.z) * 1.05
+		if drone.ground_fn.is_valid():
+			start.y = float(drone.ground_fn.call(start.x, start.z)) + drone.radius
 	var look := s.subject_pts[mini(s.subject_pts.size() - 1, 12)] - start
 	drone.reset_to(start, look)
 	# The gimbal follows the heading of the drone; the body of the drone is placed by us, not by the path
@@ -152,6 +160,8 @@ func results() -> Dictionary:
 
 func _build_grid() -> void:
 	_grid_built = true
+	if not scn.pilot_hits_occluders():
+		return  # rough stand-ins for the line of sight: the real shapes come from dynamic_push
 	for i in scn.occ_pos.size():
 		var key := Vector2i(floori(scn.occ_pos[i].x / 8.0), floori(scn.occ_pos[i].z / 8.0))
 		if not _grid.has(key):
@@ -159,7 +169,7 @@ func _build_grid() -> void:
 		_grid[key].append(i)
 
 
-## Horizontal push getting a sphere of radius r at `pos` out of the obstacles of the scenario.
+## Push getting a sphere of radius r at `pos` out of the obstacles of the scenario (horizontal for the occluders).
 func obstacle_push(pos: Vector3, r: float) -> Vector3:
 	if not _grid_built:
 		_build_grid()

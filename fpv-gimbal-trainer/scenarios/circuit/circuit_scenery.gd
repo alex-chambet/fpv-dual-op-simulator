@@ -27,6 +27,15 @@ var rng := RandomNumberGenerator.new()
 ## Obstacles of the world: {c: Vector3 (ground centre), yaw, hx, hz, h}. Used by the sandbox drone
 ## and, through EnvCircuit, by the line-of-sight tests.
 var boxes: Array[Dictionary] = []
+## What the piloted drone (2-player mode) really hits: the shapes that are drawn and nothing more
+## (see solid_push). Each is an oriented box {c: Vector3 (centre of its base, which is in the air for
+## a beam or a roof), yaw, hx, hz, h}, plus `air` when the drone can also come out underneath, plus
+## `h0` for the tiers of a grandstand: the height on the -x side (first row), `h` being the height
+## on the +x side (last row).
+var solids: Array[Dictionary] = []
+var _solid_grid := {}
+const SOLID_CELL := 16.0
+const SOLID_REACH := 1.0     ## largest drone radius solid_push is built for, m
 var mask: GroundMask
 var terrain_material: Material
 var terrain_rect := Rect2()
@@ -379,7 +388,8 @@ func _gantry(s: float) -> void:
 	var top := maxf(left.y, right.y) + 8.0
 	for p in [left, right]:
 		_box_at(Vector3(1.0, top - p.y, 1.0), Vector3(p.x, (p.y + top) * 0.5, p.z), steel)
-		_obstacle(Vector3(p.x, p.y, p.z), 0.0, 0.8, 0.8, top - p.y)
+		_obstacle(Vector3(p.x, p.y, p.z), 0.0, 0.8, 0.8, top - p.y, false)
+		_solid(Vector3(p.x, p.y, p.z), 0.0, 0.5, 0.5, top - p.y)
 	var mid := (left + right) * 0.5
 	var width := left.distance_to(right)
 	var dir := layout.dir_at(s)
@@ -389,6 +399,9 @@ func _gantry(s: float) -> void:
 	var lights := _box_at(Vector3(width * 0.45, 0.8, 0.35), Vector3(mid.x, top - 2.1, mid.z), dark)
 	lights.rotation.y = yaw
 	_top_box(Vector3(mid.x, 0.0, mid.z), width * 0.6, 2.0, top)
+	# the piloted drone flies under the beam, and hits it
+	_solid(Vector3(mid.x, top - 1.5, mid.z), yaw, width * 0.5, 0.45, 1.5, true)
+	_solid(Vector3(mid.x, top - 2.5, mid.z), yaw, width * 0.225, 0.175, 1.0, true)
 
 
 ## The pit lane: a parallel strip of asphalt with its white lines, behind the pit wall.
@@ -616,7 +629,12 @@ func _castle() -> void:
 	_box_at(Vector3(7.0, 5.0, 7.0), Vector3(c.x, g + 20.6, c.y), roof)
 	for dx in [-14.0, 15.0]:
 		_box_at(Vector3(7.0, 9.0, 11.0), Vector3(c.x + dx, g + 4.5, c.y + 6.0), stone)
-	_obstacle(Vector3(c.x, g, c.y), 0.0, 14.0, 10.0, 23.0)
+	_obstacle(Vector3(c.x, g, c.y), 0.0, 14.0, 10.0, 23.0, false)
+	_solid(Vector3(c.x, g, c.y), 0.0, 4.5, 4.5, 16.7)
+	_solid(Vector3(c.x, g + 16.7, c.y), 0.0, 5.2, 5.2, 1.4, true)
+	_solid(Vector3(c.x, g + 18.1, c.y), 0.0, 3.5, 3.5, 5.0)
+	for dx in [-14.0, 15.0]:
+		_solid(Vector3(c.x + dx, g, c.y + 6.0), 0.0, 3.5, 5.5, 9.0)
 
 
 ## Which side of the track is the outside of the corner at this lap distance (+1 = right).
@@ -712,15 +730,51 @@ func _grandstand(z: Dictionary) -> void:
 			var roof_mi := _box_at(Vector3(rows * 1.1, 0.3, d.length() * 1.04),
 					Vector3(mid.x, base_y + roof_h, mid.z), white)
 			roof_mi.rotation.y = atan2(d.x, d.z)
+			_solid(Vector3(mid.x, base_y + roof_h - 0.15, mid.z), atan2(d.x, d.z), rows * 0.55, d.length() * 0.52, 0.3, true)
 			var post := layout.side_point((sa + sb) * 0.5, side * (back + rows * 0.5))
 			_box_at(Vector3(0.3, roof_h, 0.3), Vector3(post.x, base_y + roof_h * 0.5, post.z), grey)
-	# the stand blocks the drone and the line of sight
+	# the stand blocks the line of sight and keeps the automatic drone above it (rough blocks)
 	var marks := maxi(3, roundi(length / 18.0))
 	for i in marks:
 		var p := layout.side_point(lerpf(s0, s1, (i + 0.5) / marks), side * (base_off + rows * 0.75))
-		_obstacle(p, 0.0, rows * 0.9, length / marks * 0.5, top + (3.5 if roof else 0.0))
+		_obstacle(p, 0.0, rows * 0.9, length / marks * 0.5, top + (3.5 if roof else 0.0), false)
+	_stand_solids(s0, s1, side, rows, base_off, steps)
 	host.add_child(crowd)
 	crowd.build()
+
+
+## What the piloted drone hits of a grandstand: its tiers, as one ramp per segment of the stand (the
+## same `steps` segments as the tiers that are drawn, so the ramps follow the bend of the track the
+## way they do) - low at the first row, high at the last one. Each ramp passes through the foot of
+## the steps and is as long as the shortest row, so it never stands out of what is drawn (the tiers
+## are 1.5 m deep and 0.95 m high, the first one rising 0.5 m above the ground).
+func _stand_solids(s0: float, s1: float, side: float, rows: int, base_off: float, steps: int) -> void:
+	var first := base_off
+	var last := base_off + (rows - 1) * 1.5
+	for i in steps:
+		var sa := lerpf(s0, s1, float(i) / steps)
+		var sb := lerpf(s0, s1, float(i + 1) / steps)
+		var fa := layout.side_point(sa, side * first)
+		var fb := layout.side_point(sb, side * first)
+		var ba := layout.side_point(sa, side * last)
+		var bb := layout.side_point(sb, side * last)
+		var along := (fb - fa + bb - ba) * 0.5
+		var across := (ba + bb - fa - fb) * 0.5       # from the first row to the last one
+		across.y = 0.0
+		if along.length() < 0.1 or across.length() < 0.1:
+			continue
+		var out := across.normalized()
+		var front := (fa + fb) * 0.5 - out * 0.75     # front edge of the first row
+		var back := (ba + bb) * 0.5 + out * 0.75      # back edge of the last row
+		var base := minf(front.y, back.y)
+		var centre := (front + back) * 0.5
+		# +x of the box points away from the track, +z along the stand
+		solids.append({"c": Vector3(centre.x, base, centre.z), "yaw": atan2(-out.z, out.x),
+				"hx": (across.length() + 1.5) * 0.5,
+				"hz": minf(fa.distance_to(fb), ba.distance_to(bb)) * 0.5,
+				"h0": (fa.y + fb.y) * 0.5 - base + 0.5 - 0.95,
+				"h": (ba.y + bb.y) * 0.5 - base + 0.5 + (rows - 1) * 0.95})
+		_index_solid(solids.size() - 1)
 
 
 ## Smallest distance from any part of the track to the front of a stand built on that side, m.
@@ -749,7 +803,8 @@ func _bridge(s: float) -> void:
 	var yaw := atan2(dir.x, dir.y)
 	for p in [left, right]:
 		_box_at(Vector3(1.6, top - p.y, 1.6), Vector3(p.x, (p.y + top) * 0.5, p.z), dark)
-		_obstacle(Vector3(p.x, p.y, p.z), 0.0, 1.2, 1.2, top - p.y)
+		_obstacle(Vector3(p.x, p.y, p.z), 0.0, 1.2, 1.2, top - p.y, false)
+		_solid(Vector3(p.x, p.y, p.z), 0.0, 0.8, 0.8, top - p.y)
 	var mid := (left + right) * 0.5
 	var width := left.distance_to(right)
 	var span := _box_at(Vector3(width, 2.6, 1.6), Vector3(mid.x, top - 1.3, mid.z), yellow)
@@ -757,6 +812,9 @@ func _bridge(s: float) -> void:
 	var walk := _box_at(Vector3(width, 0.3, 2.6), Vector3(mid.x, top - 2.8, mid.z), dark)
 	walk.rotation.y = yaw
 	_top_box(Vector3(mid.x, 0.0, mid.z), width * 0.55, 2.2, top)
+	# the piloted drone flies under the bridge, and hits it
+	_solid(Vector3(mid.x, top - 2.6, mid.z), yaw, width * 0.5, 0.8, 2.6, true)
+	_solid(Vector3(mid.x, top - 2.95, mid.z), yaw, width * 0.5, 1.3, 0.35, true)
 
 
 ## Stacks of tyres in front of the guardrail where a corner is fastest and its run-off widest: the
@@ -864,11 +922,39 @@ func _multimesh(mesh: Mesh, xforms: Array[Transform3D], shadows := true,
 	MeshBatch.add(host, mesh, xforms, {"shadows": shadows, "colours": colours})
 
 
-## Registers a box obstacle (drone collisions, lines of sight) and raises the structure height field.
-func _obstacle(ground_pos: Vector3, yaw: float, hx: float, hz: float, h: float) -> void:
+## Registers a box obstacle (sandbox drone, lines of sight) and raises the structure height field.
+## `solid` is false when the box is only a rough stand-in for what is drawn (a grandstand, the legs
+## of a bridge...): the caller then gives the real shapes to _solid() itself.
+func _obstacle(ground_pos: Vector3, yaw: float, hx: float, hz: float, h: float, solid := true) -> void:
 	boxes.append({"c": ground_pos, "yaw": yaw, "hx": hx, "hz": hz, "h": h})
 	if h >= LOW_STRUCTURE:
 		_top_box(ground_pos, hx, hz, ground_pos.y + h)
+	if solid:
+		_solid(ground_pos, yaw, hx, hz, h)
+
+
+## Registers a shape the piloted drone hits (see `solids`): a box standing on `base`, in the air
+## (`air`) for a beam or a roof the drone can also fly under.
+func _solid(base: Vector3, yaw: float, hx: float, hz: float, h: float, air := false) -> void:
+	var s := {"c": base, "yaw": yaw, "hx": hx, "hz": hz, "h": h}
+	if air:
+		s["air"] = true
+	solids.append(s)
+	_index_solid(solids.size() - 1)
+
+
+func _index_solid(idx: int) -> void:
+	var s: Dictionary = solids[idx]
+	var c: Vector3 = s.c
+	var r := Vector2(float(s.hx), float(s.hz)).length() + SOLID_REACH
+	for cx in range(floori((c.x - r) / SOLID_CELL), floori((c.x + r) / SOLID_CELL) + 1):
+		for cz in range(floori((c.z - r) / SOLID_CELL), floori((c.z + r) / SOLID_CELL) + 1):
+			var key := Vector2i(cx, cz)
+			if not _solid_grid.has(key):
+				_solid_grid[key] = PackedInt32Array()
+			var cell: PackedInt32Array = _solid_grid[key]
+			cell.append(idx)
+			_solid_grid[key] = cell
 
 
 func _top_box(ground_pos: Vector3, hx: float, hz: float, top: float) -> void:
@@ -919,6 +1005,54 @@ func push(pos: Vector3, radius: float) -> Vector3:
 		if p.length() > best_d:
 			best_d = p.length()
 			best = p
+	return best
+
+
+## Push getting a sphere (the piloted drone of the 2-player mode, radius <= SOLID_REACH) out of the
+## structures as they are drawn (`solids`): through the nearest face, the top included - the drone
+## lands on a roof and rides up the tiers of a grandstand - and the underside of a beam or a roof.
+func solid_push(pos: Vector3, radius: float) -> Vector3:
+	var key := Vector2i(floori(pos.x / SOLID_CELL), floori(pos.z / SOLID_CELL))
+	if not _solid_grid.has(key):
+		return Vector3.ZERO
+	var cell: PackedInt32Array = _solid_grid[key]
+	var best := Vector3.ZERO
+	var best_d := 0.0
+	for idx in cell:
+		var b: Dictionary = solids[idx]
+		var c: Vector3 = b.c
+		var h: float = b.h
+		if pos.y >= c.y + h + radius or pos.y <= c.y - radius:
+			continue
+		var yaw: float = b.yaw
+		var local := Vector3(pos.x - c.x, 0.0, pos.z - c.z).rotated(Vector3.UP, -yaw)
+		var bx: float = b.hx
+		var dx := bx + radius - absf(local.x)
+		var dz := float(b.hz) + radius - absf(local.z)
+		if dx <= 0.0 or dz <= 0.0:
+			continue
+		# out through the nearest wall...
+		var depth := minf(dx, dz)
+		var out := Vector3(signf(local.x) * dx, 0.0, 0.0) if dx < dz else Vector3(0.0, 0.0, signf(local.z) * dz)
+		# ...or through the top: flat, or the slope of the tiers of a grandstand
+		var up := Vector3.UP
+		var above := pos.y - (c.y + h)
+		if b.has("h0") and local.x < bx:
+			var h0: float = b.h0
+			up = Vector3(h0 - h, 2.0 * bx, 0.0).normalized()   # normal of the slope, towards the track
+			above = Vector3(local.x + bx, pos.y - (c.y + h0), 0.0).dot(up)
+		if above >= radius:
+			continue   # over the tiers, clear of them
+		if radius - above < depth:
+			depth = radius - above
+			out = up * depth
+		# ...or underneath, for a beam or a roof
+		if b.has("air") and pos.y - (c.y - radius) < depth:
+			depth = pos.y - (c.y - radius)
+			out = Vector3.DOWN * depth
+		if depth > best_d:
+			best_d = depth
+			best = out.rotated(Vector3.UP, yaw)
 	return best
 
 

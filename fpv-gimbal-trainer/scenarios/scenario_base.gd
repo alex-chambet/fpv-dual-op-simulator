@@ -139,6 +139,17 @@ func _clearance_fn() -> Callable:
 	return _ground_fn()
 
 
+## Override: Callable(x, z) -> height the piloted drone of the 2-player mode stands on.
+func _pilot_floor_fn() -> Callable:
+	return _clearance_fn()
+
+
+## Override: false when the occluders are only rough stand-ins for the line of sight, which the piloted
+## drone must not hit (dynamic_push then holds the real shapes).
+func pilot_hits_occluders() -> bool:
+	return true
+
+
 ## Context of the drone planner (see MovementPlanner) for the current session.
 func _planner_context() -> Dictionary:
 	var ctx := {
@@ -169,7 +180,8 @@ func _default_config() -> SessionConfig:
 	return null
 
 
-## Override: horizontal push getting a drone sphere out of moving obstacles (traffic...); zero = none.
+## Override: push getting the piloted drone (a sphere) out of the obstacles the occluders do not describe
+## (traffic, structures with a shape of their own...); zero = none.
 func dynamic_push(_pos: Vector3, _radius: float) -> Vector3:
 	return Vector3.ZERO
 

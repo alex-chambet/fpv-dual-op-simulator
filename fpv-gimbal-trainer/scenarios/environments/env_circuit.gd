@@ -43,6 +43,19 @@ func clearance(x: float, z: float) -> float:
 	return scenery.clearance(x, z) if scenery != null else ground(x, z)
 
 
+## The piloted drone of the 2-player mode flies over the real ground: clearance() is a coarse grid
+## (8 m cells, solid from the ground up under the gantry and the bridge) made to keep the automatic
+## drone above the structures. To the pilot it was invisible floors in mid-air.
+func pilot_floor(x: float, z: float) -> float:
+	return ground(x, z)
+
+
+## The occluders are one fat cylinder per structure, good enough for the line of sight only: the
+## piloted drone hits the real shapes instead (dynamic_push).
+func pilot_hits_occluders() -> bool:
+	return false
+
+
 func occluder_kind() -> String:
 	return "walls"
 
@@ -73,8 +86,9 @@ func far_scenery() -> Dictionary:
 		"canopy": {"r0": 330.0, "height": 15.0, "colour": Color(0.08, 0.22, 0.1), "grove": 0.5}}
 
 
+## The structures as they are drawn: buildings, tiers and roofs of the grandstands, gantry, bridge.
 func dynamic_push(pos: Vector3, radius: float) -> Vector3:
-	return scenery.push(pos, radius) if scenery != null else Vector3.ZERO
+	return scenery.solid_push(pos, radius) if scenery != null else Vector3.ZERO
 
 
 func hud_extra() -> String:

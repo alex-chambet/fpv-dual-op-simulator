@@ -94,12 +94,26 @@ func clearance(x: float, z: float) -> float:
 	return ground(x, z)
 
 
+## Height the piloted drone of the 2-player mode stands on at (x, z). The clearance by default; an
+## environment whose clearance is only a rough envelope for the planner gives the real ground here,
+## and makes its structures solid in dynamic_push().
+func pilot_floor(x: float, z: float) -> float:
+	return clearance(x, z)
+
+
+## False when the occluders registered by this environment are only rough stand-ins for the line of
+## sight: the piloted drone then goes through them, and dynamic_push() holds the real shapes.
+func pilot_hits_occluders() -> bool:
+	return true
+
+
 ## Mean speed of the subject (m/s), to turn distances into times.
 func nominal_speed() -> float:
 	return (float(params.get("speed_min", 8.0)) + float(params.get("speed_max", 12.0))) * 0.5
 
 
-## Horizontal push getting a drone sphere out of the moving obstacles of the world (traffic...).
+## Push getting the piloted drone (a sphere) out of the obstacles the occluders do not describe: the
+## moving ones (traffic...), or structures with a shape of their own.
 func dynamic_push(_pos: Vector3, _radius: float) -> Vector3:
 	return Vector3.ZERO
 

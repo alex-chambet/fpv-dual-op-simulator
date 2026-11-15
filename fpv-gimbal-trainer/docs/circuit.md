@@ -176,6 +176,47 @@ Les tribunes et le bâtiment des stands sont par ailleurs reculés à **au moins
 drone de poursuite travaille jusqu'à 35 m de la piste, et une tribune plus près l'obligerait à
 passer **au-dessus du toit** — en perdant la voiture de vue.
 
+## Ce que heurte le drone piloté (mode 2 joueurs)
+
+Le décor est décrit trois fois, pour trois usages, et il ne faut pas les mélanger :
+
+| Description | Sert à | Précision |
+|---|---|---|
+| `CircuitScenery.clearance()` (grille `_tops`, cases de 8 m) | garder le **drone automatique** au-dessus des structures (planificateur) | enveloppe grossière : chaque structure y devient un carré, et le portique et le pont Dunlop un bloc plein jusqu'au sol |
+| `CircuitScenery.boxes` → cylindres d'occlusion | **ligne de vue** (sujet caché), bac à sable | une boîte ou un cylindre par structure |
+| `CircuitScenery.solids` + `solid_push()` | **collisions du drone piloté** | les formes dessinées, rien de plus |
+
+Le drone piloté utilisait les deux premières. Résultat : des **planchers invisibles en plein air** —
+le drone qui rasait la piste était remonté d'un coup sur la « dalle » de la grille puis freiné comme
+s'il était posé : 9 m au-dessus de la piste sous le pont Dunlop, 8 m sous le portique, 2,4 m sur
+16 m de côté autour de chaque poste de commissaire (jusque sur l'asphalte), et jusqu'à 12 m autour
+des tribunes des derniers virages, à 14 m de l'axe. Il décollait d'ailleurs déjà perché à 8–12 m du
+sol. Relevé en rejouant huit vols enregistrés : plusieurs secondes par tour passées sur ces dalles,
+abordées jusqu'à 86 km/h.
+
+Désormais (`EnvCircuit.pilot_floor`, `pilot_hits_occluders`, `dynamic_push`) :
+
+- le **sol** du drone piloté est le vrai terrain ;
+- il ne heurte que les `solids` : garages des stands, paddock, postes de commissaires, tour du
+  château, jambes **et poutres** du portique et du pont (on passe dessous, on se cogne dedans),
+  **gradins** des tribunes — une rampe par segment de tribune, qui passe par le pied des marches et
+  ne dépasse donc jamais du dessin — et leur **toit** ;
+- la poussée sort par la face la plus proche, **dessus et dessous compris** : le drone se pose sur
+  un toit (qui compte alors comme un sol : frottement, remise à plat) et se cogne sous une poutre.
+
+Les rails, grillages, panneaux, pneus, arbres et le muret des stands ne sont pas solides : la règle
+est qu'une collision sans objet dessiné est un bug, l'inverse une simple tolérance.
+
+Vérifié en comparant chaque poussée aux `BoxMesh` réellement affichés : sur 940 000 points autour
+des 142 solides, **aucune** collision à plus de 0,35 m d'un objet dessiné (pire cas 0,27 m, rayon du
+drone compris) ; sol du pilote = terrain sur 52 000 points à ±60 m de l'axe ; passage sous le
+portique et sous le pont à 1, 3 et 5 m sans contact. `clearance()` et `boxes` n'ont pas changé : le
+drone automatique et la ligne de vue du mode solo sont identiques à avant.
+
+Conséquence : les replays des vols 2 joueurs enregistrés **avant** ce correctif sur le circuit ne
+retombent plus sur la trajectoire d'origine (le replay rejoue les manches, et le drone ne bute plus
+aux mêmes endroits).
+
 ## Le sol sous la piste est creusé exprès
 
 Le terrain est dessiné en triangles de 6 m de côté et, entre ses sommets, il interpole en ligne
