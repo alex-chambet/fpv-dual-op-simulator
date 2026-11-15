@@ -55,6 +55,11 @@ retenu d'une partie à l'autre.
   est elle-même lissée : pas de changement brusque de direction ni de vitesse, virages arrondis, vitesse réduite dans
   les virages serrés. Mesuré sur 10 minutes : accélération max 3,6 m/s², variation d'accélération max environ
   8 m/s³, aucune collision, toute la carte parcourue.
+  Chaque tronçon est vérifié sur la ligne droite **et à l'altitude d'arrivée** : le drone monte ou descend d'emblée
+  (3 m/s) puis vole à plat, donc bien sous la ligne droite quand il redescend d'une traversée haute. Sans cela il
+  passait de temps en temps dans un toit ou une cime : sur 40 vols de 5 minutes en campagne (123 km), 2 traversées
+  avant, aucune après, pour un peu moins de vol bas (13 % du temps sous 16 m au lieu de 18 %) et la même carte
+  parcourue. Sur le circuit, voir [circuit.md](circuit.md).
 - `pedestrians.gd` : villageois qui marchent sur les trottoirs (demi-tour au bout) et petits groupes qui discutent
   sur la place.
 - `sky_traffic.gd` : un **avion** léger (hélice qui tourne) et un **hélicoptère** qui volent dans le ciel.

@@ -45,8 +45,10 @@ func grass_params() -> Dictionary:
 	return scenery.grass_params()
 
 
+## The structures as they are drawn (CircuitScenery.solids): the drone lands on the roofs, flies
+## under the gantry and the bridge and hits their beams; the autopilot keeps clear of all of it.
 func push(pos: Vector3, r: float) -> Vector3:
-	return scenery.push(pos, r)
+	return scenery.solid_push(pos, r)
 
 
 ## Where the autopilot may wander: the circuit and a margin around it, all over the built terrain.

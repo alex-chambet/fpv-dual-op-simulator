@@ -180,7 +180,11 @@ func _road_leg() -> bool:
 	return true
 
 
-## True if the straight leg a -> b is clear of buildings and trees (radius 5 m) and above the ground.
+## True if the leg a -> b is clear of buildings and trees (radius 5 m) and above the ground. The drone
+## does not fly the straight line: it climbs or descends at once (up to 3 m/s) and then flies level at
+## the height of b, well below the line when it comes down from a high leg. So the level line at the
+## height of b is checked as well - without it, a drone coming down to a leg along the circuit skimmed
+## the roof of a grandstand that the straight line passed 10 m above.
 func _clear(a: Vector3, b: Vector3, radius := 5.0) -> bool:
 	var len := a.distance_to(b)
 	var steps := maxi(2, int(len / 4.0))
@@ -191,4 +195,8 @@ func _clear(a: Vector3, b: Vector3, radius := 5.0) -> bool:
 		var push_out: Vector3 = world.push(p, radius)
 		if push_out.length() > 0.0:
 			return false
+		if absf(p.y - b.y) > 1.0:
+			push_out = world.push(Vector3(p.x, b.y, p.z), radius)
+			if push_out.length() > 0.0:
+				return false
 	return true

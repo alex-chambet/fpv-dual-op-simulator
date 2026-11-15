@@ -24,10 +24,10 @@ const TREE_CLEAR := 26.0     ## no tree within this distance of the guardrails, 
 var host: Node3D
 var layout: CircuitLayout
 var rng := RandomNumberGenerator.new()
-## Obstacles of the world: {c: Vector3 (ground centre), yaw, hx, hz, h}. Used by the sandbox drone
-## and, through EnvCircuit, by the line-of-sight tests.
+## Rough blocks, one per structure: {c: Vector3 (ground centre), yaw, hx, hz, h}. Used, through
+## EnvCircuit, by the line-of-sight tests only - never for collisions.
 var boxes: Array[Dictionary] = []
-## What the piloted drone (2-player mode) really hits: the shapes that are drawn and nothing more
+## What a drone really hits (2-player mode, sandbox): the shapes that are drawn and nothing more
 ## (see solid_push). Each is an oriented box {c: Vector3 (centre of its base, which is in the air for
 ## a beam or a roof), yaw, hx, hz, h}, plus `air` when the drone can also come out underneath, plus
 ## `h0` for the tiers of a grandstand: the height on the -x side (first row), `h` being the height
@@ -922,7 +922,7 @@ func _multimesh(mesh: Mesh, xforms: Array[Transform3D], shadows := true,
 	MeshBatch.add(host, mesh, xforms, {"shadows": shadows, "colours": colours})
 
 
-## Registers a box obstacle (sandbox drone, lines of sight) and raises the structure height field.
+## Registers a rough block (lines of sight) and raises the structure height field.
 ## `solid` is false when the box is only a rough stand-in for what is drawn (a grandstand, the legs
 ## of a bridge...): the caller then gives the real shapes to _solid() itself.
 func _obstacle(ground_pos: Vector3, yaw: float, hx: float, hz: float, h: float, solid := true) -> void:
@@ -985,34 +985,27 @@ func clearance(x: float, z: float) -> float:
 	return maxf(layout.ground(x, z), _top_at(x, z))
 
 
-## Horizontal push getting a sphere out of the structures (sandbox drone).
-func push(pos: Vector3, radius: float) -> Vector3:
+## Push getting a sphere (the piloted drone of the 2-player mode and of the sandbox, or the wider
+## sphere the sandbox autopilot keeps clear) out of the structures as they are drawn (`solids`):
+## through the nearest face, the top included - the drone lands on a roof and rides up the tiers of
+## a grandstand - and the underside of a beam or a roof.
+func solid_push(pos: Vector3, radius: float) -> Vector3:
+	var cx := floori(pos.x / SOLID_CELL)
+	var cz := floori(pos.z / SOLID_CELL)
+	if radius <= SOLID_REACH:
+		return _cell_push(Vector2i(cx, cz), pos, radius)
+	# a sphere wider than the cells were filled for: the cells around as well
+	var span := ceili((radius - SOLID_REACH) / SOLID_CELL)
 	var best := Vector3.ZERO
-	var best_d := 0.0
-	for b in boxes:
-		var c: Vector3 = b.c
-		if pos.y > c.y + float(b.h) + radius or pos.y < c.y - radius:
-			continue
-		var local := Vector3(pos.x - c.x, 0.0, pos.z - c.z).rotated(Vector3.UP, -float(b.yaw))
-		var hx: float = float(b.hx) + radius
-		var hz: float = float(b.hz) + radius
-		if absf(local.x) > hx or absf(local.z) > hz:
-			continue
-		var dx := hx - absf(local.x)
-		var dz := hz - absf(local.z)
-		var push_local := Vector3(signf(local.x) * dx, 0.0, 0.0) if dx < dz else Vector3(0.0, 0.0, signf(local.z) * dz)
-		var p := push_local.rotated(Vector3.UP, float(b.yaw))
-		if p.length() > best_d:
-			best_d = p.length()
-			best = p
+	for gx in range(cx - span, cx + span + 1):
+		for gz in range(cz - span, cz + span + 1):
+			var p := _cell_push(Vector2i(gx, gz), pos, radius)
+			if p.length() > best.length():
+				best = p
 	return best
 
 
-## Push getting a sphere (the piloted drone of the 2-player mode, radius <= SOLID_REACH) out of the
-## structures as they are drawn (`solids`): through the nearest face, the top included - the drone
-## lands on a roof and rides up the tiers of a grandstand - and the underside of a beam or a roof.
-func solid_push(pos: Vector3, radius: float) -> Vector3:
-	var key := Vector2i(floori(pos.x / SOLID_CELL), floori(pos.z / SOLID_CELL))
+func _cell_push(key: Vector2i, pos: Vector3, radius: float) -> Vector3:
 	if not _solid_grid.has(key):
 		return Vector3.ZERO
 	var cell: PackedInt32Array = _solid_grid[key]

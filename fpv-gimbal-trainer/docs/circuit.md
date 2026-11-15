@@ -176,17 +176,17 @@ Les tribunes et le bâtiment des stands sont par ailleurs reculés à **au moins
 drone de poursuite travaille jusqu'à 35 m de la piste, et une tribune plus près l'obligerait à
 passer **au-dessus du toit** — en perdant la voiture de vue.
 
-## Ce que heurte le drone piloté (mode 2 joueurs)
+## Ce que heurte le drone piloté (mode 2 joueurs, bac à sable)
 
 Le décor est décrit trois fois, pour trois usages, et il ne faut pas les mélanger :
 
 | Description | Sert à | Précision |
 |---|---|---|
-| `CircuitScenery.clearance()` (grille `_tops`, cases de 8 m) | garder le **drone automatique** au-dessus des structures (planificateur) | enveloppe grossière : chaque structure y devient un carré, et le portique et le pont Dunlop un bloc plein jusqu'au sol |
-| `CircuitScenery.boxes` → cylindres d'occlusion | **ligne de vue** (sujet caché), bac à sable | une boîte ou un cylindre par structure |
-| `CircuitScenery.solids` + `solid_push()` | **collisions du drone piloté** | les formes dessinées, rien de plus |
+| `CircuitScenery.clearance()` (grille `_tops`, cases de 8 m) | garder le **drone automatique** des sessions au-dessus des structures (planificateur) | enveloppe grossière : chaque structure y devient un carré, et le portique et le pont Dunlop un bloc plein jusqu'au sol |
+| `CircuitScenery.boxes` → cylindres d'occlusion | **ligne de vue** (sujet caché) | un bloc par structure |
+| `CircuitScenery.solids` + `solid_push()` | **collisions** : drone piloté en 2 joueurs, drone et pilote automatique du bac à sable | les formes dessinées, rien de plus |
 
-Le drone piloté utilisait les deux premières. Résultat : des **planchers invisibles en plein air** —
+En 2 joueurs, le drone piloté utilisait les deux premières. Résultat : des **planchers invisibles en plein air** —
 le drone qui rasait la piste était remonté d'un coup sur la « dalle » de la grille puis freiné comme
 s'il était posé : 9 m au-dessus de la piste sous le pont Dunlop, 8 m sous le portique, 2,4 m sur
 16 m de côté autour de chaque poste de commissaire (jusque sur l'asphalte), et jusqu'à 12 m autour
@@ -216,6 +216,15 @@ drone automatique et la ligne de vue du mode solo sont identiques à avant.
 Conséquence : les replays des vols 2 joueurs enregistrés **avant** ce correctif sur le circuit ne
 retombent plus sur la trajectoire d'origine (le replay rejoue les manches, et le drone ne bute plus
 aux mêmes endroits).
+
+Le **bac à sable « Circuit »** (`CircuitWorld.push`) utilise les mêmes `solids` : il n'avait pas de
+plancher invisible (son sol était déjà le terrain), mais ses tribunes étaient des blocs pleins mal
+orientés et ses poutres se traversaient. Son pilote automatique garde 3,5 à 5 m de marge autour de
+ces formes, et vérifie désormais aussi le trajet **à l'altitude d'arrivée** de chaque tronçon
+(`AutoFlight._clear`) : le drone descend d'emblée puis vole à plat, bien sous la ligne droite entre
+deux points de passage, et rasait ainsi le toit de la grande tribune. Sur 40 vols de 5 minutes
+(121 km) : 1 traversée d'un objet dessiné et 401 images à moins de 2 m **avant**, **aucune** après ;
+54 % du temps en tronçons bas (59 % avant), accélération max inchangée (3,6 m/s²).
 
 ## Le sol sous la piste est creusé exprès
 
