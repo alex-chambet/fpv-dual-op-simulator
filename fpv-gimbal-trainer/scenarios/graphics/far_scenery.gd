@@ -12,12 +12,14 @@ const MOUNTAIN_SHADER := """
 shader_type spatial;
 
 uniform sampler2D macro_tex : filter_linear_mipmap, repeat_enable;
-uniform sampler2D detail_tex : filter_linear_mipmap, repeat_enable;
+#ROCK
 uniform vec3 forest : source_color = vec3(0.08, 0.16, 0.07);
 uniform vec3 grass : source_color = vec3(0.3, 0.38, 0.14);
 uniform vec3 rock : source_color = vec3(0.42, 0.4, 0.38);
 uniform float snow_line = 100000.0;
 uniform float tree_line = 100000.0;
+// steepness (1 - normal.y) from which the rock shows
+uniform float rock_slope = 0.24;
 varying vec3 wpos;
 varying vec3 wnrm;
 
@@ -28,31 +30,56 @@ void vertex() {
 
 // relief of the mountains at a scale the mesh cannot hold: ridges and gullies (ridged noise, bumps the normal)
 float ridges(vec2 p) {
-	float a = 1.0 - abs(texture(detail_tex, p * 0.0016).r * 2.0 - 1.0);
-	float b = 1.0 - abs(texture(detail_tex, p * 0.0047 + 0.31).r * 2.0 - 1.0);
+	float a = 1.0 - abs(texture(macro_tex, p * 0.0011).r * 2.0 - 1.0);
+	float b = 1.0 - abs(texture(macro_tex, p * 0.0033 + 0.31).r * 2.0 - 1.0);
 	return a * a * 0.65 + b * b * 0.35;
 }
 
 void fragment() {
 	float m = texture(macro_tex, wpos.xz * 0.00045).r;
-	float d = texture(detail_tex, wpos.xz * 0.004).r;
-	// bumped normal: the ridges run down the slopes (stretched along the fall line)
-	float e = 6.0;
+	float d = texture(macro_tex, wpos.xz * 0.0041 + 0.17).r;
+	// Bumped normal: ridges and gullies of some tens of metres. They come from the smooth macro noise,
+	// sampled 14 m apart: these mountains are 2 to 5 km away, where a pixel is several metres wide, and
+	// a bump finer than the pixel only makes the thresholds below flicker from one pixel to the next -
+	// the rock and the snow then came out as salt and pepper instead of faces and snowfields.
+	float e = 14.0;
 	float r0 = ridges(wpos.xz);
-	vec3 bump = vec3(r0 - ridges(wpos.xz + vec2(e, 0.0)), 0.0, r0 - ridges(wpos.xz + vec2(0.0, e))) * 55.0;
+	vec3 bump = vec3(r0 - ridges(wpos.xz + vec2(e, 0.0)), 0.0, r0 - ridges(wpos.xz + vec2(0.0, e))) * 26.0;
 	float steep0 = 1.0 - wnrm.y;
 	vec3 n = normalize(wnrm + bump * smoothstep(0.05, 0.35, steep0));
 	float slope = 1.0 - n.y;
-	float h = wpos.y + (m - 0.5) * 160.0 + (d - 0.5) * 60.0;
+	// the photographed cliff, at the scale of a whole face (a tile of 380 m) and of its buttresses (90 m)
+	vec3 dn_a;
+	vec3 dn_b;
+	vec2 ph_a = rock_photo(wpos, wnrm, 0.0026, dn_a);
+	vec2 ph_b = rock_photo(wpos + 41.0, wnrm, 0.011, dn_b);
+	float face = (ph_a.x - 1.0) * 0.7 + (ph_b.x - 1.0) * 0.3;
+	// ribs and couloirs running down the steep faces: noise stretched along the height, on the two
+	// vertical planes. The gentle slopes get none (bw: how much of a wall this is).
+	vec2 hw = wnrm.xz * wnrm.xz;
+	float wx = hw.x / (hw.x + hw.y + 1e-5);
+	float rib = mix(texture(macro_tex, vec2(wpos.x * 0.0052, wpos.y * 0.0009)).r,
+			texture(macro_tex, vec2(wpos.z * 0.0052, wpos.y * 0.0009)).r, wx);
+	rib = (rib - 0.5) * smoothstep(0.08, 0.3, steep0);
+	float h = wpos.y + (m - 0.5) * 160.0 + (d - 0.5) * 50.0;
 	vec3 col = mix(forest * (0.7 + 0.6 * d), grass * (0.8 + 0.4 * d), smoothstep(0.45, 0.65, m));
 	col = mix(col, grass * 0.9, smoothstep(tree_line - 80.0, tree_line + 80.0, h));
 	// bare rock on the steep faces and the crests of the ridges, with strata
-	float strata = 0.85 + 0.3 * texture(detail_tex, vec2(wpos.y * 0.02, wpos.x * 0.0007)).r;
-	float rock_w = smoothstep(0.3, 0.5, slope + (d - 0.5) * 0.25 + r0 * 0.12);
-	col = mix(col, rock * (0.7 + 0.45 * d) * strata, rock_w);
-	// snow above the snow line, kept in the gullies and off the steepest faces
-	float snow = smoothstep(snow_line - 60.0, snow_line + 60.0, h) * (1.0 - smoothstep(0.5, 0.7, slope - (1.0 - r0) * 0.15));
-	col = mix(col, vec3(0.92, 0.94, 0.98) * (0.92 + 0.08 * d), snow);
+	float strata = 0.88 + 0.24 * texture(macro_tex, vec2(wpos.y * 0.004, (wpos.x + wpos.z) * 0.0003)).r;
+	// (what decides rock or snow is the shape of the mountain - its real slope, its ribs - and not
+	// the bumped normal, which is only there to catch the light)
+	float slope_m = steep0 + rib * 0.1 + (r0 - 0.5) * 0.03 + face * 0.025;
+	float rock_w = smoothstep(rock_slope, rock_slope + 0.09, slope_m);
+	// (darker than the stone itself: a rock face is full of shadowed cracks no pixel resolves at this distance)
+	float streak = texture(macro_tex, vec2((wpos.x + wpos.z) * 0.011, wpos.y * 0.0016)).r;
+	col = mix(col, rock * 0.72 * pow(mix(1.0, ph_a.x, 0.9) * mix(1.0, ph_b.x, 0.8), 1.5) * strata
+			* (0.72 + 0.56 * streak), rock_w);
+	// snow above the snow line, kept in the gullies and on the ledges, off the steepest faces
+	float snow = smoothstep(snow_line - 70.0, snow_line + 70.0, h + face * 30.0)
+			* (1.0 - smoothstep(rock_slope + 0.01, rock_slope + 0.11, slope_m));
+	col = mix(col, vec3(0.92, 0.94, 0.98) * (0.94 + 0.06 * d), snow);
+	// (snow fills the relief: under it the bumps are only a hint)
+	n = normalize(mix(n, wnrm, snow * 0.7) + (dn_a * 0.7 + dn_b * 0.5) * rock_w * (1.0 - snow * 0.8));
 	ALBEDO = col;
 	ROUGHNESS = mix(0.95, 0.65, snow);
 	SPECULAR = 0.3;
@@ -227,12 +254,15 @@ static func _canopy_material(cp: Dictionary) -> ShaderMaterial:
 static func _mountain_material(hills: Dictionary) -> ShaderMaterial:
 	if _shader == null:
 		_shader = Shader.new()
-		_shader.code = MOUNTAIN_SHADER
+		_shader.code = MOUNTAIN_SHADER.replace("#ROCK", GroundMaterials.ROCK_FN)
 	var m := ShaderMaterial.new()
 	m.shader = _shader
 	m.set_shader_parameter("macro_tex", GroundMaterials.noise("macro"))
-	m.set_shader_parameter("detail_tex", GroundMaterials.noise("detail"))
-	for k in ["forest", "grass", "rock", "snow_line", "tree_line"]:
+	m.set_shader_parameter("rock_pbr", GroundMaterials.detail_map("rock"))
+	# under the snow only the steep faces stay bare, and they show from a gentler slope than a
+	# grassy mountain turns to rock
+	m.set_shader_parameter("rock_slope", 0.1 if float(hills.get("snow_line", 1.0e5)) < 500.0 else 0.24)
+	for k in ["forest", "grass", "rock", "snow_line", "tree_line", "rock_slope"]:
 		if hills.has(k):
 			m.set_shader_parameter(k, hills[k])
 	return m

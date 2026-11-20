@@ -15,22 +15,37 @@ const GROUP := &"vegetation_lod"
 ## Snow on the trees of the current scene (0..1), set by the environment before planting.
 static var snow_cover := 0.0
 
+## The textures come from photographs (assets/foliage/, baked by tools/bake_foliage.gd). They are stored
+## around a fixed mean and multiplied back here, because the colour of a tree is its per-instance tint.
+const TEX_GAIN := 2.1
+const BOUGH_TEX := "res://assets/foliage/spruce_bough.png"
+const LEAVES_TEX := "res://assets/foliage/leaf_cluster.png"
+const BARK_TEX := "res://assets/foliage/bark.jpg"
+
 const LEAF_SHADER := """
 shader_type spatial;
 render_mode cull_disabled;
 
-uniform sampler2D leaf_tex : source_color, filter_linear_mipmap, repeat_disable;
+uniform sampler2D leaf_tex : source_color, filter_linear_mipmap_anisotropic, repeat_disable;
 uniform vec3 tip_tint : source_color = vec3(1.1, 1.15, 0.75);
 uniform float alpha_cut = 0.35;
 uniform float wind_strength = 1.0;
 uniform float snow = 0.0;
+uniform float gain = 2.1;
+// 1 on the boughs of the conifers: the snow lies along the middle of the card and closes it
+uniform float bough = 0.0;
 
 varying vec3 tint;
 varying vec3 vcol;
 varying float up_facing;
+varying vec3 wpos;
 
 void vertex() {
-	tint = INSTANCE_CUSTOM.rgb;
+	// The tints of the scenes were chosen for flat painted cards: a photograph multiplied by them
+	// comes out as green as a toy. Foliage is a dull, dark green; half of the hue is enough.
+	vec3 raw = INSTANCE_CUSTOM.rgb;
+	float lum = dot(raw, vec3(0.3, 0.5, 0.2));
+	tint = mix(vec3(lum), raw, 0.5) * mix(0.82, 0.6, bough);
 	vcol = COLOR.rgb;
 	vec3 root = MODEL_MATRIX[3].xyz;
 	float ph = INSTANCE_CUSTOM.a * 6.2832 + root.x * 0.05 + root.z * 0.03;
@@ -42,6 +57,7 @@ void vertex() {
 	VERTEX.xz += vec2(0.005, 0.0035) * sway * h * h;
 	VERTEX += NORMAL * sin(TIME * (6.5 + 3.0 * gust) + dot(VERTEX, vec3(4.1, 3.3, 5.7))) * (0.014 + 0.03 * gust) * COLOR.g * wind_strength;
 	up_facing = NORMAL.y;
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
 
 void fragment() {
@@ -51,16 +67,31 @@ void fragment() {
 	}
 	vec4 t = texture(leaf_tex, UV);
 	float ao = vcol.r;
-	vec3 col = t.rgb * tint * mix(0.3, 1.0, ao);
-	col = mix(col, col * tip_tint, vcol.g * 0.4);
-	float sn = snow * smoothstep(0.45, 0.85, up_facing + (vcol.b - 0.5) * 0.5) * smoothstep(0.35, 0.7, ao);
-	col = mix(col, vec3(0.9, 0.93, 0.97), sn);
+	vec3 col = t.rgb * gain * tint * mix(0.22, 1.0, ao * ao);
+	col = mix(col, col * tip_tint, vcol.g * 0.35);
+	// far away the mipmaps average the gaps between the needles into the alpha, and a cut-out
+	// tree thins into a skeleton: the cut is lowered with the distance instead
+	float dist = length(VERTEX);
+	float alpha = t.a * (1.0 + 1.6 * smoothstep(12.0, 110.0, dist));
+	// snow: on what faces up, heaped along the middle of a bough (it closes the gaps between the
+	// needles there, and leaves a dark fringe of twigs hanging out underneath)
+	float heap = 1.0 - smoothstep(0.04, 0.3 + 0.1 * vcol.b, abs(UV.x - 0.5));
+	heap *= smoothstep(0.02, 0.2, UV.y) * (1.0 - smoothstep(0.6, 0.92, UV.y));
+	float lump = sin(wpos.x * 5.1 + wpos.z * 3.3) * sin(wpos.z * 4.7 - wpos.y * 2.9);
+	// (the needles themselves hold some snow too: the alpha of the photograph lets it through)
+	heap = mix(1.0, max(smoothstep(0.35, 0.8, heap + 0.3 * lump), 0.45 * t.a * heap), bough);
+	float sn = snow * heap * smoothstep(0.2, 0.7, up_facing + (vcol.b - 0.5) * 0.4) * smoothstep(0.2, 0.55, ao);
+	col = mix(col, vec3(0.86, 0.9, 0.96), sn);
+	alpha = max(alpha, smoothstep(0.3, 0.6, sn) * bough);
 	ALBEDO = col;
-	ALPHA = t.a;
+	ALPHA = alpha;
 	ALPHA_SCISSOR_THRESHOLD = alpha_cut;
-	ROUGHNESS = mix(0.82, 0.7, sn);
-	SPECULAR = 0.3;
-	BACKLIGHT = col * 0.6 * (1.0 - sn);
+	ROUGHNESS = mix(0.75, 0.6, sn);
+	SPECULAR = 0.25;
+	BACKLIGHT = col * 0.75 * (1.0 - sn);
+	if (alpha_cut < -1.0) {  // (never true: keeps the vertex-only uniform alive in this stage, for Metal)
+		ALBEDO *= wind_strength;
+	}
 }
 """
 
@@ -68,7 +99,8 @@ const BARK_SHADER := """
 shader_type spatial;
 
 uniform sampler2D detail_tex : filter_linear_mipmap, repeat_enable;
-uniform vec3 bark : source_color = vec3(0.3, 0.24, 0.18);
+uniform sampler2D bark_tex : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform vec3 bark : source_color = vec3(0.37, 0.33, 0.28);
 varying vec3 opos;
 varying vec3 vcol;
 
@@ -78,18 +110,18 @@ void vertex() {
 }
 
 void fragment() {
-	// vertical furrows: noise stretched along the trunk
+	// the photographed bark wrapped around the trunk, its furrows along it
 	float a = atan(opos.x, opos.z);
+	vec3 photo = texture(bark_tex, vec2(a * 0.3183, opos.y * 0.45)).rgb * 2.0;
 	float n = texture(detail_tex, vec2(a * 0.6, opos.y * 0.12)).r;
-	float f = texture(detail_tex, vec2(a * 2.3 + 0.3, opos.y * 0.5)).r;
-	vec3 col = bark * vcol.r * (0.62 + 0.45 * n) * (0.8 + 0.3 * f);
+	vec3 col = bark * vcol.r * photo * (0.75 + 0.4 * n);
 	if (vcol.b < 0.5) {  // cut wood (ends of logs, stumps): rings
 		float rings = 0.5 + 0.5 * sin(length(opos.xz) * 90.0);
 		col = vec3(0.58, 0.45, 0.3) * (0.85 + 0.15 * rings) * (0.8 + 0.3 * n);
 	}
 	ALBEDO = col;
 	ROUGHNESS = 0.95;
-	SPECULAR = 0.2;
+	SPECULAR = 0.15;
 }
 """
 
@@ -204,14 +236,17 @@ static func leaf_material(needles: bool) -> ShaderMaterial:
 	sh.code = LEAF_SHADER
 	var m := ShaderMaterial.new()
 	m.shader = sh
-	m.set_shader_parameter("leaf_tex", needle_texture() if needles else _leaves_texture())
+	m.set_shader_parameter("leaf_tex", load(BOUGH_TEX if needles else LEAVES_TEX))
+	m.set_shader_parameter("gain", TEX_GAIN)
 	if needles:
-		m.set_shader_parameter("tip_tint", Color(1.08, 1.15, 0.85))
-		m.set_shader_parameter("alpha_cut", 0.3)
+		m.set_shader_parameter("tip_tint", Color(1.16, 1.14, 0.84))
+		m.set_shader_parameter("alpha_cut", 0.32)
+		m.set_shader_parameter("bough", 1.0)
 		_needle_mat = m
 	else:
-		m.set_shader_parameter("tip_tint", Color(1.12, 1.12, 0.7))
+		m.set_shader_parameter("tip_tint", Color(1.15, 1.12, 0.78))
 		m.set_shader_parameter("alpha_cut", 0.4)
+		m.set_shader_parameter("bough", 0.0)
 		_leaf_mat = m
 	return m
 
@@ -223,96 +258,8 @@ static func bark_material() -> ShaderMaterial:
 		_bark_mat = ShaderMaterial.new()
 		_bark_mat.shader = sh
 		_bark_mat.set_shader_parameter("detail_tex", GroundMaterials.noise("detail"))
+		_bark_mat.set_shader_parameter("bark_tex", load(BARK_TEX))
 	return _bark_mat
-
-
-static func _hash(k: int) -> float:
-	var x := (k * 374761393 + 668265263) & 0x7fffffff
-	x = ((x ^ (x >> 13)) * 1274126177) & 0x7fffffff
-	return float(x & 0xffff) / 65535.0
-
-
-## Spruce branch seen from above: a main twig along v, side twigs going out and forward on both sides, each a
-## fuzzy band of needles. The outline (narrow at the base and the tip) comes from the texture, not the card.
-static func needle_texture() -> ImageTexture:
-	var w := 128
-	var h := 256
-	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
-	var twigs := []  # [v start, length, side]
-	for side in 2:
-		for k in 15:
-			var v0 := 0.035 + k * 0.064 + (_hash(k * 5 + side * 31) - 0.5) * 0.03
-			var env := pow(sin(PI * clampf(v0 + 0.12, 0.0, 1.0)), 0.6)
-			twigs.append([v0, env * (0.75 + 0.25 * _hash(k * 3 + side * 17)), side])
-	for y in h:
-		var v := (y + 0.5) / h
-		for x in w:
-			var u := (x + 0.5) / w
-			var s := absf(u - 0.5) * 2.0
-			var side := 1 if u > 0.5 else 0
-			var p := Vector2(s, v)
-			var best := 9.0
-			var along := 0.0
-			for t in twigs:
-				if t[2] != side or absf(float(t[0]) - v) > 0.7:
-					continue
-				var a := Vector2(0.0, t[0])
-				var b := Vector2(t[1], float(t[0]) + float(t[1]) * 0.6)
-				var ab := b - a
-				var k := clampf((p - a).dot(ab) / ab.length_squared(), 0.0, 1.0)
-				var d := p.distance_to(a + ab * k) / (1.0 - 0.45 * k)  # twigs thin out towards their tip
-				if d < best:
-					best = d
-					along = k
-			var fuzz := (_hash(x * 131 + y * 977) - 0.5) * 0.014
-			var alpha := 1.0 - smoothstep(0.009, 0.02, best + fuzz)
-			var stem := 1.0 - smoothstep(0.025, 0.045, s)
-			alpha = maxf(alpha, stem * (1.0 - smoothstep(0.9, 0.97, v)))
-			alpha *= smoothstep(0.0, 0.03, v)
-			var shade := 0.7 + 0.32 * along + 0.18 * (_hash(x * 17 + y * 3) - 0.5)
-			var c := Color(shade * 0.93, shade, shade * 0.86)
-			if stem > 0.5 and best > 0.06:
-				c = Color(0.55, 0.5, 0.4)
-			img.set_pixel(x, y, Color(c.r, c.g, c.b, alpha))
-	img.generate_mipmaps()
-	return ImageTexture.create_from_image(img)
-
-## Cluster of leaves on a disc; the corner (u, v < 0.1) is solid foliage, used by the cores of the crowns.
-static func _leaves_texture() -> ImageTexture:
-	var n := 256
-	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
-	img.fill(Color(0.85, 0.9, 0.8, 0.0))
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 41
-	for i in 70:
-		var ang := rng.randf() * TAU
-		var rad := sqrt(rng.randf()) * 0.4
-		var cx := (0.5 + cos(ang) * rad) * n
-		var cy := (0.5 + sin(ang) * rad) * n
-		var length := rng.randf_range(0.09, 0.15) * n
-		var width := length * rng.randf_range(0.42, 0.55)
-		var rot := rng.randf() * TAU
-		var dir := Vector2(cos(rot), sin(rot))
-		var shade := rng.randf_range(0.72, 1.08)
-		var yellow := rng.randf_range(-0.06, 0.1)
-		var base := Color(shade * (0.9 + yellow), shade, shade * (0.78 - yellow))
-		var r := int(length) + 1
-		for py in range(maxi(0, int(cy) - r), mini(n, int(cy) + r + 1)):
-			for px in range(maxi(0, int(cx) - r), mini(n, int(cx) + r + 1)):
-				var d := Vector2(px + 0.5 - cx, py + 0.5 - cy)
-				var al := d.dot(dir) / (length * 0.5)
-				var ac := d.dot(Vector2(-dir.y, dir.x)) / (width * 0.5)
-				var e := al * al + ac * ac * (1.0 + 0.6 * al)
-				if e < 1.0:
-					var vein := 1.0 - 0.25 * (1.0 - smoothstep(0.0, 0.12, absf(ac)))
-					var light := 0.92 + 0.12 * ac
-					var c := Color(base.r * vein * light, base.g * vein * light, base.b * vein * light, 1.0)
-					img.set_pixel(px, py, c)
-	for py in 24:
-		for px in 24:
-			img.set_pixel(px, py, Color(0.8, 0.86, 0.72, 1.0))
-	img.generate_mipmaps()
-	return ImageTexture.create_from_image(img)
 
 
 # --- Geometry ------------------------------------------------------------------------------------
@@ -343,40 +290,55 @@ static func vert(st: SurfaceTool, p: Vector3, n: Vector3, uv: Vector2, c: Color)
 	st.add_vertex(p)
 
 
+## Spruce: a trunk and whorls of boughs all the way up, long and drooping at the bottom, short and rising
+## at the top. The outline stays inside PropFactory.tree_radius_at (what the scoring counts as hiding).
 static func _conifer(lod: int, variant: int) -> ArrayMesh:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 100 + variant * 7 + lod * 1000
 	var bark := SurfaceTool.new()
 	bark.begin(Mesh.PRIMITIVE_TRIANGLES)
-	cylinder(bark, Vector3.ZERO, Vector3(0, 6.9, 0), 0.2, 0.03, 7 if lod == 0 else 5, Color(1, 1, 1))
+	cylinder(bark, Vector3.ZERO, Vector3(0, 6.9, 0), 0.17, 0.02, 8 if lod == 0 else 5, Color(1, 1, 1))
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var step := 0.3 if lod == 0 else 0.6
-	var y := 1.12 + rng.randf() * 0.1
+	var step := 0.34 if lod == 0 else 0.62
+	var y := 1.15 + rng.randf() * 0.1
 	var ang := rng.randf() * TAU
-	while y < 6.85:
+	while y < 6.7:
 		var t := (y - 1.1) / 5.9
-		var r := 1.95 * (7.1 - y) / 5.95 * rng.randf_range(0.9, 1.06)
-		var count := clampi(roundi(4.0 + 4.5 * r / 1.95), 4, 9) if lod == 0 else clampi(roundi(3.0 + 3.0 * r / 1.95), 3, 6)
+		# a spruce is not a cone: the whorls of a year are longer or shorter than their neighbours
+		var r := 1.95 * (7.1 - y) / 5.95 * rng.randf_range(0.8, 1.04)
+		var count := clampi(roundi(3.6 + 3.6 * r / 1.95), 4, 7) if lod == 0 else clampi(roundi(3.0 + 3.0 * r / 1.95), 3, 6)
 		for b in count:
-			var a := ang + TAU * b / count + rng.randf_range(-0.25, 0.25)
-			var length := r * rng.randf_range(0.88, 1.1) + 0.12
-			var width := length * (1.0 if lod == 0 else 1.15)
-			_branch(st, Vector3(0, y, 0), a, length, width, 0.32 - 0.12 * t, t, rng)
+			var a := ang + TAU * b / count + rng.randf_range(-0.3, 0.3)
+			var length := r * rng.randf_range(0.82, 1.06) + 0.14 + 0.16 * t
+			var yy := y + rng.randf_range(-0.14, 0.14)
+			if lod == 0:
+				_bough(st, Vector3(0, yy, 0), a, length, lerpf(0.62, -0.3, pow(t, 0.8)) + rng.randf_range(-0.08, 0.08),
+						t, rng, t < 0.6)
+			else:
+				_branch(st, Vector3(0, yy, 0), a, length, length * 1.1, 0.5 - 0.5 * t, t, rng)
+		if lod == 0 and r > 0.9:
+			# short boughs close to the trunk: the inside of the tree is not empty
+			for b2 in 3:
+				_bough(st, Vector3(0, y + 0.14, 0), ang + 1.0 + TAU * b2 / 3.0, r * rng.randf_range(0.4, 0.55), 0.3,
+						t * 0.4, rng, false)
 		ang += 2.39996
-		y += step * rng.randf_range(0.85, 1.15)
-	# leader at the top
+		y += step * rng.randf_range(0.85, 1.15) * (1.0 - 0.3 * t if lod == 0 else 1.0)
+	# the last shoots, and the leader: two crossed cards standing on the trunk
 	for k in 3:
-		var a2 := TAU * k / 3.0
-		var side := Vector3(cos(a2), 0, sin(a2)) * 0.22
-		var top := Vector3(0, 7.15, 0)
-		var low := Vector3(0, 6.45, 0)
-		var n := Vector3(cos(a2), 0.4, sin(a2)).normalized()
-		var c0 := Color(0.85, 0.6, 0.5)
+		var a2 := TAU * k / 3.0 + rng.randf()
+		if lod == 0:
+			_bough(st, Vector3(0, 6.55, 0), a2, 0.42, -0.7, 1.0, rng, false)
+		var side := Vector3(cos(a2), 0, sin(a2)) * 0.2
+		var low := Vector3(0, 6.35, 0)
+		var top := Vector3(0, 7.12, 0)
+		var n := Vector3(cos(a2 + 1.57), 0.5, sin(a2 + 1.57)).normalized()
+		var c0 := Color(0.8, 0.5, 0.5)
 		var c1 := Color(1.0, 1.0, 0.5)
-		vert(st, low - side, n, Vector2(0, 0.3), c0)
-		vert(st, top, n, Vector2(0.5, 1.0), c1)
-		vert(st, low + side, n, Vector2(1, 0.3), c0)
+		var quad := [[low - side, Vector2(0.2, 0.62), c0], [low + side, Vector2(0.8, 0.62), c0],
+				[top + side, Vector2(0.8, 1.0), c1], [top - side, Vector2(0.2, 1.0), c1]]
+		for idx in [0, 1, 2, 0, 2, 3]:
+			vert(st, quad[idx][0], n, quad[idx][1], quad[idx][2])
 	var mesh := bark.commit()
 	st.commit(mesh)
 	mesh.surface_set_material(0, bark_material())
@@ -384,7 +346,73 @@ static func _conifer(lod: int, variant: int) -> ArrayMesh:
 	return mesh
 
 
-## One spruce branch: a diamond-shaped card folded along its twig, drooping towards the tip.
+## One spruce bough, detailed. droop > 0 hangs, < 0 rises (top of the tree).
+##  - a strip of three quads curving along its length (it droops, then the tip turns back up), folded like
+##    a roof along its twig: seen from the side a flat card would be a line;
+##  - with `curtain`, the twigs hanging under it: a vertical card along the bough. This is what makes a
+##    spruce a solid mass seen from the ground, and it stays green under the snow.
+static func _bough(st: SurfaceTool, base: Vector3, ang: float, length: float, droop: float, t: float,
+		rng: RandomNumberGenerator, curtain: bool) -> void:
+	var d := Vector3(cos(ang), 0.0, sin(ang))
+	var side := d.cross(Vector3.UP).normalized()
+	var width := length * rng.randf_range(0.52, 0.64)
+	var rnd := rng.randf()
+	var twist := rng.randf_range(-0.14, 0.14)
+	var ao_in := lerpf(0.22, 0.5, t)
+	var ao_out := lerpf(0.8, 1.0, t)
+	var sag := maxf(droop, 0.0)
+	var rows := []   # [mid, left, right, s]
+	for k in 4:
+		var s := k / 3.0
+		var reach := 0.06 + length * s * (1.0 - 0.14 * absf(droop) * s)
+		var h := length * (-droop * pow(s, 1.4) * 0.8 + 0.24 * sag * s * s * s)
+		var mid := base + d * reach + Vector3.UP * h
+		var hang := width * (0.2 + 0.22 * sag)
+		var roll := twist * width * (s - 0.3)
+		var l := mid - side * width * 0.5 - Vector3.UP * (hang + roll)
+		var r := mid + side * width * 0.5 - Vector3.UP * (hang - roll)
+		rows.append([mid, l, r, s])
+	for k in 3:
+		var r0: Array = rows[k]
+		var r1: Array = rows[k + 1]
+		var along := (Vector3(r1[0]) - Vector3(r0[0])).normalized()
+		var up := side.cross(along).normalized()
+		if up.y < 0.0:
+			up = -up
+		for q in [[r0[1], r0[0], r1[0], r1[1], 0.0, 0.5], [r0[0], r0[2], r1[2], r1[0], 0.5, 1.0]]:
+			var u0: float = q[4]
+			var u1: float = q[5]
+			var pts := [q[0], q[1], q[2], q[3]]
+			var uvs: Array[Vector2] = [Vector2(u0, r0[3]), Vector2(u1, r0[3]), Vector2(u1, r1[3]), Vector2(u0, r1[3])]
+			for idx in [0, 1, 2, 0, 2, 3]:
+				var s2: float = uvs[idx].y
+				# shaded as a soft volume: mostly up and outwards, the edges leaning to their side
+				var edge: float = (uvs[idx].x - 0.5) * 2.0
+				var n: Vector3 = (up * 0.75 + d * (0.25 + 0.45 * s2) + side * edge * 0.5).normalized()
+				vert(st, pts[idx], n, uvs[idx], Color(lerpf(ao_in, ao_out, pow(s2, 0.7)), s2, rnd))
+	if not curtain:
+		return
+	var drop := length * (0.2 + 0.3 * sag) * rng.randf_range(0.8, 1.2)
+	var lean := side * rng.randf_range(-0.25, 0.25) * drop
+	var nc := (d * 0.7 + Vector3.UP * 0.25 + side * (0.4 if rnd > 0.5 else -0.4)).normalized()
+	for pair in [[0, 1], [1, 3]]:  # (two quads are enough for what hangs)
+		var r0: Array = rows[pair[0]]
+		var r1: Array = rows[pair[1]]
+		var s0: float = r0[3]
+		var s1: float = r1[3]
+		# the curtain is deepest in the middle of the bough
+		var d0 := drop * (0.35 + 0.65 * sin(PI * minf(s0 * 1.15, 1.0)))
+		var d1 := drop * (0.35 + 0.65 * sin(PI * minf(s1 * 1.15, 1.0)))
+		var pts := [r0[0], r1[0], Vector3(r1[0]) + lean - Vector3.UP * d1, Vector3(r0[0]) + lean - Vector3.UP * d0]
+		var uvs: Array[Vector2] = [Vector2(0.5, s0), Vector2(0.5, s1), Vector2(0.97, s1), Vector2(0.97, s0)]
+		var ao0 := lerpf(ao_in, ao_out, pow(s0, 0.7))
+		var ao1 := lerpf(ao_in, ao_out, pow(s1, 0.7))
+		var cols := [Color(ao0, s0, rnd), Color(ao1, s1, rnd), Color(ao1 * 0.8, 1.0, rnd), Color(ao0 * 0.8, 1.0, rnd)]
+		for idx in [0, 1, 2, 0, 2, 3]:
+			vert(st, pts[idx], nc, uvs[idx], cols[idx])
+
+
+## One spruce branch of the simple model: a diamond-shaped card folded along its twig, drooping towards the tip.
 static func _branch(st: SurfaceTool, base: Vector3, ang: float, length: float, width: float, droop: float,
 		t: float, rng: RandomNumberGenerator) -> void:
 	var d := Vector3(cos(ang), 0.0, sin(ang))
@@ -431,31 +459,40 @@ static func _branch(st: SurfaceTool, base: Vector3, ang: float, length: float, w
 			vert(st, p, n, uv, c)
 
 
+## Broadleaf tree: a trunk that forks into limbs, and a crown made of lobes of leaf cards - wider than
+## tall, uneven, hanging lower on its sides. A ball on a pole is what a child draws. The crown stays
+## inside PropFactory.round_tree_radius_at (what the scoring counts as hiding).
 static func _broadleaf(lod: int, variant: int) -> ArrayMesh:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 300 + variant * 11 + lod * 1000
 	var bark := SurfaceTool.new()
 	bark.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var center := Vector3(0, 6.1, 0)
-	cylinder(bark, Vector3.ZERO, Vector3(0, 4.4, 0), 0.32, 0.22, 7 if lod == 0 else 5, Color(1, 1, 1))
-	var limbs := 4 if lod == 0 else 3
-	for k in limbs:
-		var a := TAU * k / limbs + rng.randf_range(-0.4, 0.4)
-		var start := Vector3(0, rng.randf_range(3.5, 4.2), 0)
-		var end := center + Vector3(cos(a) * 1.4, rng.randf_range(-0.3, 0.9), sin(a) * 1.4)
-		cylinder(bark, start, end, 0.16, 0.05, 5 if lod == 0 else 4, Color(0.9, 0.9, 0.9))
+	var center := Vector3(0, 6.0, 0)
+	# the trunk leans a little and narrows up to the fork
+	var fork := Vector3(rng.randf_range(-0.25, 0.25), 3.6, rng.randf_range(-0.25, 0.25))
+	var sides := 9 if lod == 0 else 5
+	cylinder(bark, Vector3(0, -0.1, 0), Vector3(fork.x * 0.3, 1.6, fork.z * 0.3), 0.33, 0.25, sides, Color(1, 1, 1))
+	cylinder(bark, Vector3(fork.x * 0.3, 1.6, fork.z * 0.3), fork, 0.25, 0.18, sides, Color(1, 1, 1))
+	# lobes of the crown: around an ellipsoid, a few low ones on the sides, one on top
+	var lobes: Array[Vector3] = []
+	var count := 14 if lod == 0 else 8
+	for k in count:
+		var yy := 1.0 - 2.0 * (k + 0.5) / count
+		var rr := sqrt(maxf(0.0, 1.0 - yy * yy))
+		var a := k * 2.39996 + variant * 1.3
+		var reach := rng.randf_range(0.6, 1.0)
+		lobes.append(center + Vector3(cos(a) * rr * 2.0 * reach, yy * 1.6 + 0.05, sin(a) * rr * 2.0 * reach))
+	for k in lobes.size():
+		var c := lobes[k]
+		# a limb from the fork towards each lobe (the lowest ones leave the trunk lower)
+		var start := fork + Vector3(0, minf(0.0, (c.y - center.y) * 0.4), 0)
+		var elbow := start.lerp(c, 0.5) + Vector3(0, 0.35, 0)
+		cylinder(bark, start, elbow, 0.13, 0.08, 5 if lod == 0 else 4, Color(0.85, 0.85, 0.85))
+		cylinder(bark, elbow, c, 0.08, 0.03, 5 if lod == 0 else 4, Color(0.75, 0.75, 0.75))
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var clusters := 13 if lod == 0 else 8
-	for k in clusters:
-		# spread the clusters over an ellipsoid (golden spiral), the top one in the middle
-		var yy := 1.0 - 2.0 * (k + 0.5) / clusters
-		var rr := sqrt(maxf(0.0, 1.0 - yy * yy))
-		var a := k * 2.39996 + variant
-		var dir := Vector3(cos(a) * rr, yy * 0.8, sin(a) * rr)
-		var c := center + Vector3(dir.x * 1.85, dir.y * 1.6, dir.z * 1.85) * rng.randf_range(0.7, 1.0)
-		var rc := rng.randf_range(1.0, 1.3)
-		cluster(st, c, rc, center, lod, rng)
+	for c in lobes:
+		cluster(st, c, rng.randf_range(0.75, 1.02) * (1.0 if lod == 0 else 1.3), center, lod, rng)
 	var mesh := bark.commit()
 	st.commit(mesh)
 	mesh.surface_set_material(0, bark_material())
@@ -465,37 +502,42 @@ static func _broadleaf(lod: int, variant: int) -> ArrayMesh:
 
 ## Leaf cluster: a dark core (solid corner of the texture) and leaf cards facing outwards.
 static func cluster(st: SurfaceTool, c: Vector3, rc: float, crown: Vector3, lod: int, rng: RandomNumberGenerator) -> void:
-	var core_uv := Vector2(0.03, 0.03)
+	var core_uv := Vector2(0.02, 0.02)
 	# core: an octahedron, slightly irregular
 	var axes := [Vector3.RIGHT, Vector3.LEFT, Vector3.UP, Vector3.DOWN, Vector3.BACK, Vector3.FORWARD]
 	var pts := []
 	for ax in axes:
-		pts.append(c + ax * rc * rng.randf_range(0.55, 0.75))
+		pts.append(c + ax * rc * rng.randf_range(0.42, 0.6))
 	var faces := [[0, 2, 4], [4, 2, 1], [1, 2, 5], [5, 2, 0], [4, 3, 0], [1, 3, 4], [5, 3, 1], [0, 3, 5]]
 	for f in faces:
 		for idx in f:
 			var p: Vector3 = pts[idx]
 			var n := (p - crown).normalized()
-			vert(st, p, n, core_uv, Color(crown_ao(p, crown) * 0.75, 0.2, rng.randf()))
-	var cards := 14 if lod == 0 else 7
-	var size := rc * (1.15 if lod == 0 else 1.45)
+			vert(st, p, n, core_uv, Color(crown_ao(p, crown) * 0.6, 0.2, rng.randf()))
+	var cards := 12 if lod == 0 else 7
+	var size := rc * (1.45 if lod == 0 else 1.8)
+	var outward := (c - crown).normalized()
 	for i in cards:
-		var dir := Vector3(rng.randf_range(-1, 1), rng.randf_range(-0.6, 1), rng.randf_range(-1, 1)).normalized()
-		var outward := (c - crown).normalized()
-		dir = (dir + outward * 0.6).normalized()
-		var p := c + dir * rc * rng.randf_range(0.6, 0.95)
-		var ref := Vector3.UP if absf(dir.y) < 0.9 else Vector3.RIGHT
-		var u := dir.cross(ref).normalized()
-		var v := dir.cross(u).normalized()
+		var dir := Vector3(rng.randf_range(-1, 1), rng.randf_range(-0.7, 1), rng.randf_range(-1, 1)).normalized()
+		dir = (dir + outward * 0.55).normalized()
+		var p := c + dir * rc * rng.randf_range(0.55, 1.0)
+		# the card lies across `face`: mostly outwards, but tilted - a leafy branch is never square to the eye
+		var face := (dir + Vector3(rng.randf_range(-0.6, 0.6), rng.randf_range(-0.2, 0.7), rng.randf_range(-0.6, 0.6))).normalized()
+		var ref := Vector3.UP if absf(face.y) < 0.9 else Vector3.RIGHT
+		var u := face.cross(ref).normalized()
+		var v := face.cross(u).normalized()
 		var rot := rng.randf() * TAU
-		var uu := (u * cos(rot) + v * sin(rot)) * size * 0.5
-		var vv := (v * cos(rot) - u * sin(rot)) * size * 0.5
+		var sz := size * rng.randf_range(0.75, 1.15)
+		var uu := (u * cos(rot) + v * sin(rot)) * sz * 0.5
+		var vv := (v * cos(rot) - u * sin(rot)) * sz * 0.5
 		var q := [p - uu - vv, p + uu - vv, p + uu + vv, p - uu + vv]
-		var uvs := [Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]
+		# (the corner of the texture is the solid patch of the cores: the cards stay clear of it)
+		var uvs := [Vector2(0.06, 0.06), Vector2(1, 0.06), Vector2(1, 1), Vector2(0.06, 1)]
 		var rnd := rng.randf()
 		for idx in [0, 1, 2, 0, 2, 3]:
 			var pp: Vector3 = q[idx]
-			var n := ((pp - crown).normalized() * 0.7 + dir * 0.3).normalized()
+			# lit as part of the whole crown, with some of its own lobe: the lobes then read as volumes
+			var n := ((pp - crown).normalized() * 0.5 + (pp - c).normalized() * 0.35 + dir * 0.15).normalized()
 			vert(st, pp, n, uvs[idx], Color(crown_ao(pp, crown), 1.0, rnd))
 
 
@@ -504,4 +546,4 @@ static func crown_ao(p: Vector3, crown: Vector3) -> float:
 	var rel := p - crown
 	var outward := clampf(Vector2(rel.x, rel.z).length() / 2.8, 0.0, 1.0)
 	var up := clampf((rel.y + 2.5) / 5.0, 0.0, 1.0)
-	return clampf(0.25 + 0.45 * up + 0.35 * outward, 0.2, 1.0)
+	return clampf(0.3 + 0.42 * up + 0.35 * outward, 0.3, 1.0)

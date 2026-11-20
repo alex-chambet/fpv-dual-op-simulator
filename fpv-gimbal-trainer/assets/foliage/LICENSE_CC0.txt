@@ -1,0 +1,24 @@
+Textures de végétation — photographies CC0
+==========================================
+
+Les trois fichiers de ce dossier sont fabriqués par tools/bake_foliage.gd à partir de
+photographies publiées sous Creative Commons CC0 1.0 (domaine public) :
+
+  spruce_bough.png  <- Poly Haven « Fir Tree 01 »  (https://polyhaven.com/a/fir_tree_01)
+                       cartes twig_diff et twig_alpha (1k) : des rameaux isolés, assemblés en
+                       une branche entière d'épicéa (tige au milieu, rameaux inclinés vers
+                       l'avant, deux couches).
+  leaf_cluster.png  <- ambientCG « LeafSet005 »    (https://ambientcg.com/a/LeafSet005)
+                       cartes Color et Opacity (1k) : un rameau de trois feuilles de charme et
+                       deux feuilles isolées, assemblés en un bouquet rond. Le coin en haut à
+                       gauche est un carré de feuillage plein, lu par le cœur des houppiers.
+  bark.jpg          <- ambientCG « Bark012 »       (https://ambientcg.com/a/Bark012)
+                       carte Color (1k) réduite à 512, ramenée à une moyenne fixe.
+
+Les couleurs sont normalisées autour d'une moyenne fixe : la teinte de chaque arbre reste
+celle que le jeu lui donne (styles, ambiances, variation par arbre) ; la photographie
+n'apporte que le détail. Pour les refaire :
+
+  Godot --path <projet> --script res://tools/bake_foliage.gd -- --src=<dossier des JPG 1k>
+
+CC0 1.0 : aucune attribution n'est exigée. Elle est donnée ici par correction.

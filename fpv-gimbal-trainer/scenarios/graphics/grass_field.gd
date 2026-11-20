@@ -232,7 +232,9 @@ func _process(_delta: float) -> void:
 	_mat.set_shader_parameter("center", Vector2(snappedf(c.x, _cell), snappedf(c.z, _cell)))
 
 
-## A clump of 9 blades, 1 m high (scaled by the shader), each 3 triangles; VERTEX.y = height along the blade.
+## A clump of 12 blades, 1 m high (scaled by the shader), each 3 triangles; VERTEX.y = height along the blade.
+## The blades are spread over 30 cm, about half the spacing of the clumps: packed in 13 cm they stood as
+## separate tufts planted in rows on bare ground, where a meadow is one continuous turf.
 static func _clump_mesh() -> ArrayMesh:
 	if _clump != null:
 		return _clump
@@ -240,14 +242,14 @@ static func _clump_mesh() -> ArrayMesh:
 	rng.seed = 12
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for b in 9:
-		var a := TAU * b / 9.0 + rng.randf_range(-0.4, 0.4)
-		var r := rng.randf_range(0.02, 0.13)
+	for b in 12:
+		var a := TAU * b / 12.0 * 2.4 + rng.randf_range(-0.4, 0.4)
+		var r := sqrt(rng.randf()) * 0.3
 		var root := Vector3(cos(a) * r, 0.0, sin(a) * r)
 		var lean := Vector3(cos(a + rng.randf_range(-0.6, 0.6)), 0.0, sin(a + rng.randf_range(-0.6, 0.6))) \
 				* rng.randf_range(0.08, 0.3)
 		var face := rng.randf() * TAU
-		var side := Vector3(cos(face), 0.0, sin(face)) * rng.randf_range(0.011, 0.017)
+		var side := Vector3(cos(face), 0.0, sin(face)) * rng.randf_range(0.013, 0.021)
 		var hb := rng.randf_range(0.7, 1.0)
 		var m := root + lean * 0.3 + Vector3(0, 0.55 * hb, 0)
 		var t := root + lean + Vector3(0, hb, 0)

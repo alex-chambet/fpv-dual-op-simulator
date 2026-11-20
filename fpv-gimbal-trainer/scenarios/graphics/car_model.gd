@@ -302,6 +302,92 @@ static func _cap(st: SurfaceTool, ring: PackedVector3Array, facing: float) -> vo
 			st.add_vertex(v)
 
 
+## Points of half a section of the lower body (right side, from the top centre down to the bottom
+## centre). The section is not a rounded rectangle: the bonnet is crowned, the shoulder rolls into a
+## flank that bulges at mid height and tucks in at the sill, and where there is a wheel the underside
+## steps up into a wheel well (`arch` = height of its ceiling, 0 = none).
+const HALF_PTS := 12
+
+static func _body_half(y0: float, y1: float, w: float, arch: float) -> PackedVector2Array:
+	var low := maxf(y0, minf(arch, y1 - 0.06))
+	var hgt := y1 - low
+	var crown := 0.035 * w
+	var bulge := 0.014
+	var x_in := maxf(w - 0.34, 0.1)
+	return PackedVector2Array([
+		Vector2(0.0, y1 + crown), Vector2(w * 0.55, y1 + crown * 0.72), Vector2(w - 0.13, y1 + crown * 0.15),
+		Vector2(w - 0.04, y1 - 0.1 * hgt), Vector2(w + bulge * 0.6, y1 - 0.26 * hgt),
+		Vector2(w + bulge, y1 - 0.52 * hgt), Vector2(w + bulge * 0.6, low + 0.2 * hgt),
+		Vector2(w - 0.012, low + 0.05 * hgt), Vector2(w - 0.05, low), Vector2(x_in, low),
+		Vector2(x_in, y0), Vector2(0.0, y0)])
+
+
+## The whole section at z, wound like _ring(): up the right side, over the top, down the left side.
+static func _body_ring(z: float, y0: float, y1: float, w: float, arch: float) -> PackedVector3Array:
+	var h := _body_half(y0, y1, w, arch)
+	var pts := PackedVector3Array()
+	for k in HALF_PTS:
+		var q := h[HALF_PTS - 1 - k]
+		pts.append(Vector3(q.x, q.y, z))
+	for k in range(1, HALF_PTS - 1):
+		pts.append(Vector3(-h[k].x, h[k].y, z))
+	return pts
+
+
+## Which part of the half section the segment k of a ring (between its points k and k + 1) belongs to:
+## 0 the bonnet side ... 10 the underside (see _body_half).
+static func _half_segment(k: int) -> int:
+	if k <= HALF_PTS - 2:
+		return HALF_PTS - 2 - k
+	if k == HALF_PTS - 1:
+		return 0
+	if k == 2 * HALF_PTS - 3:
+		return HALF_PTS - 2
+	return k - (HALF_PTS - 1)
+
+
+## Section [bottom, top, half width] of a body table ([z, bottom, top, half width] rows) at z, smoothed
+## (Catmull-Rom) so the body is a curve between its stations and not a chain of flat panels.
+static func _section_at(table: Array, z: float) -> Vector3:
+	var n := table.size()
+	var i := 0
+	while i < n - 2 and z > float(table[i + 1][0]):
+		i += 1
+	var a: Array = table[maxi(i - 1, 0)]
+	var b: Array = table[i]
+	var c: Array = table[i + 1]
+	var d: Array = table[mini(i + 2, n - 1)]
+	var t := clampf((z - float(b[0])) / (float(c[0]) - float(b[0])), 0.0, 1.0)
+	var out := Vector3.ZERO
+	for k in 3:
+		var p0 := float(a[k + 1])
+		var p1 := float(b[k + 1])
+		var p2 := float(c[k + 1])
+		var p3 := float(d[k + 1])
+		var v := 0.5 * ((2.0 * p1) + (-p0 + p2) * t + (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t * t
+				+ (-p0 + 3.0 * p1 - 3.0 * p2 + p3) * t * t * t)
+		# (no overshoot past the two stations it runs between)
+		out[k] = clampf(v, minf(p1, p2) - 0.01, maxf(p1, p2) + 0.01)
+	return out
+
+
+## Lofts the sections of the lower body: the skin into `skin`, the wheel wells and the underside into
+## `dark` (the wells are real hollows in the flank, the wheels stand in them).
+static func _body_loft(skin: SurfaceTool, dark: SurfaceTool, rings: Array, arches: PackedFloat32Array) -> void:
+	var n: int = (rings[0] as PackedVector3Array).size()
+	for i in rings.size() - 1:
+		var r0: PackedVector3Array = rings[i]
+		var r1: PackedVector3Array = rings[i + 1]
+		var well := arches[i] > 0.0 or arches[i + 1] > 0.0
+		for k in n:
+			var k1 := (k + 1) % n
+			var seg := _half_segment(k)
+			var st := dark if (seg == 10 or (well and (seg == 8 or seg == 9))) else skin
+			for v in [r0[k], r1[k], r0[k1], r0[k1], r1[k], r1[k1]]:
+				st.set_smooth_group(0)
+				st.add_vertex(v)
+
+
 static func _body_mesh(style: int) -> ArrayMesh:
 	var key := "body/%d" % style
 	if _cache.has(key):
@@ -317,12 +403,37 @@ static func _body_mesh(style: int) -> ArrayMesh:
 		lower = [[-2.2, 0.17, 0.5, 0.76], [-2.08, 0.14, 0.68, 0.88], [-1.75, 0.13, 0.82, 0.96], [-1.15, 0.13, 0.88, 0.99],
 				[0.0, 0.13, 0.9, 1.0], [1.4, 0.13, 0.92, 0.99], [1.85, 0.14, 0.95, 0.97],
 				[2.08, 0.17, 0.9, 0.9], [2.2, 0.28, 0.76, 0.8]]
+	# sections every 5 cm, the wheel wells cut into them
+	var wheel_y := 0.35 if style == 2 else 0.33
+	var well_r := 0.45 if style == 2 else 0.42
+	var wheel_z := [-1.32, 1.34] if style == 2 else [-1.3, 1.32]
+	var z_a := float(lower[0][0])
+	var z_b := float(lower[lower.size() - 1][0])
+	var count := ceili((z_b - z_a) / 0.05)
 	var rings := []
-	for s in lower:
-		rings.append(_ring(s[0], s[1], s[2], s[3] - 0.05, s[3], 0.14))
-	var st := SurfaceTool.new()
-	_loft(st, rings)
-	var mesh := st.commit()
+	var arches := PackedFloat32Array()
+	for i in count + 1:
+		var z := lerpf(z_a, z_b, float(i) / count)
+		var sct := _section_at(lower, z)
+		var arch := 0.0
+		for wz in wheel_z:
+			var dz: float = z - float(wz)
+			if absf(dz) < well_r:
+				arch = wheel_y - 0.06 + sqrt(well_r * well_r - dz * dz)
+		rings.append(_body_ring(z, sct.x, sct.y, sct.z, arch))
+		arches.append(arch)
+	var skin := SurfaceTool.new()
+	skin.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var wells := SurfaceTool.new()
+	wells.begin(Mesh.PRIMITIVE_TRIANGLES)
+	_body_loft(skin, wells, rings, arches)
+	skin.index()
+	skin.generate_normals()
+	skin.deindex()
+	wells.index()
+	wells.generate_normals()
+	wells.deindex()
+	var mesh := skin.commit()
 	var caps := SurfaceTool.new()
 	caps.begin(Mesh.PRIMITIVE_TRIANGLES)
 	_cap(caps, rings[0], -1.0)
@@ -363,25 +474,24 @@ static func _body_mesh(style: int) -> ArrayMesh:
 	trim.begin(Mesh.PRIMITIVE_TRIANGLES)
 	_cap(trim, grings[0], -1.0)
 	_cap(trim, grings[grings.size() - 1], 1.0)
-	var arch_x := 0.992 if style == 2 else 0.9
 	var sill_x := 1.005 if style == 2 else 0.9
 	var bumper_y := 0.3 if style == 2 else 0.38
-	_slab(trim, Vector3(0, bumper_y, -2.1), Vector3(1.5, 0.12, 0.1))
-	_slab(trim, Vector3(0, bumper_y + 0.02, 2.1), Vector3(1.5, 0.12, 0.1))
+	if style == 2:
+		_slab(trim, Vector3(0, bumper_y, -2.1), Vector3(1.5, 0.12, 0.1))
+		_slab(trim, Vector3(0, bumper_y + 0.02, 2.1), Vector3(1.5, 0.12, 0.1))
+	else:
+		# road cars have had body-coloured bumpers for forty years: only the air intake under the
+		# front one and a valance under the rear one are black
+		_slab(trim, Vector3(0, bumper_y - 0.02, -2.085), Vector3(1.2, 0.07, 0.1))
+		_slab(trim, Vector3(0, bumper_y - 0.03, 2.085), Vector3(1.3, 0.06, 0.1))
 	_slab(trim, Vector3(0, 0.55 if style != 2 else 0.5, -2.11), Vector3(0.8, 0.13, 0.04))  # grille
-	# wheel wells: a dark half disc behind each wheel, a little larger than the tyre, so the wheel sits
-	# in a round arch cut into the flank (it used to be a black rectangle laid over the door)
-	var wheel_y := 0.35 if style == 2 else 0.33
-	var well_r := 0.45 if style == 2 else 0.42
 	for wx in [-1.0, 1.0]:
-		for wz in [-1.3, 1.32]:
-			_half_disc(trim, Vector3(wx * arch_x, wheel_y - 0.06, wz), well_r, wx)
 		_slab(trim, Vector3(wx * sill_x, 0.29, 0.0), Vector3(0.03, 0.08, 1.74))  # sill
 		if style != 2:
 			for lz in [-0.72, 0.26]:  # door shut lines
-				_slab(trim, Vector3(wx * 0.892, 0.62, lz), Vector3(0.022, 0.6, 0.012))
+				_slab(trim, Vector3(wx * 0.9, 0.62, lz), Vector3(0.024, 0.54, 0.012))
 			for hz in [-0.02, 0.66]:  # door handles
-				_slab(trim, Vector3(wx * 0.9, 0.88, hz), Vector3(0.03, 0.028, 0.15))
+				_slab(trim, Vector3(wx * 0.905, 0.9, hz), Vector3(0.03, 0.028, 0.15))
 	trim.commit(mesh)
 	# merge: surface 0 = paint (lower body, caps, roof and pillars), 1 = glass, 2 = trim
 	var out := ArrayMesh.new()
@@ -393,6 +503,7 @@ static func _body_mesh(style: int) -> ArrayMesh:
 	glass.commit(out)
 	var tr := SurfaceTool.new()
 	tr.append_from(mesh, 3, Transform3D.IDENTITY)
+	tr.append_from(wells.commit(), 0, Transform3D.IDENTITY)
 	tr.commit(out)
 	_cache[key] = out
 	return out
@@ -507,7 +618,7 @@ static func _wheel_mesh() -> ArrayMesh:
 	rim.commit(mesh)
 	holes.commit(mesh)
 	mesh.surface_set_material(0, _flat("tyre", Color(0.04, 0.04, 0.04), 0.9))
-	mesh.surface_set_material(1, _flat("rim", Color(0.72, 0.73, 0.75), 0.3, 0.8))
+	mesh.surface_set_material(1, _flat("rim2", Color(0.8, 0.81, 0.83), 0.42, 0.5))
 	mesh.surface_set_material(2, _flat("holes", Color(0.05, 0.05, 0.05), 0.7))
 	_cache["wheel"] = mesh
 	return mesh

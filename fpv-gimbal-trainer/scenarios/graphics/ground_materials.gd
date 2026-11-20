@@ -118,10 +118,39 @@ vec3 detail_normal(vec3 n_world, vec2 xz, float strength, mat4 view) {
 }
 """
 
+## Photographed rock (assets/ground/rock.png, ambientCG Rock030, CC0), packed like the other detail maps.
+## Shared by every shader that shows rock: the terrain and snow shaders here ("#ROCK"), the boulders (Rocks)
+## and the distant mountains (FarScenery). Noise alone gave rock that read as camouflage paint; a photograph
+## gives blocks whose cracks, bumps and dark sides are the same blocks.
+const ROCK_FN := """
+uniform sampler2D rock_pbr : filter_linear_mipmap_anisotropic, repeat_enable;
+
+vec4 rock_tap(vec2 uv) {
+	// (wrapped close to zero, the gradient handed over: see detail_tap)
+	return textureGrad(rock_pbr, uv - floor(uv), dFdx(uv), dFdy(uv));
+}
+
+// The rock seen from every side (triplanar) at `scale` tiles per metre: x = albedo multiplier around 1,
+// y = roughness; dn = offset to add to the world normal.
+vec2 rock_photo(vec3 p, vec3 n, float scale, out vec3 dn) {
+	vec3 bw = pow(abs(n), vec3(4.0));
+	bw /= bw.x + bw.y + bw.z;
+	vec4 tx = rock_tap(p.zy * scale);
+	vec4 ty = rock_tap(p.xz * scale);
+	vec4 tz = rock_tap(p.xy * scale);
+	vec2 ax = tx.ba * 2.0 - 1.0;
+	vec2 ay = ty.ba * 2.0 - 1.0;
+	vec2 az = tz.ba * 2.0 - 1.0;
+	dn = vec3(0.0, ax.y, ax.x) * bw.x + vec3(ay.x, 0.0, ay.y) * bw.y + vec3(az.x, az.y, 0.0) * bw.z;
+	return vec2((tx.r * bw.x + ty.r * bw.y + tz.r * bw.z) * 2.0, tx.g * bw.x + ty.g * bw.y + tz.g * bw.z);
+}
+"""
+
 const TERRAIN := """
 shader_type spatial;
 render_mode cull_disabled;
 #COMMON
+#ROCK
 uniform vec3 grass_a : source_color = vec3(0.16, 0.28, 0.07);
 uniform vec3 grass_b : source_color = vec3(0.3, 0.4, 0.12);
 uniform vec3 dry : source_color = vec3(0.5, 0.46, 0.26);
@@ -247,6 +276,14 @@ void fragment() {
 		rock *= 0.74 + 0.42 * smoothstep(0.3, 0.7, strata);
 		rock *= 1.0 - 0.45 * smoothstep(0.5, 0.78, gully);
 		rock = mix(rock, rock * vec3(1.15, 1.03, 0.88), smoothstep(0.5, 0.8, m_big));
+		// the photographed cliff at two scales: its cracks up close, its blocks from across the valley
+		vec3 dn_a;
+		vec3 dn_b;
+		vec2 ph_a = rock_photo(wpos, wnrm, 0.14, dn_a);
+		vec2 ph_b = rock_photo(wpos + 3.1, wnrm, 0.021, dn_b);
+		float rock_near = 1.0 - smoothstep(35.0, 170.0, dist);
+		rock *= pow(mix(1.0, ph_a.x, 0.85 * rock_near) * mix(1.0, ph_b.x, 0.7), 1.25);
+		n_rock += (dn_a * 0.8 * rock_near + dn_b * 0.6) * rock_w;
 		// grassy ledges across the walls and grass on their gentler parts
 		float ledge = texture(detail_tex, vec2(hz * 0.004, wpos.y * 0.028 + m_mid)).r;
 		rock_w *= 1.0 - 0.85 * smoothstep(0.6, 0.7, ledge) * (1.0 - smoothstep(0.62, 0.9, slope));
@@ -284,6 +321,7 @@ const SNOW := """
 shader_type spatial;
 render_mode cull_disabled;
 #COMMON
+#ROCK
 uniform vec3 snow_a : source_color = vec3(0.76, 0.82, 0.93);
 uniform vec3 snow_b : source_color = vec3(0.95, 0.965, 0.99);
 uniform vec3 rock_a : source_color = vec3(0.4, 0.39, 0.38);
@@ -381,25 +419,22 @@ void fragment() {
 	}
 	float soft2 = 0.32 * smoothstep(30.0, 180.0, dist);
 	if (rock_w > 0.001) {
-		// seen from every side (triplanar), with strata and cracks, so a cliff is not a smear
-		vec3 bw = pow(abs(wnrm), vec3(4.0));
-		bw /= bw.x + bw.y + bw.z;
-		vec3 pp = wpos * 0.11;
-		float r = texture(detail_tex, pp.zy * vec2(1.0, 2.0)).r * bw.x + texture(detail_tex, pp.xz).r * bw.y
-				+ texture(detail_tex, pp.xy * vec2(1.0, 2.0)).r * bw.z;
-		float cr = texture(cell_tex, pp.zy * 2.3).r * bw.x + texture(cell_tex, pp.xz * 2.3).r * bw.y
-				+ texture(cell_tex, pp.xy * 2.3).r * bw.z;
-		cr = mix(cr, 0.5, smoothstep(40.0, 200.0, dist));   // the cracks blur out with distance
-		float strata = 0.82 + 0.3 * texture(detail_tex, vec2(wpos.y * 0.09, (wpos.x + wpos.z) * 0.004)).r;
-		vec3 rock = mix(rock_b, rock_a, smoothstep(0.25, 0.75, r)) * (0.75 + 0.35 * smoothstep(0.05, 0.4, cr)) * strata;
-		// snow stays on the ledges and in the hollows of the rock
+		// the photographed cliff, seen from every side, at two scales: its cracks up close, its
+		// blocks and faces from across the valley
+		vec3 dn_a;
+		vec3 dn_b;
+		vec2 ph_a = rock_photo(wpos, wnrm, 0.15, dn_a);
+		vec2 ph_b = rock_photo(wpos + 7.3, wnrm, 0.022, dn_b);
+		float rock_near = 1.0 - smoothstep(35.0, 170.0, dist);
+		float lum = mix(1.0, ph_a.x, 0.85 * rock_near) * mix(1.0, ph_b.x, 0.75);
+		float strata = 0.85 + 0.3 * texture(detail_tex, vec2(wpos.y * 0.09, (wpos.x + wpos.z) * 0.004)).r;
+		vec3 rock = mix(rock_b, rock_a, 0.62) * pow(lum, 1.3) * strata * 1.1;
+		// snow stays on the ledges of the rock: bands across the face, broken by its blocks
+		float ledge = texture(macro_tex, vec2((wpos.x + wpos.z) * 0.021, wpos.y * 0.085)).r;
+		float r = ledge * 0.6 + (ph_b.x - 1.0) * 0.3 + 0.3;
 		rock_w *= smoothstep(0.35 - soft2, 0.6 + soft2, r + (1.0 - slope) * 0.3);
 		col = mix(col, rock, rock_w);
-		vec2 nx = texture(normal_tex, wpos.zy * vec2(0.12, 0.25)).rg * 2.0 - 1.0;
-		vec2 nz = texture(normal_tex, wpos.xy * vec2(0.12, 0.25)).rg * 2.0 - 1.0;
-		vec2 ny = texture(normal_tex, xz * 0.12).rg * 2.0 - 1.0;
-		n = normalize(n + (vec3(0.0, nx.y, nx.x) * bw.x + vec3(nz.x, nz.y, 0.0) * bw.z + vec3(ny.x, 0.0, ny.y) * bw.y)
-				* 0.6 * rock_w * (1.0 - far_fade * 0.5));
+		n = normalize(n + (dn_a * 0.9 * rock_near + dn_b * 0.7) * rock_w);
 	}
 	// sparkles: tiny facets catching the sun
 	float sp = texture(cell_tex, xz * 7.3).r;
@@ -730,12 +765,14 @@ static func detail_map(name: String) -> Texture2D:
 static func _material(key: String, code: String) -> ShaderMaterial:
 	if not _shaders.has(key):
 		var sh := Shader.new()
-		sh.code = code.replace("#COMMON", COMMON)
+		sh.code = code.replace("#COMMON", COMMON).replace("#ROCK", ROCK_FN)
 		_shaders[key] = sh
 	var m := ShaderMaterial.new()
 	m.shader = _shaders[key]
 	for t in ["macro", "detail", "cell", "normal"]:
 		m.set_shader_parameter(t + "_tex", noise(t))
+	if code.contains("#ROCK"):
+		m.set_shader_parameter("rock_pbr", detail_map("rock"))
 	if PBR.has(key):
 		var tex := detail_map(str(PBR[key][0]))
 		m.set_shader_parameter("detail_pbr", tex)

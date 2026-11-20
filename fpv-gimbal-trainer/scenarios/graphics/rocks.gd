@@ -10,8 +10,7 @@ const SHADER := """
 shader_type spatial;
 
 uniform sampler2D detail_tex : filter_linear_mipmap, repeat_enable;
-uniform sampler2D cell_tex : filter_linear_mipmap, repeat_enable;
-uniform sampler2D normal_tex : hint_normal, filter_linear_mipmap, repeat_enable;
+#ROCK
 uniform vec3 rock_a : source_color = vec3(0.5, 0.49, 0.47);
 uniform vec3 rock_b : source_color = vec3(0.27, 0.26, 0.25);
 uniform vec3 moss : source_color = vec3(0.22, 0.3, 0.1);
@@ -26,25 +25,21 @@ void vertex() {
 }
 
 void fragment() {
-	vec3 bw = pow(abs(wnrm), vec3(4.0));
-	bw /= bw.x + bw.y + bw.z;
-	vec3 p = wpos * 0.55;
-	float n = texture(detail_tex, p.zy * vec2(1.0, 2.2)).r * bw.x + texture(detail_tex, p.xz).r * bw.y
-			+ texture(detail_tex, p.xy * vec2(1.0, 2.2)).r * bw.z;
-	float c = texture(cell_tex, p.zy * 1.7).r * bw.x + texture(cell_tex, p.xz * 1.7).r * bw.y
-			+ texture(cell_tex, p.xy * 1.7).r * bw.z;
-	vec3 col = mix(rock_b, rock_a, smoothstep(0.2, 0.8, n)) * (0.7 + 0.4 * smoothstep(0.05, 0.45, c));
-	float top = smoothstep(0.35, 0.85, wnrm.y + (n - 0.5) * 0.5);
-	col = mix(col, moss * (0.75 + 0.5 * n), top * moss_amount);
-	float sn = smoothstep(0.3, 0.6, wnrm.y + (n - 0.5) * 0.4) * snow;
+	// photographed rock at two scales: the grain and cracks of the stone, and the darker and lighter
+	// faces of the whole boulder
+	vec3 dn_a;
+	vec3 dn_b;
+	vec2 ph_a = rock_photo(wpos, wnrm, 0.42, dn_a);
+	vec2 ph_b = rock_photo(wpos + 1.7, wnrm, 0.11, dn_b);
+	float n = texture(detail_tex, wpos.xz * 0.55).r;
+	vec3 col = mix(rock_b, rock_a, 0.6) * pow(ph_a.x * mix(1.0, ph_b.x, 0.6), 1.3) * 1.1;
+	float top = smoothstep(0.35, 0.85, wnrm.y + (n - 0.5) * 0.5 + (ph_b.x - 1.0) * 0.3);
+	col = mix(col, moss * (0.75 + 0.5 * n) * ph_a.x, top * moss_amount);
+	float sn = smoothstep(0.3, 0.6, wnrm.y + (n - 0.5) * 0.4 + (ph_b.x - 1.0) * 0.25) * snow;
 	col = mix(col, vec3(0.9, 0.93, 0.98), sn);
-	vec2 a = texture(normal_tex, p.zy * 2.0).rg * 2.0 - 1.0;
-	vec2 b = texture(normal_tex, p.xz * 2.0).rg * 2.0 - 1.0;
-	vec2 d = texture(normal_tex, p.xy * 2.0).rg * 2.0 - 1.0;
-	vec3 off = vec3(0.0, a.x, a.y) * bw.x + vec3(b.x, 0.0, b.y) * bw.y + vec3(d.x, d.y, 0.0) * bw.z;
-	vec3 nw = normalize(wnrm + off * 0.45 * (1.0 - sn * 0.7));
+	vec3 nw = normalize(wnrm + (dn_a * 0.9 + dn_b * 0.5) * (1.0 - sn * 0.8));
 	ALBEDO = col;
-	ROUGHNESS = mix(0.88, 0.7, sn);
+	ROUGHNESS = mix(clamp(ph_a.y + 0.1, 0.5, 1.0), 0.7, sn);
 	SPECULAR = 0.3;
 	NORMAL = normalize((VIEW_MATRIX * vec4(nw, 0.0)).xyz);
 }
@@ -59,11 +54,11 @@ static var moss_amount := 0.0
 static func material() -> ShaderMaterial:
 	if _mat == null:
 		var sh := Shader.new()
-		sh.code = SHADER
+		sh.code = SHADER.replace("#ROCK", GroundMaterials.ROCK_FN)
 		_mat = ShaderMaterial.new()
 		_mat.shader = sh
-		for t in ["detail", "cell", "normal"]:
-			_mat.set_shader_parameter(t + "_tex", GroundMaterials.noise(t))
+		_mat.set_shader_parameter("detail_tex", GroundMaterials.noise("detail"))
+		_mat.set_shader_parameter("rock_pbr", GroundMaterials.detail_map("rock"))
 	_mat.set_shader_parameter("moss_amount", moss_amount)
 	_mat.set_shader_parameter("snow", Vegetation.snow_cover)
 	return _mat

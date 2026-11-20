@@ -1,15 +1,17 @@
 Textures de sol — détail photographique
 =======================================
 
-asphalt.png, snow.png, grass.png sont dérivées de trois sets PBR d'ambientCG
+asphalt.png, snow.png, grass.png, rock.png sont dérivées de quatre sets PBR d'ambientCG
 (https://ambientcg.com), publiés sous Creative Commons CC0 1.0 (domaine public) :
 
   asphalt.png  <- Asphalt033  (https://ambientcg.com/view?id=Asphalt033)
   snow.png     <- Snow010A    (https://ambientcg.com/view?id=Snow010A)
   grass.png    <- Grass004    (https://ambientcg.com/view?id=Grass004)
+  rock.png     <- Rock030     (https://ambientcg.com/view?id=Rock030)
 
-Chaque fichier d'origine (1024 x 1024, JPG) a été réduit à 512 x 512 et ses trois
-cartes utiles empaquetées dans une seule image RGBA :
+Chaque fichier d'origine (1024 x 1024, JPG) a été réduit à 512 x 512 (rock.png est resté en
+1024 x 1024 : une falaise se regarde de près comme de l'autre côté de la vallée) et ses trois
+cartes utiles empaquetées dans une seule image RGBA (tools/bake_ground_detail.gd) :
 
   R  = variation de luminance de l'albédo, centrée sur 0,5 (0,5 = pas de changement)
   G  = rugosité

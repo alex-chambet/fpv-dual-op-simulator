@@ -1,8 +1,38 @@
 # Graphismes
 
-Tout le décor est généré par le code au lancement d'une session : les textures sont des bruits procéduraux et les
-formes (arbres, rochers, voitures, maisons, spectateurs) sont construites en géométrie. Seul le mannequin animé des
-athlètes est un modèle importé (voir « Athlètes »). Les fichiers sont dans `scenarios/graphics/`.
+Tout le décor est généré par le code au lancement d'une session : les formes (arbres, rochers, voitures, maisons,
+spectateurs) sont construites en géométrie. Les textures sont des bruits procéduraux, **sauf là où une photographie
+fait mieux** : le détail des sols, la roche, les aiguilles, les feuilles et l'écorce viennent de sets CC0
+(`assets/ground/`, `assets/foliage/`). Seul le mannequin animé des athlètes est un modèle importé (voir
+« Athlètes »). Les fichiers sont dans `scenarios/graphics/`.
+
+## Passe réalisme (novembre 2026)
+
+Six choses faisaient « jeu » et ont été refaites, jugées sur des captures avant / après prises au même instant de la
+même session (graine 4242, `--fixed-fps 60`).
+
+| Élément | Avant | Après |
+|---|---|---|
+| Épicéas | étages de losanges vert vif, plaques de neige | branches photographiées qui retombent, rameaux pendants, neige en tas sur le dessus |
+| Feuillus | boule sur un piquet | tronc qui fourche, charpentières, houppier en lobes inégaux, feuilles de charme |
+| Roche (falaises du freeride, parois, rochers) | bruit « camouflage » | falaise photographiée, vue de tous les côtés, à deux échelles |
+| Montagnes lointaines | moucheté sel-et-poivre | faces rocheuses sur les pentes raides, champs de neige ailleurs |
+| Voitures | caisse en boîte, passages de roue peints | flancs galbés, capot bombé, passages de roue creusés dans la caisse |
+| Herbe 3D | touffes isolées en rangs | gazon continu |
+
+**Coût mesuré** (`viewport_get_measured_render_time_gpu`, qualité Haute, 1600 × 900, sur la puce intégrée
+Radeon 890M — pas sur la RTX 4070 : c'est le pire cas) :
+
+| Niveau | Avant | Après | Écart |
+|---|---|---|---|
+| ski_descente (le plus boisé) | 9,69 ms | 11,25 ms | +16 % |
+| circuit_course | 18,47 ms | 20,50 ms | +11 % |
+| departementale | 11,44 ms | 13,04 ms | +14 % |
+
+L'essentiel vient des épicéas détaillés (environ quatre fois plus de triangles) et de l'herbe (12 brins par touffe
+au lieu de 9) ; au-delà de la distance « arbres détaillés » du réglage Qualité, le modèle simple pèse autant
+qu'avant. Les chiffres du circuit et de la départementale datent d'avant l'allègement des épicéas : ils sont un
+peu pessimistes.
 
 ## Qualité graphique (menu Pause > Graphismes)
 
@@ -146,18 +176,58 @@ libellés donnent l'angle, parce que c'est comme ça qu'on le règle sur une cam
 - **Masque du sol** (`ground_mask.gd`) : carte vue de dessus des routes, sentiers, accotements et de la piste damée,
   lue par les shaders (pas d'herbe sur la route, pas de champ au bord de la route, piste damée sous le skieur).
 - **Herbe 3D** (`grass_field.gd`) : une grille de touffes qui suit la caméra, posée par la carte graphique sur le
-  relief, avec les couleurs du sol, des fleurs sauvages, les cultures des champs ; elle ondule au vent.
-- **Arbres** (`vegetation.gd`) : épicéas (étages de branches couvertes d'aiguilles) et feuillus (tronc, branches,
-  bouquets de feuilles), lumière à travers les feuilles en contre-jour, neige sur les branches en montagne ; des
-  rafales de vent traversent la forêt. Ils gardent
-  exactement la taille utilisée par le calcul « sujet caché ». Un modèle simple remplace le détaillé au loin.
+  relief, avec les couleurs du sol, des fleurs sauvages, les cultures des champs ; elle ondule au vent. Une touffe
+  fait 12 brins étalés sur 30 cm, à peu près la moitié de l'écart entre deux touffes : serrés sur 13 cm, les brins
+  faisaient des touffes isolées plantées en rangs sur un sol nu, là où un pré est un gazon continu.
+- **Arbres** (`vegetation.gd`) : épicéas et feuillus, lumière à travers les feuilles en contre-jour, neige sur les
+  branches en montagne ; des rafales de vent traversent la forêt. Ils gardent exactement la taille utilisée par le
+  calcul « sujet caché ». Un modèle simple remplace le détaillé au loin.
+
+  Les **textures sont photographiées** (`assets/foliage/`, CC0 : Poly Haven et ambientCG, voir
+  `LICENSE_CC0.txt`). Les sets d'origine ne contiennent que des rameaux et des feuilles isolés, bien trop petits
+  pour une carte vue d'un drone : `tools/bake_foliage.gd` les assemble en **une branche entière d'épicéa** et en
+  **un bouquet de feuilles de charme**. Leurs couleurs sont ramenées à une moyenne fixe, parce que la teinte d'un
+  arbre reste celle du jeu (style, ambiance, variation par arbre) — et cette teinte est désaturée de moitié dans le
+  shader : multipliée telle quelle par une photo, elle donnait un vert de jouet.
+
+  Trois choses qui font qu'un épicéa en est un, et qui manquaient :
+  - **les rameaux pendants**. Une branche d'épicéa vue par la tranche est un trait ; ce qui fait la masse de
+    l'arbre vu du sol, ce sont les rameaux qui pendent dessous. Chaque branche basse porte donc une carte
+    verticale le long de sa tige (`_bough(..., curtain)`), et elle reste verte sous la neige ;
+  - **la branche qui retombe puis se relève** au bout, pliée en toit le long de sa tige ; en haut de l'arbre elles
+    montent au lieu de pendre ;
+  - **la neige en tas** : elle se pose sur le milieu de la branche, bouche les vides entre les aiguilles (l'alpha
+    de la carte y passe à 1) et laisse dépasser une frange sombre. Avant, c'était une plaque blanche sur toute
+    la carte.
+
+  Au loin, les mipmaps moyennent les vides entre les aiguilles dans l'alpha et un arbre découpé s'amincit en
+  squelette : le seuil de découpe baisse donc avec la distance (`alpha` multiplié jusqu'à 2,6 à 110 m).
+
+  Le **feuillu** n'est plus une boule sur un piquet : tronc légèrement penché qui fourche à 3,6 m, une
+  charpentière coudée vers chacun des 14 lobes du houppier, lobes répartis sur un ellipsoïde plus large que haut
+  et à des distances inégales du centre. Les cartes restent à l'intérieur de la sphère de 3 m que compte le calcul
+  « sujet caché ».
 - **Petit décor** (`decor.gd`, `rocks.gd`) : fougères, buissons, haies, troncs couchés, souches, pierres et rochers
   (mousse en forêt).
+- **Roche** (`GroundMaterials.ROCK_FN`, `assets/ground/rock.png`) : une falaise grise fracturée photographiée
+  (ambientCG Rock030, CC0), empaquetée comme les autres détails de sol par `tools/bake_ground_detail.gd`, et
+  projetée de tous les côtés (triplanaire). Une seule fonction de shader partagée par tout ce qui montre de la
+  roche : le terrain et la neige (`#ROCK`), les rochers, les montagnes lointaines. Elle est lue **à deux échelles**
+  — fissures de près, blocs et faces depuis l'autre versant — parce qu'une seule se lit comme un papier peint
+  dès qu'on s'éloigne. Sur les falaises enneigées, la neige tient en bandes sur les vires au lieu d'un moucheté.
 - **Bâtiments et équipements** (`buildings.gd`, `car_model.gd`) : fermes variées (crépi ou moellons, toit à deux ou
   quatre pans, tuiles canal ou ardoises, volets peints, cheminée, annexe basse, jardin clos d'une barrière en bois ou
   d'un muret, cour en herbe, grange en L), granges, ligne électrique avec fils, bornes kilométriques ; voitures carrossées (peinture vernie, vitres, phares,
   feux, jantes) pour le sujet et le trafic ; colline et portails du tunnel ; sur les pistes de ski : jalons de piste,
   filets orange, télésiège.
+  La caisse n'est plus un rectangle arrondi extrudé (novembre 2026). Chaque section a un vrai profil
+  (`_body_half`) : capot bombé, épaule qui s'arrondit vers un flanc galbé à mi-hauteur et rentré au bas de caisse.
+  Les sections sont prises tous les 5 cm sur une courbe lissée entre les stations du tableau, et **les passages de
+  roue sont creusés dans la caisse** : là où il y a une roue, le dessous de la section remonte en voûte. C'étaient
+  des demi-disques noirs posés sur le flanc. Les pare-chocs des voitures de route sont couleur caisse (seules la
+  prise d'air et la jupe arrière sont noires), les jantes sont plus claires et moins miroir. Les cotes
+  (longueur, hauteur de ceinture, position des feux et des roues) n'ont pas bougé.
+
   La carrosserie est **loftée par sections** : `CORNER_STEPS` points par coin d'une section (5, contre 3 avant —
   à 3 on voyait les facettes de l'épaulement dès 10 m) et une **roue en tonneau** de `WHEEL_SIDES` côtés (28, contre
   16 : une roue est la seule chose parfaitement ronde de l'image et le drone passe à quelques mètres), dont la bande
@@ -197,6 +267,15 @@ libellés donnent l'angle, parce que c'est comme ça qu'on le règle sur une cam
 - **Horizon** (`far_scenery.gd`) : le relief continue au-delà de la zone de jeu (champs et bosquets, forêt, vallée
   glaciaire) et se termine sur une chaîne de collines ou de montagnes enneigées (massifs, arêtes, strates). Une nappe
   de forêt dense couvre les versants lointains.
+
+  **Le moucheté des montagnes venait du relief ajouté à la normale.** Le shader bosselait la normale avec un bruit
+  fin (amplitude × 55, échantillonné à 6 m) puis décidait « roche ou neige » d'après cette normale bosselée. À 2 –
+  5 km un pixel fait plusieurs mètres : le bruit changeait d'un pixel à l'autre et les seuils avec lui, d'où du sel
+  et du poivre à la place de faces et de champs de neige. Maintenant la roche et la neige sont décidées par **la
+  forme de la montagne** — sa vraie pente (`rock_slope`), plus des nervures et des couloirs étirés dans la hauteur
+  sur les parois — et la normale bosselée, plus douce (bruit large, échantillonné à 14 m), ne sert plus qu'à
+  accrocher la lumière. Sous la neige, la roche apparaît dès une pente plus faible (0,10) que sur une montagne
+  d'herbe (0,24).
 - **Athlètes** (`scenarios/subjects/athlete_model.gd`) : skieurs, coureurs et vététistes sont un mannequin articulé et
   animé : position de ski et recherche de vitesse avec skis, bâtons, casque et masque ; foulée qui passe de la marche
   au sprint selon la vitesse, avec casquette et dossard ; pédalage sur un VTT détaillé (roue libre au-delà de
