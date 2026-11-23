@@ -67,8 +67,8 @@ Un monde ouvert, sans chrono ni score. Deux terrains au choix :
 
 ## Ce qu'il vous faut
 
-- **Windows 64 bits**, ou **macOS** 11+ sur Intel et 13+ sur Apple Silicon (binaire universel)
-- Une **carte graphique compatible Vulkan** (la plupart des cartes de moins de 8 ans). Sur Mac, le rendu passe par Metal via MoltenVK.
+- **Windows 64 bits**, ou **macOS** 11+ sur Intel et 13+ sur Apple Silicon (binaire universel), ou **Linux 64 bits** (testé sur Debian)
+- Une **carte graphique compatible Vulkan** (la plupart des cartes de moins de 8 ans). Sur Mac, le rendu passe par Metal.
 - Une **manette**, de préférence. Le clavier fonctionne aussi. Pour jouer à deux, il faut deux manettes.
 
 ## Installation
@@ -91,11 +91,15 @@ Un monde ouvert, sans chrono ni score. Deux terrains au choix :
 
 > L'application s'appelle `fpv-gimbal-trainer.app` : c'est le nom interne du projet, et le renommer déplacerait le dossier des scores et de l'historique.
 
-### Linux (Debian) 
-1. Téléchargez les deux fichiers de la dernière version dans l'onglet **Releases** : 
-   `FPV_DUALOP_vX.Y` et `FPV_DUALOP_vX.Y.pck`. 
-2. Mettez-les **dans le même dossier**. 
-3. Lancez le fichier sans extension. Il n'y a rien d'autre à installer.
+### Linux (Debian)
+
+1. Téléchargez les deux fichiers de la dernière version dans l'onglet **Releases** :
+   `FPV_DUALOP_vX.Y.x86_64` et `FPV_DUALOP_vX.Y.pck`.
+2. Mettez-les **dans le même dossier**.
+3. Rendez le premier exécutable, puis lancez-le. Il n'y a rien d'autre à installer :
+   `chmod +x FPV_DUALOP_vX.Y.x86_64 && ./FPV_DUALOP_vX.Y.x86_64`
+
+> Le build Linux est nouveau (v2.3) et n'a été essayé que sur Debian. Les retours sont les bienvenus.
 
 ## Premiers pas
 
@@ -148,6 +152,7 @@ Quatre niveaux de qualité (Basse, Moyenne, Haute, Ultra) et un **flou de mouvem
 - **Athlètes animés** : le coureur passe de la marche au sprint, le vététiste pédale sur un vrai VTT. Le **skieur** est posé image par image à partir du virage qu'il fait et de **celui qui arrive** : il s'écrase et s'angule dans la courbe, puis se grandit, balance le bâton en avant et traverse les genoux une bonne demi-seconde **avant** que ses skis ne changent de direction — de quoi anticiper le virage rien qu'en le regardant. Il porte une vraie tenue de ski (veste, pantalon, moufles, casque intégral et masque) avec un **dossard blanc devant et derrière**, repère facile à garder dans le cadre, et laisse deux traces continues dans la neige et un nuage de poudreuse.
 - **Voitures sur leur suspension** : la caisse se penche vers l'extérieur du virage, plonge au freinage et s'accroupit à l'accélération, les roues avant braquent dans la courbe et les feux arrière s'allument au freinage — autant d'indices qui annoncent la trajectoire avant que la voiture ne l'ait changée.
 - **Décors vivants** : public, drapeaux et banderoles sur la descente ; fermes, champs labourés et blés mûrs sur la Départementale ; parois rocheuses et massifs sur la route de montagne ; rayons de lumière dans la forêt (qualité Ultra).
+- **Végétation, roche et voitures retravaillées (v2.3)** : les épicéas ont de vraies branches photographiées qui retombent, avec de la neige en tas sur le dessus ; les feuillus fourchent et ont un houppier en lobes ; les falaises et les rochers sont photographiés et vus de tous les côtés ; les montagnes lointaines montrent des faces rocheuses et des champs de neige au lieu d'un moucheté ; l'herbe forme un gazon continu ; les voitures ont des flancs galbés, un capot bombé et des passages de roue creusés dans la caisse. Le coût est d'environ +11 à +16 % de temps de rendu : si c'est trop lent, baissez la qualité (voir plus haut).
 - **Rendu caméra** : vignettage, légère aberration chromatique, grain et **profondeur de champ**, comme une vraie
   optique. Le flou n'est pas décoratif : ce sont les vraies limites de netteté de l'optique choisie, à f/2. À 85 mm
   le sujet se détache du fond ; à 24 mm tout est net à partir de 6 m et rien ne se détache jamais — c'est la vraie
@@ -198,7 +203,9 @@ Le code source est dans le dossier `fpv-gimbal-trainer/` (projet Godot 4.7).
 ## Crédits
 
 - Mannequin animé des athlètes : « Universal Animation Library » de [Quaternius](https://quaternius.com), licence CC0 (domaine public).
-- Détail des sols : sets PBR Asphalt033, Snow010A et Grass004 d'[ambientCG](https://ambientcg.com), licence CC0
-  (domaine public), réduits et empaquetés en une image par surface (voir `assets/ground/LICENSE_ambientCG_CC0.txt`).
+- Détail des sols et de la roche : sets PBR Asphalt033, Snow010A, Grass004 et Rock030 d'[ambientCG](https://ambientcg.com),
+  licence CC0 (domaine public), réduits et empaquetés en une image par surface (voir `assets/ground/LICENSE_ambientCG_CC0.txt`).
+- Végétation : « Fir Tree 01 » de [Poly Haven](https://polyhaven.com/a/fir_tree_01), « LeafSet005 » et « Bark012 »
+  d'[ambientCG](https://ambientcg.com), licence CC0, assemblés en branches et en bouquets (voir `assets/foliage/LICENSE_CC0.txt`).
 - Tracé du circuit : d'après le plan « Nürburgring - Grand-Prix-Strecke » de [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:N%C3%BCrburgring_-_Grand-Prix-Strecke.svg), aplati puis re-parcouru à courbure bornée (voir [docs/circuit.md](fpv-gimbal-trainer/docs/circuit.md)).
 - Moteur : [Godot Engine](https://godotengine.org) (licence MIT).
